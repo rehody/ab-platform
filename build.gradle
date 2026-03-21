@@ -1,29 +1,46 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '4.0.4'
-	id 'io.spring.dependency-management' version '1.1.7'
+    id 'java'
+    alias libs.plugins.springBoot apply false
+    alias libs.plugins.springDependencyManagement apply false
 }
 
 group = 'io.github.rehody'
 version = '0.0.1-SNAPSHOT'
 description = 'ab-platform'
 
-java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
-	}
+allprojects {
+    repositories {
+        mavenCentral()
+    }
 }
 
-repositories {
-	mavenCentral()
+def projects = subprojects.findAll { it.path != ':modules' }
+
+configure(projects) {
+    apply plugin: 'java'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(25)
+        }
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+    }
+
+    dependencies {
+        compileOnly libs.lombok
+        annotationProcessor libs.lombok
+        testCompileOnly libs.lombok
+        testAnnotationProcessor libs.lombok
+    }
 }
 
-dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-}
+def modules = findProject(':modules')
 
-tasks.named('test') {
-	useJUnitPlatform()
+if (modules != null) {
+    configure(modules) {
+        apply plugin: 'base'
+    }
 }

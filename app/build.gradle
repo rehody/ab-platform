@@ -1,0 +1,17 @@
+plugins {
+    alias libs.plugins.springBoot
+    alias libs.plugins.springDependencyManagement
+}
+
+dependencies {
+    implementation project(':shared')
+    implementation project(':modules:feature-flag')
+    implementation project(':modules:experiment')
+
+    implementation libs.springBootStarter
+    testImplementation libs.springBootStarterTest
+}
+
+springBoot {
+    mainClass = 'io.github.rehody.abplatform.Application'
+}

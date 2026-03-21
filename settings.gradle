@@ -1,1 +1,8 @@
 rootProject.name = 'ab-platform'
+
+include(
+        "app",
+        "shared",
+        "modules:feature-flag",
+        "modules:experiment",
+)
