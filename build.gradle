@@ -2,6 +2,7 @@ plugins {
     id 'java'
     alias libs.plugins.springBoot apply false
     alias libs.plugins.springDependencyManagement apply false
+    alias libs.plugins.spotless apply false
 }
 
 group = 'io.github.rehody'
@@ -18,6 +19,8 @@ def projects = subprojects.findAll { it.path != ':modules' }
 
 configure(projects) {
     apply plugin: 'java'
+    apply plugin: 'jacoco'
+    apply plugin: 'com.diffplug.spotless'
 
     java {
         toolchain {
@@ -27,6 +30,32 @@ configure(projects) {
 
     tasks.withType(Test).configureEach {
         useJUnitPlatform()
+        finalizedBy tasks.named('jacocoTestReport')
+    }
+
+    tasks.named('jacocoTestReport') {
+        dependsOn tasks.named('test')
+        reports {
+            xml.required = true
+            html.required = true
+            csv.required = false
+        }
+    }
+
+    spotless {
+        java {
+            target 'src/**/*.java'
+            palantirJavaFormat()
+            formatAnnotations()
+            removeUnusedImports()
+            trimTrailingWhitespace()
+            endWithNewline()
+        }
+        format('misc') {
+            target '*.gradle', '*.md', '.gitignore', 'gradle/**/*.toml'
+            trimTrailingWhitespace()
+            endWithNewline()
+        }
     }
 
     dependencies {

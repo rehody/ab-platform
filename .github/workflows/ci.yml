@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Lint (Spotless)
+        run: ./gradlew spotlessCheck --no-daemon
+
+      - name: Build
+        run: ./gradlew assemble --no-daemon
+
+      - name: Test + JaCoCo
+        run: ./gradlew test jacocoTestReport --no-daemon
+
+      - name: Upload JaCoCo reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: |
+            **/build/reports/jacoco/test/jacocoTestReport.xml
+            **/build/reports/jacoco/test/html/**
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Prepare Docker
+        run: |
+          docker --version
+          docker buildx version
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ab-platform:ci-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
