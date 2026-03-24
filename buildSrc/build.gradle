@@ -1,0 +1,17 @@
+plugins {
+    id 'groovy-gradle-plugin'
+}
+
+repositories {
+    gradlePluginPortal()
+    mavenCentral()
+}
+
+gradlePlugin {
+    plugins {
+        integrationTestConvention {
+            id = 'io.github.rehody.rsmarketplace.integration-test-convention'
+            implementationClass = 'io.github.rehody.abplatform.IntegrationTestConventionPlugin'
+        }
+    }
+}
