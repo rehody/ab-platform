@@ -8,8 +8,10 @@ import io.github.rehody.abplatform.exception.FeatureFlagNotFoundException;
 import io.github.rehody.abplatform.model.FeatureFlag;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.repository.FeatureFlagRepository;
+import io.github.rehody.abplatform.util.RedissonLockUtils;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,17 +20,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class FeatureFlagService {
 
     private final FeatureFlagRepository featureFlagRepository;
+    private final RedissonClient redissonClient;
 
     @Transactional
     public FeatureFlagResponse create(FeatureFlagCreateRequest request) {
-        if (featureFlagRepository.existsByKey(request.key())) {
-            throw new FeatureFlagAlreadyExistsException("Feature flag '%s' already exists".formatted(request.key()));
-        }
+        return RedissonLockUtils.withLock(redissonClient, request.key(), () -> {
+            if (featureFlagRepository.existsByKey(request.key())) {
+                throw new FeatureFlagAlreadyExistsException(
+                        "Feature flag '%s' already exists".formatted(request.key()));
+            }
 
-        FeatureFlag featureFlag = buildFeatureFlag(request.key(), request.defaultValue());
-        featureFlagRepository.save(featureFlag);
+            FeatureFlag featureFlag = buildFeatureFlag(request.key(), request.defaultValue());
+            featureFlagRepository.save(featureFlag);
 
-        return FeatureFlagResponse.from(featureFlag);
+            return FeatureFlagResponse.from(featureFlag);
+        });
     }
 
     private FeatureFlag getByKeyOrThrow(String key) {
