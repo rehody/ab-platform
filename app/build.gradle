@@ -4,9 +4,9 @@ plugins {
 }
 
 dependencies {
-    implementation project(':shared')
     implementation project(':modules:feature-flag')
     implementation project(':modules:experiment')
+    implementation project(':shared:locking')
 
     implementation libs.spring.boot.starter
     implementation libs.spring.boot.starter.web

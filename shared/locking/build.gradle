@@ -1,0 +1,10 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    api project(':shared:common')
+
+    api libs.spring.boot.starter
+    api libs.redisson
+}
