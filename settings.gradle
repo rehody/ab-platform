@@ -5,6 +5,7 @@ include(
         "shared:common",
         "shared:contracts",
         "shared:locking",
+        "shared:testing",
         "modules:feature-flag",
         "modules:experiment",
 )

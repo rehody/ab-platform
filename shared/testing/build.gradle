@@ -1,0 +1,13 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    api libs.spring.boot.starter.test
+    api libs.spring.boot.starter.data.jdbc.test
+    api libs.spring.boot.starter.data.redis.test
+
+    api libs.testcontainers.junit.jupiter
+    api libs.testcontainers.postgresql
+    api libs.testcontainers.redis
+}
