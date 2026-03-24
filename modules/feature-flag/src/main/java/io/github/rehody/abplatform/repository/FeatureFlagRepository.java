@@ -8,31 +8,30 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-@SuppressWarnings({"SqlNoDataSourceInspection", "SqlResolve"})
 @Repository
 @RequiredArgsConstructor
 public class FeatureFlagRepository {
 
     private static final String INSERT_FLAG_SQL = """
-        INSERT INTO feature_flag (id, feature_key, default_value, default_value_type)
+        INSERT INTO feature_flags (id, feature_key, default_value, default_value_type)
         VALUES (:id, :key, :defaultValue, :defaultValueType)
         """;
 
     private static final String SELECT_FLAG_BY_KEY_SQL = """
         SELECT id, feature_key, default_value, default_value_type
-        FROM feature_flag
+        FROM feature_flags
         WHERE feature_key = :key
         """;
 
     private static final String UPDATE_FLAG_DEFAULT_VALUE_BY_KEY_SQL = """
-        UPDATE feature_flag
+        UPDATE feature_flags
         SET default_value = :defaultValue, default_value_type = :defaultValueType
         WHERE feature_key = :key
         """;
 
     private static final String EXISTS_BY_KEY_SQL = """
         SELECT EXISTS(
-            SELECT 1 FROM feature_flag WHERE feature_key = :key
+            SELECT 1 FROM feature_flags WHERE feature_key = :key
         )
         """;
 
@@ -57,15 +56,13 @@ public class FeatureFlagRepository {
                 .optional();
     }
 
-    public boolean update(String key, FeatureValue defaultValue) {
-        int affectedRows = jdbcClient
+    public void update(String key, FeatureValue defaultValue) {
+        jdbcClient
                 .sql(UPDATE_FLAG_DEFAULT_VALUE_BY_KEY_SQL)
                 .param("key", key)
                 .param("defaultValue", defaultValue.value())
                 .param("defaultValueType", defaultValue.type().name())
                 .update();
-
-        return affectedRows > 0;
     }
 
     public boolean existsByKey(String key) {
