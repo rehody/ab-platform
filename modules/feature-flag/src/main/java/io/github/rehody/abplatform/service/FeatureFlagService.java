@@ -8,10 +8,10 @@ import io.github.rehody.abplatform.exception.FeatureFlagNotFoundException;
 import io.github.rehody.abplatform.model.FeatureFlag;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.repository.FeatureFlagRepository;
-import io.github.rehody.abplatform.util.RedissonLockUtils;
+import io.github.rehody.abplatform.util.lock.LockExecutor;
+import io.github.rehody.abplatform.util.lock.LockNamespace;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,12 +19,14 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class FeatureFlagService {
 
+    private static final LockNamespace FEATURE_FLAG_LOCK_NAMESPACE = LockNamespace.of("feature-flag");
+
     private final FeatureFlagRepository featureFlagRepository;
-    private final RedissonClient redissonClient;
+    private final LockExecutor lockExecutor;
 
     @Transactional
     public FeatureFlagResponse create(FeatureFlagCreateRequest request) {
-        return RedissonLockUtils.withLock(redissonClient, request.key(), () -> {
+        return lockExecutor.withLock(FEATURE_FLAG_LOCK_NAMESPACE, request.key(), () -> {
             if (featureFlagRepository.existsByKey(request.key())) {
                 throw new FeatureFlagAlreadyExistsException(
                         "Feature flag '%s' already exists".formatted(request.key()));

@@ -3,6 +3,7 @@ package io.github.rehody.abplatform.exception;
 import io.github.rehody.abplatform.dto.response.ErrorResponse;
 import io.github.rehody.abplatform.dto.response.ErrorResponse.ErrorCode;
 import io.github.rehody.abplatform.dto.response.ErrorResponse.Violation;
+import io.github.rehody.abplatform.util.lock.LockObtainingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.time.Instant;
@@ -30,6 +31,12 @@ public class FeatureFlagExceptionHandler {
             FeatureFlagAlreadyExistsException ex, HttpServletRequest request) {
         return buildResponse(
                 HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
+    }
+
+    @ExceptionHandler(LockObtainingException.class)
+    public ResponseEntity<ErrorResponse> handleLockAcquisition(LockObtainingException ex, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.CONFLICT, ErrorCode.CONFLICT, "Feature flag is busy", request.getRequestURI(), List.of());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

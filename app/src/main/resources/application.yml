@@ -4,3 +4,9 @@ spring:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
       password: ${REDIS_PASSWORD}
+
+ab:
+  lock:
+    key-prefix: ${AB_LOCK_KEY_PREFIX:ab-platform:lock:}
+    wait-time: ${AB_LOCK_WAIT_TIME:3s}
+    lease-time: ${AB_LOCK_LEASE_TIME:10s}
