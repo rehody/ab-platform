@@ -6,6 +6,7 @@ spring-dependency-management = "1.1.7"
 # Runtime and infrastructure
 lombok = "1.18.44"
 redisson = "4.3.0"
+caffeine = "3.2.2"
 testcontainers = "1.21.3"
 redis-testcontainers = "2.2.4"
 
@@ -29,6 +30,7 @@ postgresql = { module = "org.postgresql:postgresql" }
 
 # Utilities
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 
 # Distributed locking
 redisson = { module = "org.redisson:redisson", version.ref = "redisson" }
