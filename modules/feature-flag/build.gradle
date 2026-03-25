@@ -3,9 +3,7 @@ dependencies {
     implementation libs.spring.boot.starter.data.jdbc
     implementation libs.spring.boot.starter.validation
 
-    implementation libs.caffeine
-    implementation libs.redisson
-
+    implementation project(':shared:caching')
     implementation project(':shared:common')
     implementation project(':shared:contracts')
 }

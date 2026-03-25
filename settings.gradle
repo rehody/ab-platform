@@ -3,6 +3,7 @@ rootProject.name = 'ab-platform'
 include(
         "app",
         "shared:common",
+        "shared:caching",
         "shared:contracts",
         "shared:locking",
         "shared:testing",

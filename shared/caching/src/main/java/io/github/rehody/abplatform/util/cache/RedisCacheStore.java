@@ -1,48 +1,44 @@
-package io.github.rehody.abplatform.cache;
+package io.github.rehody.abplatform.util.cache;
 
-import io.github.rehody.abplatform.dto.response.FeatureFlagResponse;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
+import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBucket;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
-import tools.jackson.databind.ObjectMapper;
 
-@Component
-public class FeatureFlagRedisStore {
+@Slf4j
+public class RedisCacheStore<T> implements CacheStore<T> {
 
-    private static final Logger log = LoggerFactory.getLogger(FeatureFlagRedisStore.class);
-    private static final String DEFAULT_REDIS_KEY_PREFIX = "ab-platform:cache:feature-flag:v1:";
+    private static final String DEFAULT_REDIS_KEY_PREFIX = "ab-platform:cache:";
     private static final String VALUE_KEY_PREFIX = "value:";
     private static final String MISS_KEY_PREFIX = "miss:";
     private static final String MISS_MARKER = "1";
     private static final long MIN_TTL_MILLIS = 1_000L;
 
     private final RedissonClient redissonClient;
-    private final ObjectMapper objectMapper;
+    private final CacheCodec<T> codec;
     private final Duration valueTtl;
     private final Duration missTtl;
     private final String redisKeyPrefix;
     private final double ttlSpread;
-    private final RTopic invalidationTopic;
+    private final String invalidationTopic;
 
-    public FeatureFlagRedisStore(
-            RedissonClient redissonClient, ObjectMapper objectMapper, FeatureFlagCacheProperties properties) {
+    public RedisCacheStore(RedissonClient redissonClient, CacheCodec<T> codec, RedisCacheConfig config) {
         this.redissonClient = redissonClient;
-        this.objectMapper = objectMapper;
-        this.valueTtl = properties.getL2ValueTtl();
-        this.missTtl = properties.getL2MissTtl();
-        this.redisKeyPrefix = normalizePrefix(properties.getRedisKeyPrefix());
-        this.ttlSpread = normalizeSpread(properties.getTtlSpread());
-        this.invalidationTopic = redissonClient.getTopic(properties.getInvalidationTopic());
+        this.codec = codec;
+        this.valueTtl = config.valueTtl();
+        this.missTtl = config.missTtl();
+        this.redisKeyPrefix = normalizePrefix(config.redisKeyPrefix());
+        this.ttlSpread = normalizeSpread(config.ttlSpread());
+        this.invalidationTopic = config.invalidationTopic().trim();
     }
 
-    public Optional<FeatureFlagResponse> readValue(String key) {
+    @Override
+    public Optional<T> readValue(String key) {
         String serialized =
                 executeIgnoreFailure("read value", () -> valueBucket(key).get());
 
@@ -51,9 +47,9 @@ public class FeatureFlagRedisStore {
         }
 
         try {
-            return Optional.of(objectMapper.readValue(serialized, FeatureFlagResponse.class));
+            return Optional.of(codec.read(serialized));
         } catch (Exception ex) {
-            log.warn("Failed to deserialize feature flag cache value for key '{}'", key, ex);
+            log.warn("Failed to deserialize cache value for key '{}'", key, ex);
             executeIgnoreFailure("remove broken value", () -> {
                 valueBucket(key).delete();
                 return null;
@@ -62,12 +58,14 @@ public class FeatureFlagRedisStore {
         }
     }
 
+    @Override
     public boolean hasMiss(String key) {
         return MISS_MARKER.equals(
                 executeIgnoreFailure("read miss marker", () -> missBucket(key).get()));
     }
 
-    public void writeValue(String key, FeatureFlagResponse value) {
+    @Override
+    public void writeValue(String key, T value) {
         String serialized = serialize(value);
         if (serialized == null) {
             return;
@@ -80,6 +78,7 @@ public class FeatureFlagRedisStore {
         });
     }
 
+    @Override
     public void writeMiss(String key) {
         executeIgnoreFailure("write miss marker", () -> {
             valueBucket(key).delete();
@@ -88,6 +87,7 @@ public class FeatureFlagRedisStore {
         });
     }
 
+    @Override
     public void invalidate(String key) {
         executeIgnoreFailure("invalidate", () -> {
             valueBucket(key).delete();
@@ -96,11 +96,26 @@ public class FeatureFlagRedisStore {
         });
     }
 
+    @Override
     public void publishInvalidation(String key) {
         executeIgnoreFailure("publish invalidation", () -> {
-            invalidationTopic.publish(key);
+            topic().publish(key);
             return null;
         });
+    }
+
+    @Override
+    public int subscribeInvalidation(Consumer<String> listener) {
+        return topic().addListener(String.class, (_, key) -> listener.accept(key));
+    }
+
+    @Override
+    public void unsubscribeInvalidation(int listenerId) {
+        topic().removeListener(listenerId);
+    }
+
+    private RTopic topic() {
+        return redissonClient.getTopic(invalidationTopic);
     }
 
     private RBucket<String> valueBucket(String key) {
@@ -111,11 +126,11 @@ public class FeatureFlagRedisStore {
         return redissonClient.getBucket(redisKeyPrefix + MISS_KEY_PREFIX + key);
     }
 
-    private String serialize(FeatureFlagResponse value) {
+    private String serialize(T value) {
         try {
-            return objectMapper.writeValueAsString(value);
+            return codec.write(value);
         } catch (Exception ex) {
-            log.warn("Failed to serialize feature flag cache value", ex);
+            log.warn("Failed to serialize cache value", ex);
             return null;
         }
     }
@@ -126,9 +141,8 @@ public class FeatureFlagRedisStore {
             return Duration.ofMillis(MIN_TTL_MILLIS);
         }
 
-        double randomPart = ThreadLocalRandom.current().nextDouble(-ttlSpread, ttlSpread);
-        long adjustedMillis = baseMillis + Math.round(baseMillis * randomPart);
-
+        double spreadPart = ThreadLocalRandom.current().nextDouble(-ttlSpread, ttlSpread);
+        long adjustedMillis = baseMillis + Math.round(baseMillis * spreadPart);
         return Duration.ofMillis(Math.max(MIN_TTL_MILLIS, adjustedMillis));
     }
 
@@ -147,7 +161,7 @@ public class FeatureFlagRedisStore {
         return Math.min(value, 1.0d);
     }
 
-    private <T> T executeIgnoreFailure(String operationName, Supplier<T> operation) {
+    private <R> R executeIgnoreFailure(String operationName, Supplier<R> operation) {
         try {
             return operation.get();
         } catch (RuntimeException ex) {
