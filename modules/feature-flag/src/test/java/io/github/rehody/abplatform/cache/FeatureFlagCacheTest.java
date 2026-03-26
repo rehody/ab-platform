@@ -90,7 +90,8 @@ class FeatureFlagCacheTest {
 
     @Test
     void getOrLoad_shouldReturnLoadedValueAndReuseL1CacheOnSecondCall() {
-        FeatureFlagResponse response = new FeatureFlagResponse("flag-a", new FeatureValue(true, FeatureValueType.BOOL));
+        FeatureFlagResponse response =
+                new FeatureFlagResponse("flag-a", new FeatureValue(true, FeatureValueType.BOOL), 0L);
         AtomicInteger loaderCalls = new AtomicInteger();
         Supplier<Optional<FeatureFlagResponse>> loader = () -> {
             loaderCalls.incrementAndGet();

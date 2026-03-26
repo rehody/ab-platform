@@ -31,6 +31,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -96,10 +97,12 @@ class FeatureFlagServiceTest {
         assertThat(savedFeatureFlag.id()).isNotNull();
         assertThat(savedFeatureFlag.key()).isEqualTo("flag-b");
         assertThat(savedFeatureFlag.defaultValue()).isEqualTo(request.defaultValue());
+        assertThat(savedFeatureFlag.version()).isZero();
         assertThat(namespaceCaptor.getValue().value()).isEqualTo("feature-flag");
 
         assertThat(response.key()).isEqualTo("flag-b");
         assertThat(response.defaultValue()).isEqualTo(request.defaultValue());
+        assertThat(response.version()).isZero();
     }
 
     @Test
@@ -125,39 +128,57 @@ class FeatureFlagServiceTest {
     @Test
     void update_shouldUpdateAndReturnFeatureFlagResponseWhenFeatureFlagExists() {
         FeatureValue defaultValue = new FeatureValue(false, FeatureValueType.BOOL);
-        FeatureFlagUpdateRequest request = new FeatureFlagUpdateRequest(defaultValue);
-        FeatureFlag persisted = new FeatureFlag(UUID.randomUUID(), "flag-d", defaultValue);
+        FeatureFlagUpdateRequest request = new FeatureFlagUpdateRequest(defaultValue, 3L);
+        FeatureFlag persisted = new FeatureFlag(UUID.randomUUID(), "flag-d", defaultValue, 4L);
 
+        when(featureFlagRepository.update("flag-d", defaultValue, 3L)).thenReturn(1);
         when(featureFlagRepository.findByKey("flag-d")).thenReturn(Optional.of(persisted));
 
         FeatureFlagResponse response = featureFlagService.update("flag-d", request);
 
-        verify(featureFlagRepository).update("flag-d", defaultValue);
+        verify(featureFlagRepository).update("flag-d", defaultValue, 3L);
         verify(featureFlagCache).invalidate("flag-d");
         assertThat(response.key()).isEqualTo("flag-d");
         assertThat(response.defaultValue()).isEqualTo(defaultValue);
+        assertThat(response.version()).isEqualTo(4L);
     }
 
     @Test
-    void update_shouldThrowFeatureFlagNotFoundExceptionAndKeepCacheInvalidatedWhenFeatureFlagMissing() {
+    void update_shouldThrowFeatureFlagNotFoundExceptionAndSkipCacheInvalidationWhenFeatureFlagMissing() {
         FeatureValue defaultValue = new FeatureValue(false, FeatureValueType.BOOL);
-        FeatureFlagUpdateRequest request = new FeatureFlagUpdateRequest(defaultValue);
+        FeatureFlagUpdateRequest request = new FeatureFlagUpdateRequest(defaultValue, 5L);
 
-        when(featureFlagRepository.findByKey("flag-e")).thenReturn(Optional.empty());
+        when(featureFlagRepository.existsByKey("flag-e")).thenReturn(false);
 
         assertThatThrownBy(() -> featureFlagService.update("flag-e", request))
                 .isInstanceOf(FeatureFlagNotFoundException.class)
                 .hasMessage("Feature flag 'flag-e' not found");
 
-        verify(featureFlagRepository).update("flag-e", defaultValue);
-        verify(featureFlagCache).invalidate("flag-e");
+        verify(featureFlagRepository).update("flag-e", defaultValue, 5L);
+        verify(featureFlagCache, never()).invalidate("flag-e");
+    }
+
+    @Test
+    void update_shouldThrowOptimisticLockingFailureExceptionWhenVersionMismatch() {
+        FeatureValue defaultValue = new FeatureValue(false, FeatureValueType.BOOL);
+        FeatureFlagUpdateRequest request = new FeatureFlagUpdateRequest(defaultValue, 2L);
+
+        when(featureFlagRepository.existsByKey("flag-e")).thenReturn(true);
+        when(featureFlagRepository.update("flag-e", defaultValue, 2L)).thenReturn(0);
+
+        assertThatThrownBy(() -> featureFlagService.update("flag-e", request))
+                .isInstanceOf(OptimisticLockingFailureException.class)
+                .hasMessage("Feature flag 'flag-e' version mismatch. Expected version 2");
+
+        verify(featureFlagRepository).update("flag-e", defaultValue, 2L);
+        verify(featureFlagCache, never()).invalidate("flag-e");
     }
 
     @Test
     void getByKey_shouldLoadFromRepositoryAndReturnResponseWhenCacheNeedsLoader() {
         String key = "flag-f";
         FeatureFlag persisted =
-                new FeatureFlag(UUID.randomUUID(), key, new FeatureValue("enabled", FeatureValueType.STRING));
+                new FeatureFlag(UUID.randomUUID(), key, new FeatureValue("enabled", FeatureValueType.STRING), 8L);
 
         when(featureFlagRepository.findByKey(key)).thenReturn(Optional.of(persisted));
         when(featureFlagCache.getOrLoad(eq(key), any(Supplier.class))).thenAnswer(invocation -> {
@@ -169,6 +190,7 @@ class FeatureFlagServiceTest {
 
         assertThat(response.key()).isEqualTo(key);
         assertThat(response.defaultValue()).isEqualTo(persisted.defaultValue());
+        assertThat(response.version()).isEqualTo(8L);
         verify(featureFlagRepository).findByKey(key);
     }
 
@@ -176,7 +198,7 @@ class FeatureFlagServiceTest {
     void getByKey_shouldReturnCachedResponseAndSkipRepositoryWhenCacheHit() {
         String key = "flag-g";
         FeatureFlagResponse cachedResponse =
-                new FeatureFlagResponse(key, new FeatureValue(true, FeatureValueType.BOOL));
+                new FeatureFlagResponse(key, new FeatureValue(true, FeatureValueType.BOOL), 12L);
 
         when(featureFlagCache.getOrLoad(eq(key), any(Supplier.class))).thenReturn(Optional.of(cachedResponse));
 

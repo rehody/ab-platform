@@ -9,6 +9,7 @@ import jakarta.validation.ConstraintViolationException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -37,6 +38,13 @@ public class FeatureFlagExceptionHandler {
     public ResponseEntity<ErrorResponse> handleLockAcquisition(LockObtainingException ex, HttpServletRequest request) {
         return buildResponse(
                 HttpStatus.CONFLICT, ErrorCode.CONFLICT, "Feature flag is busy", request.getRequestURI(), List.of());
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLockingFailure(
+            OptimisticLockingFailureException ex, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

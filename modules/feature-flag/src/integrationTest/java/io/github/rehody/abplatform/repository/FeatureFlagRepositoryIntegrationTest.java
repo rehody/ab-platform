@@ -33,7 +33,8 @@ class FeatureFlagRepositoryIntegrationTest extends AbstractIntegrationDatabaseTe
                             id UUID PRIMARY KEY,
                             feature_key VARCHAR(255) UNIQUE NOT NULL,
                             default_value TEXT NOT NULL,
-                            default_value_type VARCHAR(16) NOT NULL
+                            default_value_type VARCHAR(16) NOT NULL,
+                            version BIGINT NOT NULL DEFAULT 0
                         )
                         """).update();
         jdbcClient.sql("DELETE FROM feature_flags").update();
@@ -42,7 +43,7 @@ class FeatureFlagRepositoryIntegrationTest extends AbstractIntegrationDatabaseTe
     @Test
     void saveAndFindByKey_shouldPersistAndReturnFeatureFlagWhenRecordExists() {
         FeatureFlag featureFlag = new FeatureFlag(
-                UUID.randomUUID(), "checkout-redesign", new FeatureValue("variant-a", FeatureValueType.STRING));
+                UUID.randomUUID(), "checkout-redesign", new FeatureValue("variant-a", FeatureValueType.STRING), 0L);
 
         featureFlagRepository.save(featureFlag);
         Optional<FeatureFlag> loaded = featureFlagRepository.findByKey("checkout-redesign");
@@ -60,22 +61,41 @@ class FeatureFlagRepositoryIntegrationTest extends AbstractIntegrationDatabaseTe
 
     @Test
     void update_shouldPersistNewDefaultValueAndTypeWhenFeatureFlagExists() {
-        FeatureFlag initial =
-                new FeatureFlag(UUID.randomUUID(), "checkout-redesign", new FeatureValue(true, FeatureValueType.BOOL));
+        FeatureFlag initial = new FeatureFlag(
+                UUID.randomUUID(), "checkout-redesign", new FeatureValue(true, FeatureValueType.BOOL), 0L);
         featureFlagRepository.save(initial);
 
-        featureFlagRepository.update("checkout-redesign", new FeatureValue(100, FeatureValueType.NUMBER));
+        int updatedRows =
+                featureFlagRepository.update("checkout-redesign", new FeatureValue(100, FeatureValueType.NUMBER), 0L);
         FeatureFlag updated =
                 featureFlagRepository.findByKey("checkout-redesign").orElseThrow();
 
+        assertThat(updatedRows).isEqualTo(1);
         assertThat(updated.defaultValue().value()).isEqualTo("100");
         assertThat(updated.defaultValue().type()).isEqualTo(FeatureValueType.NUMBER);
+        assertThat(updated.version()).isEqualTo(1L);
+    }
+
+    @Test
+    void update_shouldReturnZeroAndSkipWriteWhenVersionDoesNotMatch() {
+        FeatureFlag initial = new FeatureFlag(
+                UUID.randomUUID(), "checkout-redesign", new FeatureValue(true, FeatureValueType.BOOL), 0L);
+        featureFlagRepository.save(initial);
+
+        int updatedRows =
+                featureFlagRepository.update("checkout-redesign", new FeatureValue(false, FeatureValueType.BOOL), 9L);
+        FeatureFlag loaded =
+                featureFlagRepository.findByKey("checkout-redesign").orElseThrow();
+
+        assertThat(updatedRows).isZero();
+        assertThat(loaded.defaultValue().value()).isEqualTo("true");
+        assertThat(loaded.version()).isEqualTo(0L);
     }
 
     @Test
     void existsByKey_shouldReturnTrueAndFalseForExistingAndMissingKeys() {
         FeatureFlag featureFlag =
-                new FeatureFlag(UUID.randomUUID(), "beta-banner", new FeatureValue(false, FeatureValueType.BOOL));
+                new FeatureFlag(UUID.randomUUID(), "beta-banner", new FeatureValue(false, FeatureValueType.BOOL), 0L);
         featureFlagRepository.save(featureFlag);
 
         boolean existing = featureFlagRepository.existsByKey("beta-banner");
@@ -88,9 +108,9 @@ class FeatureFlagRepositoryIntegrationTest extends AbstractIntegrationDatabaseTe
     @Test
     void save_shouldThrowDataIntegrityViolationExceptionAndRejectDuplicateKey() {
         FeatureFlag first =
-                new FeatureFlag(UUID.randomUUID(), "dup-flag", new FeatureValue("v1", FeatureValueType.STRING));
+                new FeatureFlag(UUID.randomUUID(), "dup-flag", new FeatureValue("v1", FeatureValueType.STRING), 0L);
         FeatureFlag duplicate =
-                new FeatureFlag(UUID.randomUUID(), "dup-flag", new FeatureValue("v2", FeatureValueType.STRING));
+                new FeatureFlag(UUID.randomUUID(), "dup-flag", new FeatureValue("v2", FeatureValueType.STRING), 0L);
 
         featureFlagRepository.save(first);
 

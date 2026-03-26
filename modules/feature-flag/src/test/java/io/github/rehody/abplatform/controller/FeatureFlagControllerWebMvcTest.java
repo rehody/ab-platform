@@ -49,7 +49,8 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
 
     @Test
     void create_shouldReturnOkAndBodyWhenRequestIsValid() throws Exception {
-        FeatureFlagResponse response = new FeatureFlagResponse("flag-a", new FeatureValue(true, FeatureValueType.BOOL));
+        FeatureFlagResponse response =
+                new FeatureFlagResponse("flag-a", new FeatureValue(true, FeatureValueType.BOOL), 0L);
         when(featureFlagService.create(any())).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/flags").contentType(APPLICATION_JSON).content("""
@@ -58,36 +59,40 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.key").value("flag-a"))
                 .andExpect(jsonPath("$.defaultValue.value").value(true))
-                .andExpect(jsonPath("$.defaultValue.type").value("BOOL"));
+                .andExpect(jsonPath("$.defaultValue.type").value("BOOL"))
+                .andExpect(jsonPath("$.version").value(0));
     }
 
     @Test
     void update_shouldReturnOkAndBodyWhenRequestIsValid() throws Exception {
         FeatureFlagResponse response =
-                new FeatureFlagResponse("flag-b", new FeatureValue("variant-a", FeatureValueType.STRING));
+                new FeatureFlagResponse("flag-b", new FeatureValue("variant-a", FeatureValueType.STRING), 3L);
         when(featureFlagService.update(eq("flag-b"), any())).thenReturn(response);
 
         mockMvc.perform(put("/api/v1/flags/flag-b")
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"defaultValue":{"value":"variant-a","type":"STRING"}}
+                                {"defaultValue":{"value":"variant-a","type":"STRING"},"version":2}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.key").value("flag-b"))
                 .andExpect(jsonPath("$.defaultValue.value").value("variant-a"))
-                .andExpect(jsonPath("$.defaultValue.type").value("STRING"));
+                .andExpect(jsonPath("$.defaultValue.type").value("STRING"))
+                .andExpect(jsonPath("$.version").value(3));
     }
 
     @Test
     void get_shouldReturnOkAndBodyWhenFeatureFlagExists() throws Exception {
-        FeatureFlagResponse response = new FeatureFlagResponse("flag-c", new FeatureValue(12, FeatureValueType.NUMBER));
+        FeatureFlagResponse response =
+                new FeatureFlagResponse("flag-c", new FeatureValue(12, FeatureValueType.NUMBER), 4L);
         when(featureFlagService.getByKey("flag-c")).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/flags/flag-c"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.key").value("flag-c"))
                 .andExpect(jsonPath("$.defaultValue.value").value(12))
-                .andExpect(jsonPath("$.defaultValue.type").value("NUMBER"));
+                .andExpect(jsonPath("$.defaultValue.type").value("NUMBER"))
+                .andExpect(jsonPath("$.version").value(4));
     }
 
     @Test
@@ -123,7 +128,7 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
         mockMvc.perform(put("/api/v1/flags/flag-e")
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"defaultValue":{"value":true,"type":"BOOL"}}
+                                {"defaultValue":{"value":true,"type":"BOOL"},"version":1}
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))

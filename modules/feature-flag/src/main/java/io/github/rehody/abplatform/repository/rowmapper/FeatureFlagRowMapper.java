@@ -18,6 +18,7 @@ public class FeatureFlagRowMapper implements RowMapper<FeatureFlag> {
                 rs.getString("feature_key"),
                 new FeatureValue(
                         rs.getObject("default_value"),
-                        FeatureValue.FeatureValueType.valueOf(rs.getString("default_value_type"))));
+                        FeatureValue.FeatureValueType.valueOf(rs.getString("default_value_type"))),
+                rs.getLong("version"));
     }
 }

@@ -29,6 +29,7 @@ class FeatureFlagRowMapperTest {
         when(resultSet.getString("feature_key")).thenReturn("checkout-redesign");
         when(resultSet.getObject("default_value")).thenReturn("variant-a");
         when(resultSet.getString("default_value_type")).thenReturn("STRING");
+        when(resultSet.getLong("version")).thenReturn(5L);
 
         FeatureFlag featureFlag = rowMapper.mapRow(resultSet, 0);
 
@@ -36,5 +37,6 @@ class FeatureFlagRowMapperTest {
         assertThat(featureFlag.key()).isEqualTo("checkout-redesign");
         assertThat(featureFlag.defaultValue().value()).isEqualTo("variant-a");
         assertThat(featureFlag.defaultValue().type()).isEqualTo(FeatureValueType.STRING);
+        assertThat(featureFlag.version()).isEqualTo(5L);
     }
 }

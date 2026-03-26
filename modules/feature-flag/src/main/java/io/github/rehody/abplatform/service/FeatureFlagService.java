@@ -14,6 +14,7 @@ import io.github.rehody.abplatform.util.lock.LockNamespace;
 import java.util.UUID;
 import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -46,18 +47,29 @@ public class FeatureFlagService {
     }
 
     private FeatureFlag buildFeatureFlag(String key, FeatureValue defaultValue) {
-        return new FeatureFlag(UUID.randomUUID(), key, defaultValue);
+        return new FeatureFlag(UUID.randomUUID(), key, defaultValue, 0L);
     }
 
     @Transactional
     public FeatureFlagResponse update(String key, FeatureFlagUpdateRequest request) {
         return executeUnderLock(key, () -> {
-            featureFlagRepository.update(key, request.defaultValue());
+            updateAndCheckOptimisticLocking(key, request);
             invalidateCacheAfterCommit(key);
 
             FeatureFlag featureFlag = findByKeyOrThrow(key);
             return FeatureFlagResponse.from(featureFlag);
         });
+    }
+
+    private void updateAndCheckOptimisticLocking(String key, FeatureFlagUpdateRequest request) {
+        int affectedRows = featureFlagRepository.update(key, request.defaultValue(), request.version());
+        if (affectedRows == 0) {
+            if (!featureFlagRepository.existsByKey(key)) {
+                throw new FeatureFlagNotFoundException("Feature flag '%s' not found".formatted(key));
+            }
+            throw new OptimisticLockingFailureException(
+                    "Feature flag '%s' version mismatch. Expected version %d".formatted(key, request.version()));
+        }
     }
 
     private FeatureFlag findByKeyOrThrow(String key) {

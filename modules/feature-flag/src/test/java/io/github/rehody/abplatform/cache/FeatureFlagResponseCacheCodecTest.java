@@ -15,18 +15,20 @@ class FeatureFlagResponseCacheCodecTest {
 
     @Test
     void write_shouldSerializeResponseAndPreserveFields() {
-        FeatureFlagResponse response = new FeatureFlagResponse("flag-a", new FeatureValue(true, FeatureValueType.BOOL));
+        FeatureFlagResponse response =
+                new FeatureFlagResponse("flag-a", new FeatureValue(true, FeatureValueType.BOOL), 6L);
 
         String json = codec.write(response);
 
         assertThat(json).contains("\"key\":\"flag-a\"");
         assertThat(json).contains("\"type\":\"BOOL\"");
+        assertThat(json).contains("\"version\":6");
     }
 
     @Test
     void read_shouldDeserializeResponseAndRestoreFields() {
         String json = """
-                {"key":"flag-b","defaultValue":{"value":123,"type":"NUMBER"}}
+                {"key":"flag-b","defaultValue":{"value":123,"type":"NUMBER"},"version":4}
                 """;
 
         FeatureFlagResponse response = codec.read(json);
@@ -34,6 +36,7 @@ class FeatureFlagResponseCacheCodecTest {
         assertThat(response.key()).isEqualTo("flag-b");
         assertThat(response.defaultValue().value()).isEqualTo(123);
         assertThat(response.defaultValue().type()).isEqualTo(FeatureValueType.NUMBER);
+        assertThat(response.version()).isEqualTo(4L);
     }
 
     @Test

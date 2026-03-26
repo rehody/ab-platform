@@ -49,7 +49,7 @@ class FeatureFlagRepositoryTest {
     void save_shouldWriteAllParametersAndExecuteInsertUpdate() {
         UUID id = UUID.randomUUID();
         FeatureFlag featureFlag =
-                new FeatureFlag(id, "checkout-redesign", new FeatureValue(true, FeatureValueType.BOOL));
+                new FeatureFlag(id, "checkout-redesign", new FeatureValue(true, FeatureValueType.BOOL), 0L);
         when(jdbcClient.sql(anyString())).thenReturn(statementSpec);
         when(statementSpec.param(anyString(), any())).thenReturn(statementSpec);
         when(statementSpec.update()).thenReturn(1);
@@ -61,13 +61,14 @@ class FeatureFlagRepositoryTest {
         verify(statementSpec).param("key", "checkout-redesign");
         verify(statementSpec).param("defaultValue", true);
         verify(statementSpec).param("defaultValueType", "BOOL");
+        verify(statementSpec).param("version", 0L);
         verify(statementSpec).update();
     }
 
     @Test
     void findByKey_shouldReturnMappedFeatureFlagWhenRepositoryContainsRecord() {
         FeatureFlag featureFlag = new FeatureFlag(
-                UUID.randomUUID(), "checkout-redesign", new FeatureValue("variant-a", FeatureValueType.STRING));
+                UUID.randomUUID(), "checkout-redesign", new FeatureValue("variant-a", FeatureValueType.STRING), 3L);
         when(jdbcClient.sql(anyString())).thenReturn(statementSpec);
         when(statementSpec.param("key", "checkout-redesign")).thenReturn(statementSpec);
         when(statementSpec.query(rowMapper)).thenReturn(mappedQuerySpec);
@@ -76,23 +77,25 @@ class FeatureFlagRepositoryTest {
         Optional<FeatureFlag> response = featureFlagRepository.findByKey("checkout-redesign");
 
         assertThat(response).contains(featureFlag);
-        verify(jdbcClient).sql(contains("SELECT id, feature_key, default_value, default_value_type"));
+        verify(jdbcClient).sql(contains("SELECT id, feature_key, default_value, default_value_type, version"));
     }
 
     @Test
-    void update_shouldWriteKeyValueAndTypeAndExecuteUpdateStatement() {
+    void update_shouldWriteExpectedVersionAndExecuteUpdateStatement() {
         FeatureValue defaultValue = new FeatureValue(100, FeatureValueType.NUMBER);
         when(jdbcClient.sql(anyString())).thenReturn(statementSpec);
         when(statementSpec.param(anyString(), any())).thenReturn(statementSpec);
         when(statementSpec.update()).thenReturn(1);
 
-        featureFlagRepository.update("checkout-redesign", defaultValue);
+        int updatedRows = featureFlagRepository.update("checkout-redesign", defaultValue, 7L);
 
         verify(jdbcClient).sql(contains("UPDATE feature_flags"));
         verify(statementSpec).param("key", "checkout-redesign");
         verify(statementSpec).param("defaultValue", 100);
         verify(statementSpec).param("defaultValueType", "NUMBER");
+        verify(statementSpec).param("expectedVersion", 7L);
         verify(statementSpec).update();
+        assertThat(updatedRows).isEqualTo(1);
     }
 
     @Test
