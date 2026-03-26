@@ -1,0 +1,100 @@
+package io.github.rehody.abplatform.repository;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import io.github.rehody.abplatform.config.AbstractIntegrationDatabaseTest;
+import io.github.rehody.abplatform.model.FeatureFlag;
+import io.github.rehody.abplatform.model.FeatureValue;
+import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.simple.JdbcClient;
+
+@Import({FeatureFlagRepository.class})
+class FeatureFlagRepositoryIntegrationTest extends AbstractIntegrationDatabaseTest {
+
+    @Autowired
+    private JdbcClient jdbcClient;
+
+    @Autowired
+    private FeatureFlagRepository featureFlagRepository;
+
+    @SuppressWarnings("SqlWithoutWhere")
+    @BeforeEach
+    void setUp() {
+        jdbcClient.sql("""
+                        CREATE TABLE IF NOT EXISTS feature_flags (
+                            id UUID PRIMARY KEY,
+                            feature_key VARCHAR(255) UNIQUE NOT NULL,
+                            default_value TEXT NOT NULL,
+                            default_value_type VARCHAR(16) NOT NULL
+                        )
+                        """).update();
+        jdbcClient.sql("DELETE FROM feature_flags").update();
+    }
+
+    @Test
+    void saveAndFindByKey_shouldPersistAndReturnFeatureFlagWhenRecordExists() {
+        FeatureFlag featureFlag = new FeatureFlag(
+                UUID.randomUUID(), "checkout-redesign", new FeatureValue("variant-a", FeatureValueType.STRING));
+
+        featureFlagRepository.save(featureFlag);
+        Optional<FeatureFlag> loaded = featureFlagRepository.findByKey("checkout-redesign");
+
+        assertThat(loaded).isPresent();
+        assertThat(loaded.orElseThrow()).isEqualTo(featureFlag);
+    }
+
+    @Test
+    void findByKey_shouldReturnEmptyAndHandleUnknownKey() {
+        Optional<FeatureFlag> loaded = featureFlagRepository.findByKey("missing-flag");
+
+        assertThat(loaded).isEmpty();
+    }
+
+    @Test
+    void update_shouldPersistNewDefaultValueAndTypeWhenFeatureFlagExists() {
+        FeatureFlag initial =
+                new FeatureFlag(UUID.randomUUID(), "checkout-redesign", new FeatureValue(true, FeatureValueType.BOOL));
+        featureFlagRepository.save(initial);
+
+        featureFlagRepository.update("checkout-redesign", new FeatureValue(100, FeatureValueType.NUMBER));
+        FeatureFlag updated =
+                featureFlagRepository.findByKey("checkout-redesign").orElseThrow();
+
+        assertThat(updated.defaultValue().value()).isEqualTo("100");
+        assertThat(updated.defaultValue().type()).isEqualTo(FeatureValueType.NUMBER);
+    }
+
+    @Test
+    void existsByKey_shouldReturnTrueAndFalseForExistingAndMissingKeys() {
+        FeatureFlag featureFlag =
+                new FeatureFlag(UUID.randomUUID(), "beta-banner", new FeatureValue(false, FeatureValueType.BOOL));
+        featureFlagRepository.save(featureFlag);
+
+        boolean existing = featureFlagRepository.existsByKey("beta-banner");
+        boolean missing = featureFlagRepository.existsByKey("other");
+
+        assertThat(existing).isTrue();
+        assertThat(missing).isFalse();
+    }
+
+    @Test
+    void save_shouldThrowDataIntegrityViolationExceptionAndRejectDuplicateKey() {
+        FeatureFlag first =
+                new FeatureFlag(UUID.randomUUID(), "dup-flag", new FeatureValue("v1", FeatureValueType.STRING));
+        FeatureFlag duplicate =
+                new FeatureFlag(UUID.randomUUID(), "dup-flag", new FeatureValue("v2", FeatureValueType.STRING));
+
+        featureFlagRepository.save(first);
+
+        assertThatThrownBy(() -> featureFlagRepository.save(duplicate))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+}

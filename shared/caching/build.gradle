@@ -5,4 +5,8 @@ plugins {
 dependencies {
     api libs.caffeine
     api libs.redisson
+
+    testImplementation libs.spring.boot.starter.test
+
+    integrationTestImplementation project(':shared:testing')
 }

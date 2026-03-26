@@ -33,11 +33,9 @@ class IntegrationTestConventionPlugin implements Plugin<Project> {
                     java.srcDir('src/integrationTest/java')
                     resources.srcDir('src/integrationTest/resources')
                 }
-
-                suite.dependencies {
-                    implementation(project)
-                }
             }
+
+            project.dependencies.add(INTEGRATION_TEST_IMPLEMENTATION_CONFIGURATION, project)
 
             extendConfiguration(
                 project,

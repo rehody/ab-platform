@@ -26,12 +26,12 @@ public class FeatureFlagController {
         return featureFlagService.create(request);
     }
 
-    @PutMapping("{key}")
+    @PutMapping("/{key}")
     public FeatureFlagResponse update(@PathVariable String key, @Valid @RequestBody FeatureFlagUpdateRequest request) {
         return featureFlagService.update(key, request);
     }
 
-    @GetMapping("{key}")
+    @GetMapping("/{key}")
     public FeatureFlagResponse get(@PathVariable String key) {
         return featureFlagService.getByKey(key);
     }

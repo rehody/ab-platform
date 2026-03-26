@@ -140,6 +140,9 @@ public class RedisCacheStore<T> implements CacheStore<T> {
         if (baseMillis <= MIN_TTL_MILLIS) {
             return Duration.ofMillis(MIN_TTL_MILLIS);
         }
+        if (ttlSpread <= 0.0d) {
+            return Duration.ofMillis(baseMillis);
+        }
 
         double spreadPart = ThreadLocalRandom.current().nextDouble(-ttlSpread, ttlSpread);
         long adjustedMillis = baseMillis + Math.round(baseMillis * spreadPart);

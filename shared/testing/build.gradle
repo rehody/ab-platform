@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     api libs.spring.boot.starter.test
+    api libs.spring.boot.starter.validation
     api libs.spring.boot.starter.data.jdbc.test
     api libs.spring.boot.starter.data.redis.test
 
