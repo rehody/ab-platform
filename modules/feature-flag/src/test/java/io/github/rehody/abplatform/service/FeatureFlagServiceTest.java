@@ -47,11 +47,14 @@ class FeatureFlagServiceTest {
     @Mock
     private FeatureFlagCache featureFlagCache;
 
+    private ServiceActionExecutor serviceActionExecutor;
     private FeatureFlagService featureFlagService;
 
     @BeforeEach
     void setUp() {
-        featureFlagService = new FeatureFlagService(featureFlagRepository, lockExecutor, featureFlagCache);
+        serviceActionExecutor = new ServiceActionExecutor();
+        featureFlagService =
+                new FeatureFlagService(featureFlagRepository, lockExecutor, serviceActionExecutor, featureFlagCache);
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(2)).get());

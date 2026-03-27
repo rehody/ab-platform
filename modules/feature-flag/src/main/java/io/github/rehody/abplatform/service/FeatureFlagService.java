@@ -17,8 +17,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +26,7 @@ public class FeatureFlagService {
 
     private final FeatureFlagRepository featureFlagRepository;
     private final LockExecutor lockExecutor;
+    private final ServiceActionExecutor serviceActionExecutor;
     private final FeatureFlagCache featureFlagCache;
 
     @Transactional
@@ -86,21 +85,7 @@ public class FeatureFlagService {
     }
 
     private void invalidateCacheAfterCommit(String key) {
-        executeAfterCommit(() -> featureFlagCache.invalidate(key));
-    }
-
-    private void executeAfterCommit(Runnable action) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            action.run();
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                action.run();
-            }
-        });
+        serviceActionExecutor.executeAfterCommit(() -> featureFlagCache.invalidate(key));
     }
 
     private <T> T executeUnderLock(String key, Supplier<T> action) {
