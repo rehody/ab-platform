@@ -4,6 +4,7 @@ import io.github.rehody.abplatform.dto.request.ExperimentCreateRequest;
 import io.github.rehody.abplatform.dto.request.ExperimentUpdateRequest;
 import io.github.rehody.abplatform.dto.response.ExperimentResponse;
 import io.github.rehody.abplatform.service.ExperimentService;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -23,12 +24,12 @@ public class ExperimentController {
     private final ExperimentService experimentService;
 
     @PostMapping
-    public ExperimentResponse create(@RequestBody ExperimentCreateRequest request) {
+    public ExperimentResponse create(@Valid @RequestBody ExperimentCreateRequest request) {
         return experimentService.create(request);
     }
 
     @PatchMapping("/{id}")
-    public ExperimentResponse update(@PathVariable UUID id, @RequestBody ExperimentUpdateRequest request) {
+    public ExperimentResponse update(@PathVariable UUID id, @Valid @RequestBody ExperimentUpdateRequest request) {
         return experimentService.update(id, request);
     }
 
