@@ -1,5 +1,6 @@
 package io.github.rehody.abplatform.service;
 
+import io.github.rehody.abplatform.cache.ExperimentCache;
 import io.github.rehody.abplatform.dto.request.ExperimentCreateRequest;
 import io.github.rehody.abplatform.dto.request.ExperimentUpdateRequest;
 import io.github.rehody.abplatform.dto.response.ExperimentResponse;
@@ -26,6 +27,8 @@ public class ExperimentService {
 
     private final ExperimentRepository experimentRepository;
     private final LockExecutor lockExecutor;
+    private final ServiceActionExecutor serviceActionExecutor;
+    private final ExperimentCache experimentCache;
 
     @Transactional
     public ExperimentResponse create(ExperimentCreateRequest request) {
@@ -35,6 +38,7 @@ public class ExperimentService {
 
             Experiment experiment = buildExperiment(request);
             experimentRepository.save(experiment);
+            invalidateCacheAfterCommit(flagKey);
 
             return ExperimentResponse.from(experiment);
         });
@@ -57,14 +61,20 @@ public class ExperimentService {
 
         return executeUnderLock(flagKey, () -> {
             replaceVariantsAndCheckOptimisticLocking(id, request);
+            invalidateCacheAfterCommit(flagKey);
             return ExperimentResponse.from(findByIdOrThrow(id));
         });
     }
 
     @Transactional(readOnly = true)
     public ExperimentResponse getById(UUID id) {
-        Experiment experiment = findByIdOrThrow(id);
-        return ExperimentResponse.from(experiment);
+        String flagKey = findFlagKeyByIdOrThrow(id);
+
+        return experimentCache
+                .getOrLoad(
+                        flagKey,
+                        () -> experimentRepository.findByFlagKey(flagKey).map(ExperimentResponse::from))
+                .orElseThrow(() -> new ExperimentNotFoundException("Experiment '%s' not found".formatted(id)));
     }
 
     @Transactional(readOnly = true)
@@ -98,6 +108,10 @@ public class ExperimentService {
         return experimentRepository
                 .findFlagKeyById(id)
                 .orElseThrow(() -> new ExperimentNotFoundException("Experiment '%s' not found".formatted(id)));
+    }
+
+    private void invalidateCacheAfterCommit(String flagKey) {
+        serviceActionExecutor.executeAfterCommit(() -> experimentCache.invalidate(flagKey));
     }
 
     private <T> T executeUnderLock(String key, Supplier<T> action) {
