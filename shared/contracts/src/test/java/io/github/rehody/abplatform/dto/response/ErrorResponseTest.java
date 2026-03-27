@@ -34,4 +34,21 @@ class ErrorResponseTest {
         assertThatThrownBy(() -> response.violations().add(new Violation("x", "y")))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
+
+    @Test
+    void of_shouldCreateResponseAndPopulateTimestamp() {
+        ErrorResponse response = ErrorResponse.of(
+                409,
+                ErrorCode.CONFLICT,
+                "already exists",
+                "/api/v1/flags/flag-a",
+                List.of(new Violation("key", "dup")));
+
+        assertThat(response.status()).isEqualTo(409);
+        assertThat(response.errorCode()).isEqualTo(ErrorCode.CONFLICT);
+        assertThat(response.message()).isEqualTo("already exists");
+        assertThat(response.timestamp()).isNotNull();
+        assertThat(response.path()).isEqualTo("/api/v1/flags/flag-a");
+        assertThat(response.violations()).containsExactly(new Violation("key", "dup"));
+    }
 }

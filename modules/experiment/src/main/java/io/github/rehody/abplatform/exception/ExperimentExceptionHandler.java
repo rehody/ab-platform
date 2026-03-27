@@ -18,17 +18,17 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
-public class FeatureFlagExceptionHandler {
+public class ExperimentExceptionHandler {
 
-    @ExceptionHandler(FeatureFlagNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(FeatureFlagNotFoundException ex, HttpServletRequest request) {
+    @ExceptionHandler(ExperimentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(ExperimentNotFoundException ex, HttpServletRequest request) {
         return buildResponse(
                 HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND, ex.getMessage(), request.getRequestURI(), List.of());
     }
 
-    @ExceptionHandler(FeatureFlagAlreadyExistsException.class)
+    @ExceptionHandler(ExperimentAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleAlreadyExists(
-            FeatureFlagAlreadyExistsException ex, HttpServletRequest request) {
+            ExperimentAlreadyExistsException ex, HttpServletRequest request) {
         return buildResponse(
                 HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
     }
@@ -36,7 +36,7 @@ public class FeatureFlagExceptionHandler {
     @ExceptionHandler(LockObtainingException.class)
     public ResponseEntity<ErrorResponse> handleLockAcquisition(LockObtainingException ex, HttpServletRequest request) {
         return buildResponse(
-                HttpStatus.CONFLICT, ErrorCode.CONFLICT, "Feature flag is busy", request.getRequestURI(), List.of());
+                HttpStatus.CONFLICT, ErrorCode.CONFLICT, "Experiment is busy", request.getRequestURI(), List.of());
     }
 
     @ExceptionHandler(OptimisticLockingFailureException.class)

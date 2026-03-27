@@ -9,6 +9,11 @@ public record ErrorResponse(
         violations = violations == null ? List.of() : List.copyOf(violations);
     }
 
+    public static ErrorResponse of(
+            int status, ErrorCode errorCode, String message, String path, List<Violation> violations) {
+        return new ErrorResponse(status, errorCode, message, Instant.now(), path, violations);
+    }
+
     public enum ErrorCode {
         INTERNAL_ERROR,
         VALIDATION_ERROR,
