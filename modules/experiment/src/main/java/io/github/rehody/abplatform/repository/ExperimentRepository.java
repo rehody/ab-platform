@@ -26,8 +26,9 @@ public class ExperimentRepository {
     private final ExperimentVariantPreparer experimentVariantPreparer;
 
     @Transactional
-    public void save(Experiment experiment, List<ExperimentVariant> variants) {
-        List<ExperimentVariant> preparedVariants = experimentVariantPreparer.prepare(experiment.id(), variants);
+    public void save(Experiment experiment) {
+        List<ExperimentVariant> preparedVariants =
+                experimentVariantPreparer.prepare(experiment.id(), experiment.variants());
         experimentJdbcRepository.insert(experiment);
         experimentVariantJdbcRepository.batchInsert(experiment.id(), preparedVariants);
     }
@@ -35,6 +36,13 @@ public class ExperimentRepository {
     public Optional<Experiment> findById(UUID id) {
         return experimentJdbcRepository
                 .findById(id)
+                .map(experiment -> experimentAggregateMapper.withVariants(
+                        experiment, findVariantsByExperimentId(experiment.id())));
+    }
+
+    public Optional<Experiment> findByFlagKey(String flagKey) {
+        return experimentJdbcRepository
+                .findByFlagKey(flagKey)
                 .map(experiment -> experimentAggregateMapper.withVariants(
                         experiment, findVariantsByExperimentId(experiment.id())));
     }
@@ -98,6 +106,14 @@ public class ExperimentRepository {
 
         experimentVariantSynchronizer.sync(experimentId, preparedVariants);
         return ReplaceVariantsResult.UPDATED;
+    }
+
+    public boolean existsByFlagKey(String flagKey) {
+        return experimentJdbcRepository.existsByFlagKey(flagKey);
+    }
+
+    public Optional<String> findFlagKeyById(UUID id) {
+        return experimentJdbcRepository.findFlagKeyById(id);
     }
 
     public enum UpdateResult {

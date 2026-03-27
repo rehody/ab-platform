@@ -33,6 +33,12 @@ public class ExperimentJdbcRepository {
         WHERE id = :id
         """;
 
+    private static final String SELECT_EXPERIMENT_FLAG_KEY_BY_ID_SQL = """
+        SELECT flag_key
+        FROM experiments
+        WHERE id = :id
+        """;
+
     private static final String INCREMENT_EXPERIMENT_VERSION_SQL = """
         UPDATE experiments
         SET version = version + 1
@@ -46,6 +52,12 @@ public class ExperimentJdbcRepository {
         WHERE id = :id
         """;
 
+    private static final String SELECT_EXPERIMENT_BY_FLAG_KEY_SQL = """
+        SELECT id, flag_key, state, version
+        FROM experiments
+        WHERE flag_key = :flagKey
+        """;
+
     private static final String SELECT_ALL_EXPERIMENTS_SQL = """
         SELECT id, flag_key, state, version
         FROM experiments
@@ -57,6 +69,14 @@ public class ExperimentJdbcRepository {
             SELECT 1
             FROM experiments
             WHERE id = :id
+        )
+        """;
+
+    private static final String EXISTS_EXPERIMENT_BY_FLAG_KEY_SQL = """
+        SELECT EXISTS(
+            SELECT 1
+            FROM experiments
+            WHERE flag_key = :flagKey
         )
         """;
 
@@ -86,6 +106,14 @@ public class ExperimentJdbcRepository {
                 .optional();
     }
 
+    public Optional<Experiment> findByFlagKey(String flagKey) {
+        return jdbcClient
+                .sql(SELECT_EXPERIMENT_BY_FLAG_KEY_SQL)
+                .param("flagKey", flagKey)
+                .query(experimentRowMapper)
+                .optional();
+    }
+
     public List<Experiment> findAll() {
         return jdbcClient
                 .sql(SELECT_ALL_EXPERIMENTS_SQL)
@@ -97,6 +125,14 @@ public class ExperimentJdbcRepository {
         return jdbcClient
                 .sql(EXISTS_EXPERIMENT_BY_ID_SQL)
                 .param("id", id)
+                .query(Boolean.class)
+                .single();
+    }
+
+    public boolean existsByFlagKey(String flagKey) {
+        return jdbcClient
+                .sql(EXISTS_EXPERIMENT_BY_FLAG_KEY_SQL)
+                .param("flagKey", flagKey)
                 .query(Boolean.class)
                 .single();
     }
@@ -120,6 +156,14 @@ public class ExperimentJdbcRepository {
                 .sql(SELECT_EXPERIMENT_VERSION_BY_ID_SQL)
                 .param("id", id)
                 .query(Long.class)
+                .optional();
+    }
+
+    public Optional<String> findFlagKeyById(UUID id) {
+        return jdbcClient
+                .sql(SELECT_EXPERIMENT_FLAG_KEY_BY_ID_SQL)
+                .param("id", id)
+                .query(String.class)
                 .optional();
     }
 

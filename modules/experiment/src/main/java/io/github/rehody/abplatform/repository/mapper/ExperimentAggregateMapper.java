@@ -2,7 +2,6 @@ package io.github.rehody.abplatform.repository.mapper;
 
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
-import io.github.rehody.abplatform.model.FeatureValue;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
@@ -13,16 +12,16 @@ public class ExperimentAggregateMapper {
         return new Experiment(
                 experiment.id(),
                 experiment.flagKey(),
-                mapToFeatureValues(variants),
+                copyVariants(variants),
                 experiment.state(),
                 experiment.version());
     }
 
-    private List<FeatureValue> mapToFeatureValues(List<ExperimentVariant> variants) {
+    private List<ExperimentVariant> copyVariants(List<ExperimentVariant> variants) {
         if (variants == null || variants.isEmpty()) {
             return List.of();
         }
 
-        return variants.stream().map(ExperimentVariant::value).toList();
+        return List.copyOf(variants);
     }
 }
