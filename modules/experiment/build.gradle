@@ -5,4 +5,9 @@ dependencies {
 
     implementation project(':shared:caching')
     implementation project(':shared:common')
+
+    testImplementation libs.spring.boot.starter.test
+    testImplementation project(':shared:testing')
+
+    integrationTestImplementation project(':shared:testing')
 }
