@@ -48,7 +48,7 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
     }
 
     @Test
-    void create_shouldReturnOkAndBodyWhenRequestIsValid() throws Exception {
+    void create_shouldReturnCreatedAndBodyWhenRequestIsValid() throws Exception {
         FeatureFlagResponse response =
                 new FeatureFlagResponse("flag-a", new FeatureValue(true, FeatureValueType.BOOL), 0L);
         when(featureFlagService.create(any())).thenReturn(response);
@@ -56,7 +56,7 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
         mockMvc.perform(post("/api/v1/flags").contentType(APPLICATION_JSON).content("""
                                 {"key":"flag-a","defaultValue":{"value":true,"type":"BOOL"}}
                                 """))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.key").value("flag-a"))
                 .andExpect(jsonPath("$.defaultValue.value").value(true))
                 .andExpect(jsonPath("$.defaultValue.type").value("BOOL"))

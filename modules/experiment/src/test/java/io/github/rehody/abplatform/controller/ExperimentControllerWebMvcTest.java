@@ -40,7 +40,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
     }
 
     @Test
-    void create_shouldReturnOkAndBodyWhenRequestIsValid() throws Exception {
+    void create_shouldReturnCreatedAndBodyWhenRequestIsValid() throws Exception {
         ExperimentResponse response = response("flag-a", 0L, ExperimentState.DRAFT);
         when(experimentService.create(any())).thenReturn(response);
 
@@ -49,7 +49,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                         .content("""
                                 {"flagKey":"flag-a","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0}],"state":"DRAFT"}
                                 """))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.flagKey").value("flag-a"))
                 .andExpect(jsonPath("$.variants[0].key").value("control"))
                 .andExpect(jsonPath("$.variants[0].value.value").value(true))
