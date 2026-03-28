@@ -1,9 +1,11 @@
 dependencies {
     implementation libs.spring.boot.starter.web
+    implementation libs.spring.boot.starter.validation
     implementation libs.guava
 
     implementation project(":modules:experiment")
     implementation project(":modules:feature-flag")
 
+    implementation project(":shared:caching")
     implementation project(":shared:common")
 }

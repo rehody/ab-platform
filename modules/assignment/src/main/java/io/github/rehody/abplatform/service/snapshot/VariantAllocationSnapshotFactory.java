@@ -1,0 +1,61 @@
+package io.github.rehody.abplatform.service.snapshot;
+
+import static io.github.rehody.abplatform.service.VariantBucketPolicy.BUCKET_POOL_SIZE;
+
+import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentVariant;
+import io.github.rehody.abplatform.service.allocation.BucketAllocation;
+import io.github.rehody.abplatform.service.allocation.VariantBucketAllocator;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class VariantAllocationSnapshotFactory {
+
+    private final AssignmentVariantsPreparer assignmentVariantsPreparer;
+    private final VariantBucketAllocator variantBucketAllocator;
+
+    public VariantAllocationSnapshot create(Experiment experiment) {
+        List<ExperimentVariant> orderedVariants = assignmentVariantsPreparer.prepare(experiment);
+        List<BucketAllocation> allocations = variantBucketAllocator.allocate(experiment.id(), orderedVariants);
+        List<BucketRange> bucketRanges = createBucketRanges(allocations);
+
+        validateFullBucketCoverage(experiment.id(), bucketRanges);
+
+        return new VariantAllocationSnapshot(bucketRanges);
+    }
+
+    private List<BucketRange> createBucketRanges(List<BucketAllocation> allocations) {
+        int rangeStart = 0;
+        List<BucketRange> bucketRanges = new ArrayList<>(allocations.size());
+
+        for (BucketAllocation allocation : allocations) {
+            int rangeEnd = rangeStart + allocation.bucketCount();
+            bucketRanges.add(new BucketRange(rangeStart, rangeEnd, allocation.variant()));
+            rangeStart = rangeEnd;
+        }
+
+        return List.copyOf(bucketRanges);
+    }
+
+    private void validateFullBucketCoverage(UUID experimentId, List<BucketRange> bucketRanges) {
+        int expectedRangeStart = 0;
+
+        for (BucketRange bucketRange : bucketRanges) {
+            if (bucketRange.startInclusive() != expectedRangeStart) {
+                throw new IllegalStateException("Bucket ranges contain a gap for experiment %s at bucket %d"
+                        .formatted(experimentId, expectedRangeStart));
+            }
+            expectedRangeStart = bucketRange.endExclusive();
+        }
+
+        if (expectedRangeStart != BUCKET_POOL_SIZE) {
+            throw new IllegalStateException("Bucket ranges do not cover pool size for experiment %s. Covered: %d"
+                    .formatted(experimentId, expectedRangeStart));
+        }
+    }
+}

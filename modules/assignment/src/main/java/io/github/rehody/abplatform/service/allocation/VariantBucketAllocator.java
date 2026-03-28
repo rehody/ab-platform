@@ -94,10 +94,4 @@ public class VariantBucketAllocator {
                     "Allocated bucket count exceeded pool size for experiment %s".formatted(experimentId));
         }
     }
-
-    public record BucketAllocation(int position, ExperimentVariant variant, int bucketCount, BigDecimal remainder) {
-        private BucketAllocation withAdditionalBucket() {
-            return new BucketAllocation(position, variant, bucketCount + 1, remainder);
-        }
-    }
 }

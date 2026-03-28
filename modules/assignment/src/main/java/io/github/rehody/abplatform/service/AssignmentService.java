@@ -3,6 +3,7 @@ package io.github.rehody.abplatform.service;
 import io.github.rehody.abplatform.dto.request.AssignmentRequest;
 import io.github.rehody.abplatform.dto.response.AssignmentResponse;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.FeatureValue;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class AssignmentService {
     }
 
     private AssignmentResponse defaultAssignment(String flagKey) {
-        return AssignmentResponse.of(featureFlagService.getByKey(flagKey).defaultValue());
+        FeatureValue defaultValue = featureFlagService.getByKey(flagKey).defaultValue();
+        return AssignmentResponse.of(defaultValue);
     }
 }
