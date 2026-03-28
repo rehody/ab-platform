@@ -128,20 +128,21 @@ class ExperimentJdbcRepositoryTest {
     }
 
     @Test
-    void update_shouldWriteExpectedVersionAndExecuteUpdateStatement() {
+    void update_shouldWriteExpectedVersionAndReturnUpdatedVersion() {
         Experiment experiment = new Experiment(UUID.randomUUID(), "flag-f", List.of(), ExperimentState.ARCHIVED, 7L);
         when(jdbcClient.sql(anyString())).thenReturn(statementSpec);
         when(statementSpec.param(anyString(), any())).thenReturn(statementSpec);
-        when(statementSpec.update()).thenReturn(1);
+        when(statementSpec.query(Long.class)).thenReturn(longQuerySpec);
+        when(longQuerySpec.optional()).thenReturn(Optional.of(8L));
 
-        int updatedRows = experimentJdbcRepository.update(experiment);
+        Optional<Long> updatedVersion = experimentJdbcRepository.update(experiment);
 
         verify(jdbcClient).sql(contains("UPDATE experiments"));
         verify(statementSpec).param("id", experiment.id());
         verify(statementSpec).param("flagKey", "flag-f");
         verify(statementSpec).param("state", "ARCHIVED");
         verify(statementSpec).param("expectedVersion", 7L);
-        assertThat(updatedRows).isEqualTo(1);
+        assertThat(updatedVersion).contains(8L);
     }
 
     @Test

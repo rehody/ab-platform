@@ -46,6 +46,13 @@ public class ExperimentExceptionHandler {
                 HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
     }
 
+    @ExceptionHandler(ExperimentStateTransitionException.class)
+    public ResponseEntity<ErrorResponse> handleStateTransitionFailure(
+            ExperimentStateTransitionException ex, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpServletRequest request) {

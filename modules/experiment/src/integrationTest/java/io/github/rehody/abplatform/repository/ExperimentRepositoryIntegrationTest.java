@@ -171,11 +171,12 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                 0L);
         experimentRepository.save(initial);
 
-        ExperimentRepository.UpdateResult result = experimentRepository.update(
+        ExperimentRepository.UpdateOutcome result = experimentRepository.update(
                 new Experiment(initial.id(), flagKey, initial.variants(), ExperimentState.RUNNING, 0L));
         Experiment updated = experimentRepository.findById(initial.id()).orElseThrow();
 
-        assertThat(result).isEqualTo(ExperimentRepository.UpdateResult.UPDATED);
+        assertThat(result.status()).isEqualTo(ExperimentRepository.UpdateStatus.UPDATED);
+        assertThat(result.version()).isEqualTo(1L);
         assertThat(updated.state()).isEqualTo(ExperimentState.RUNNING);
         assertThat(updated.version()).isEqualTo(1L);
     }
@@ -194,13 +195,15 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                 0L);
         experimentRepository.save(persisted);
 
-        ExperimentRepository.UpdateResult staleResult = experimentRepository.update(
+        ExperimentRepository.UpdateOutcome staleResult = experimentRepository.update(
                 new Experiment(persisted.id(), flagKey, persisted.variants(), ExperimentState.APPROVED, 9L));
-        ExperimentRepository.UpdateResult missingResult = experimentRepository.update(
+        ExperimentRepository.UpdateOutcome missingResult = experimentRepository.update(
                 new Experiment(UUID.randomUUID(), "missing", List.of(), ExperimentState.APPROVED, 0L));
 
-        assertThat(staleResult).isEqualTo(ExperimentRepository.UpdateResult.VERSION_CONFLICT);
-        assertThat(missingResult).isEqualTo(ExperimentRepository.UpdateResult.NOT_FOUND);
+        assertThat(staleResult.status()).isEqualTo(ExperimentRepository.UpdateStatus.VERSION_CONFLICT);
+        assertThat(staleResult.version()).isNull();
+        assertThat(missingResult.status()).isEqualTo(ExperimentRepository.UpdateStatus.NOT_FOUND);
+        assertThat(missingResult.version()).isNull();
     }
 
     @Test

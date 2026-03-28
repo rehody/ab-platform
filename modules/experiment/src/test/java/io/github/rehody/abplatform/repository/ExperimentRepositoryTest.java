@@ -148,35 +148,38 @@ class ExperimentRepositoryTest {
     }
 
     @Test
-    void update_shouldReturnUpdatedWhenJdbcUpdateAffectsSingleRow() {
+    void update_shouldReturnUpdatedOutcomeWithNewVersionWhenJdbcUpdateSucceeds() {
         Experiment experiment = experiment("flag-f", 5L);
-        when(experimentJdbcRepository.update(experiment)).thenReturn(1);
+        when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.of(6L));
 
-        ExperimentRepository.UpdateResult result = experimentRepository.update(experiment);
+        ExperimentRepository.UpdateOutcome result = experimentRepository.update(experiment);
 
-        assertThat(result).isEqualTo(ExperimentRepository.UpdateResult.UPDATED);
+        assertThat(result.status()).isEqualTo(ExperimentRepository.UpdateStatus.UPDATED);
+        assertThat(result.version()).isEqualTo(6L);
     }
 
     @Test
     void update_shouldReturnVersionConflictWhenExperimentExistsButVersionDiffers() {
         Experiment experiment = experiment("flag-g", 6L);
-        when(experimentJdbcRepository.update(experiment)).thenReturn(0);
+        when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.empty());
         when(experimentJdbcRepository.findVersionById(experiment.id())).thenReturn(Optional.of(7L));
 
-        ExperimentRepository.UpdateResult result = experimentRepository.update(experiment);
+        ExperimentRepository.UpdateOutcome result = experimentRepository.update(experiment);
 
-        assertThat(result).isEqualTo(ExperimentRepository.UpdateResult.VERSION_CONFLICT);
+        assertThat(result.status()).isEqualTo(ExperimentRepository.UpdateStatus.VERSION_CONFLICT);
+        assertThat(result.version()).isNull();
     }
 
     @Test
     void update_shouldReturnNotFoundWhenExperimentMissing() {
         Experiment experiment = experiment("flag-h", 6L);
-        when(experimentJdbcRepository.update(experiment)).thenReturn(0);
+        when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.empty());
         when(experimentJdbcRepository.findVersionById(experiment.id())).thenReturn(Optional.empty());
 
-        ExperimentRepository.UpdateResult result = experimentRepository.update(experiment);
+        ExperimentRepository.UpdateOutcome result = experimentRepository.update(experiment);
 
-        assertThat(result).isEqualTo(ExperimentRepository.UpdateResult.NOT_FOUND);
+        assertThat(result.status()).isEqualTo(ExperimentRepository.UpdateStatus.NOT_FOUND);
+        assertThat(result.version()).isNull();
     }
 
     @Test

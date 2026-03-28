@@ -25,6 +25,7 @@ public class ExperimentJdbcRepository {
             version = version + 1
         WHERE id = :id
           AND version = :expectedVersion
+        RETURNING version
         """;
 
     private static final String SELECT_EXPERIMENT_VERSION_BY_ID_SQL = """
@@ -137,14 +138,15 @@ public class ExperimentJdbcRepository {
                 .single();
     }
 
-    public int update(Experiment experiment) {
+    public Optional<Long> update(Experiment experiment) {
         return jdbcClient
                 .sql(UPDATE_EXPERIMENT_SQL)
                 .param("id", experiment.id())
                 .param("flagKey", experiment.flagKey())
                 .param("state", experiment.state().name())
                 .param("expectedVersion", experiment.version())
-                .update();
+                .query(Long.class)
+                .optional();
     }
 
     public int deleteById(UUID id) {

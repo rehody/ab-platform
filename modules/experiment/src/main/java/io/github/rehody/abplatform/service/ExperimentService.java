@@ -62,7 +62,8 @@ public class ExperimentService {
         return executeUnderLock(flagKey, () -> {
             replaceVariantsAndCheckOptimisticLocking(id, request);
             invalidateCacheAfterCommit(flagKey);
-            return ExperimentResponse.from(findByIdOrThrow(id));
+            Experiment experiment = findByIdOrThrow(id);
+            return ExperimentResponse.from(experiment);
         });
     }
 

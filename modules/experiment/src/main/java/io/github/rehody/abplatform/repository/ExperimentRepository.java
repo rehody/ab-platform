@@ -67,16 +67,12 @@ public class ExperimentRepository {
     }
 
     @Transactional
-    public UpdateResult update(Experiment experiment) {
-        int affectedRows = experimentJdbcRepository.update(experiment);
-        if (affectedRows == 1) {
-            return UpdateResult.UPDATED;
-        }
-
-        return experimentJdbcRepository
+    public UpdateOutcome update(Experiment experiment) {
+        Optional<Long> newVersion = experimentJdbcRepository.update(experiment);
+        return newVersion.map(UpdateOutcome::updated).orElseGet(() -> experimentJdbcRepository
                 .findVersionById(experiment.id())
-                .map(_ -> UpdateResult.VERSION_CONFLICT)
-                .orElse(UpdateResult.NOT_FOUND);
+                .map(_ -> UpdateOutcome.versionConflict())
+                .orElse(UpdateOutcome.notFound()));
     }
 
     @Transactional
@@ -116,7 +112,21 @@ public class ExperimentRepository {
         return experimentJdbcRepository.findFlagKeyById(id);
     }
 
-    public enum UpdateResult {
+    public record UpdateOutcome(UpdateStatus status, Long version) {
+        public static UpdateOutcome updated(long version) {
+            return new UpdateOutcome(UpdateStatus.UPDATED, version);
+        }
+
+        public static UpdateOutcome notFound() {
+            return new UpdateOutcome(UpdateStatus.NOT_FOUND, null);
+        }
+
+        public static UpdateOutcome versionConflict() {
+            return new UpdateOutcome(UpdateStatus.VERSION_CONFLICT, null);
+        }
+    }
+
+    public enum UpdateStatus {
         UPDATED,
         NOT_FOUND,
         VERSION_CONFLICT
