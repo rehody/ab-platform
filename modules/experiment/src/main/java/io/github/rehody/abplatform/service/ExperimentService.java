@@ -8,6 +8,7 @@ import io.github.rehody.abplatform.dto.response.ExperimentResponse;
 import io.github.rehody.abplatform.exception.ExperimentAlreadyExistsException;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
 import io.github.rehody.abplatform.repository.ExperimentRepository.ReplaceVariantsResult;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
@@ -31,6 +32,7 @@ public class ExperimentService {
     private final LockExecutor lockExecutor;
     private final ServiceActionExecutor serviceActionExecutor;
     private final ExperimentCache experimentCache;
+    private final ExperimentAssignmentPolicy experimentAssignmentPolicy;
 
     @Transactional
     public ExperimentResponse create(ExperimentCreateRequest request) {
@@ -39,6 +41,7 @@ public class ExperimentService {
             ensureExperimentNotExists(flagKey);
 
             Experiment experiment = buildExperiment(request);
+            experimentAssignmentPolicy.validateAssignmentInvariants(experiment);
             experimentRepository.save(experiment);
             invalidateCacheAfterCommit(flagKey);
 
@@ -62,6 +65,7 @@ public class ExperimentService {
         String flagKey = findFlagKeyByIdOrThrow(id);
 
         return executeUnderLock(flagKey, () -> {
+            validateAssignmentInvariantsForUpdatedVariants(id, request);
             replaceVariantsAndCheckOptimisticLocking(id, request);
             invalidateCacheAfterCommit(flagKey);
             Experiment experiment = findByIdOrThrow(id);
@@ -109,6 +113,12 @@ public class ExperimentService {
                 throw new OptimisticLockingFailureException("Experiment '%s' version mismatch. Expected version %d"
                         .formatted(experimentId, request.version()));
         }
+    }
+
+    private void validateAssignmentInvariantsForUpdatedVariants(UUID experimentId, ExperimentUpdateRequest request) {
+        Experiment currentExperiment = findByIdOrThrow(experimentId);
+        Experiment updatedExperiment = currentExperiment.withVariants(request.variants());
+        experimentAssignmentPolicy.validateAssignmentInvariants(updatedExperiment);
     }
 
     private Experiment findByIdOrThrow(UUID id) {

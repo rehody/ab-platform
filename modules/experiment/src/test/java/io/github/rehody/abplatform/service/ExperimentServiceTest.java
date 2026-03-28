@@ -21,6 +21,7 @@ import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
+import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
 import io.github.rehody.abplatform.repository.ExperimentRepository.ReplaceVariantsResult;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
@@ -53,14 +54,17 @@ class ExperimentServiceTest {
     @Mock
     private ExperimentCache experimentCache;
 
+    @Mock
+    private ExperimentAssignmentPolicy experimentAssignmentPolicy;
+
     private ServiceActionExecutor serviceActionExecutor;
     private ExperimentService experimentService;
 
     @BeforeEach
     void setUp() {
         serviceActionExecutor = new ServiceActionExecutor();
-        experimentService =
-                new ExperimentService(experimentRepository, lockExecutor, serviceActionExecutor, experimentCache);
+        experimentService = new ExperimentService(
+                experimentRepository, lockExecutor, serviceActionExecutor, experimentCache, experimentAssignmentPolicy);
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(2)).get());
@@ -171,7 +175,9 @@ class ExperimentServiceTest {
     void update_shouldThrowExperimentNotFoundExceptionWhenRepositoryReturnsNotFound() {
         UUID id = UUID.randomUUID();
         ExperimentUpdateRequest request = new ExperimentUpdateRequest(variants(), 2L);
+        Experiment current = new Experiment(id, "flag-e", variants(), ExperimentState.RUNNING, 2L);
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-e"));
+        when(experimentRepository.findById(id)).thenReturn(Optional.of(current));
         when(experimentRepository.replaceVariants(id, 2L, request.variants()))
                 .thenReturn(ReplaceVariantsResult.NOT_FOUND);
 
@@ -186,7 +192,9 @@ class ExperimentServiceTest {
     void update_shouldThrowOptimisticLockingFailureExceptionWhenVersionMismatch() {
         UUID id = UUID.randomUUID();
         ExperimentUpdateRequest request = new ExperimentUpdateRequest(variants(), 2L);
+        Experiment current = new Experiment(id, "flag-f", variants(), ExperimentState.RUNNING, 2L);
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-f"));
+        when(experimentRepository.findById(id)).thenReturn(Optional.of(current));
         when(experimentRepository.replaceVariants(id, 2L, request.variants()))
                 .thenReturn(ReplaceVariantsResult.VERSION_CONFLICT);
 
@@ -201,10 +209,11 @@ class ExperimentServiceTest {
     void update_shouldThrowExperimentNotFoundExceptionWhenUpdatedExperimentCannotBeReadBack() {
         UUID id = UUID.randomUUID();
         ExperimentUpdateRequest request = new ExperimentUpdateRequest(variants(), 2L);
+        Experiment current = new Experiment(id, "flag-g", variants(), ExperimentState.RUNNING, 2L);
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-g"));
         when(experimentRepository.replaceVariants(id, 2L, request.variants()))
                 .thenReturn(ReplaceVariantsResult.UPDATED);
-        when(experimentRepository.findById(id)).thenReturn(Optional.empty());
+        when(experimentRepository.findById(id)).thenReturn(Optional.of(current), Optional.empty());
 
         assertThatThrownBy(() -> experimentService.update(id, request))
                 .isInstanceOf(ExperimentNotFoundException.class)

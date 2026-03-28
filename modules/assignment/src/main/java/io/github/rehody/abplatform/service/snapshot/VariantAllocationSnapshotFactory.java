@@ -6,6 +6,7 @@ import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.service.allocation.BucketAllocation;
 import io.github.rehody.abplatform.service.allocation.VariantBucketAllocator;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +22,7 @@ public class VariantAllocationSnapshotFactory {
 
     public VariantAllocationSnapshot create(Experiment experiment) {
         List<ExperimentVariant> orderedVariants = assignmentVariantsPreparer.prepare(experiment);
+        validateAllocationInputs(experiment.id(), orderedVariants);
         List<BucketAllocation> allocations = variantBucketAllocator.allocate(experiment.id(), orderedVariants);
         List<BucketRange> bucketRanges = createBucketRanges(allocations);
 
@@ -40,6 +42,24 @@ public class VariantAllocationSnapshotFactory {
         }
 
         return List.copyOf(bucketRanges);
+    }
+
+    private void validateAllocationInputs(UUID experimentId, List<ExperimentVariant> variants) {
+        BigDecimal totalWeight = BigDecimal.ZERO;
+
+        for (ExperimentVariant variant : variants) {
+            BigDecimal weight = variant.weight();
+            if (weight == null || weight.signum() <= 0) {
+                throw new IllegalStateException("Invalid assignment weight for experiment %s, variant %s: %s"
+                        .formatted(experimentId, variant.id(), weight));
+            }
+            totalWeight = totalWeight.add(weight);
+        }
+
+        if (totalWeight.signum() <= 0) {
+            throw new IllegalStateException(
+                    "Total assignment weight must be positive for experiment %s".formatted(experimentId));
+        }
     }
 
     private void validateFullBucketCoverage(UUID experimentId, List<BucketRange> bucketRanges) {

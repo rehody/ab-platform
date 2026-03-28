@@ -19,6 +19,7 @@ import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
+import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
 import io.github.rehody.abplatform.repository.ExperimentRepository.UpdateOutcome;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
@@ -48,12 +49,19 @@ class ExperimentLifecycleServiceTest {
     @Mock
     private ExperimentCache experimentCache;
 
+    @Mock
+    private ExperimentAssignmentPolicy experimentAssignmentPolicy;
+
     private ExperimentLifecycleService experimentLifecycleService;
 
     @BeforeEach
     void setUp() {
         experimentLifecycleService = new ExperimentLifecycleService(
-                experimentRepository, lockExecutor, new ServiceActionExecutor(), experimentCache);
+                experimentRepository,
+                lockExecutor,
+                new ServiceActionExecutor(),
+                experimentCache,
+                experimentAssignmentPolicy);
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(2)).get());

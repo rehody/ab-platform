@@ -5,6 +5,7 @@ import io.github.rehody.abplatform.dto.request.ExperimentStateTransitionRequest;
 import io.github.rehody.abplatform.dto.response.ExperimentResponse;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
 import io.github.rehody.abplatform.repository.ExperimentRepository.UpdateOutcome;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
@@ -27,6 +28,7 @@ public class ExperimentLifecycleService {
     private final LockExecutor lockExecutor;
     private final ServiceActionExecutor serviceActionExecutor;
     private final ExperimentCache experimentCache;
+    private final ExperimentAssignmentPolicy experimentAssignmentPolicy;
 
     @Transactional
     public ExperimentResponse submitForReview(UUID id, ExperimentStateTransitionRequest request) {
@@ -74,12 +76,13 @@ public class ExperimentLifecycleService {
         return executeUnderLock(flagKey, () -> {
             Experiment experiment = findByIdOrThrow(id);
             Experiment transitedExperiment = stateTransition.apply(experiment);
-            Experiment experimentToUpdate = withVersion(transitedExperiment, expectedVersion);
+            experimentAssignmentPolicy.validateAssignmentInvariants(transitedExperiment);
+            Experiment experimentToUpdate = transitedExperiment.withVersion(expectedVersion);
 
             long newVersion = updateAndCheckOptimisticLocking(experimentToUpdate, expectedVersion);
             invalidateCacheAfterCommit(flagKey);
 
-            Experiment persistedExperiment = withVersion(transitedExperiment, newVersion);
+            Experiment persistedExperiment = transitedExperiment.withVersion(newVersion);
             return ExperimentResponse.from(persistedExperiment);
         });
     }
@@ -94,11 +97,6 @@ public class ExperimentLifecycleService {
                         .formatted(experiment.id(), expectedVersion));
             case UPDATED -> outcome.version();
         };
-    }
-
-    private Experiment withVersion(Experiment experiment, long version) {
-        return new Experiment(
-                experiment.id(), experiment.flagKey(), experiment.variants(), experiment.state(), version);
     }
 
     private Experiment findByIdOrThrow(UUID id) {

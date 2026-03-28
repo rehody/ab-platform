@@ -10,6 +10,18 @@ import java.util.UUID;
 public record Experiment(
         UUID id, String flagKey, List<ExperimentVariant> variants, ExperimentState state, long version) {
 
+    public boolean isRunning() {
+        return state == ExperimentState.RUNNING;
+    }
+
+    public Experiment withVariants(List<ExperimentVariant> variants) {
+        return new Experiment(id, flagKey, List.copyOf(variants), state, version);
+    }
+
+    public Experiment withVersion(long version) {
+        return new Experiment(id, flagKey, List.copyOf(variants), state, version);
+    }
+
     public Experiment submitForReview() {
         return transition("submit for review", ExperimentState.IN_REVIEW, ExperimentState.DRAFT);
     }
