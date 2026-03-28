@@ -14,6 +14,7 @@ import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -130,7 +131,11 @@ class ExperimentCacheTest {
                 UUID.randomUUID(),
                 flagKey,
                 List.of(new ExperimentVariant(
-                        UUID.randomUUID(), "control", new FeatureValue(true, FeatureValueType.BOOL), 0)),
+                        UUID.randomUUID(),
+                        "control",
+                        new FeatureValue(true, FeatureValueType.BOOL),
+                        0,
+                        BigDecimal.ONE)),
                 ExperimentState.RUNNING,
                 0L);
     }

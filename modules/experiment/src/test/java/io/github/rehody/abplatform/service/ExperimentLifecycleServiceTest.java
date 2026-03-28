@@ -23,6 +23,7 @@ import io.github.rehody.abplatform.repository.ExperimentRepository;
 import io.github.rehody.abplatform.repository.ExperimentRepository.UpdateOutcome;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
 import io.github.rehody.abplatform.util.lock.LockNamespace;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -242,8 +243,8 @@ class ExperimentLifecycleServiceTest {
     }
 
     private List<ExperimentVariant> variants() {
-        return List.of(
-                new ExperimentVariant(UUID.randomUUID(), "control", new FeatureValue(true, FeatureValueType.BOOL), 0));
+        return List.of(new ExperimentVariant(
+                UUID.randomUUID(), "control", new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE));
     }
 
     @FunctionalInterface

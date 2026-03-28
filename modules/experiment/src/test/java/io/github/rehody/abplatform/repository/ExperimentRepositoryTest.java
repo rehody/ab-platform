@@ -16,6 +16,7 @@ import io.github.rehody.abplatform.repository.jdbc.ExperimentVariantJdbcReposito
 import io.github.rehody.abplatform.repository.mapper.ExperimentAggregateMapper;
 import io.github.rehody.abplatform.repository.sync.ExperimentVariantSynchronizer;
 import io.github.rehody.abplatform.repository.validation.ExperimentVariantPreparer;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -278,7 +279,7 @@ class ExperimentRepositoryTest {
     }
 
     private List<ExperimentVariant> variants() {
-        return List.of(
-                new ExperimentVariant(UUID.randomUUID(), "control", new FeatureValue(true, FeatureValueType.BOOL), 0));
+        return List.of(new ExperimentVariant(
+                UUID.randomUUID(), "control", new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE));
     }
 }

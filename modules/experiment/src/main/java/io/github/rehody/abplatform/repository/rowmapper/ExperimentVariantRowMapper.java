@@ -2,6 +2,7 @@ package io.github.rehody.abplatform.repository.rowmapper;
 
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
@@ -18,6 +19,7 @@ public class ExperimentVariantRowMapper implements RowMapper<ExperimentVariant> 
                 rs.getString("key"),
                 new FeatureValue(
                         rs.getObject("value"), FeatureValue.FeatureValueType.valueOf(rs.getString("value_type"))),
-                rs.getInt("position"));
+                rs.getInt("position"),
+                rs.getObject("weight", BigDecimal.class));
     }
 }

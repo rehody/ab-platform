@@ -25,7 +25,8 @@ public class ExperimentVariantPreparer {
                         "Duplicate variant key for experiment %s: %s".formatted(experimentId, normalizedKey));
             }
 
-            result.add(new ExperimentVariant(resolveId(variant.id()), normalizedKey, variant.value(), position));
+            result.add(new ExperimentVariant(
+                    resolveId(variant.id()), normalizedKey, variant.value(), position, variant.weight()));
         }
 
         return result;

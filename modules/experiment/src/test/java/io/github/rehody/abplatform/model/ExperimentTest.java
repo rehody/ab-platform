@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.exception.ExperimentStateTransitionException;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -92,7 +93,11 @@ class ExperimentTest {
                 UUID.randomUUID(),
                 "flag-a",
                 List.of(new ExperimentVariant(
-                        UUID.randomUUID(), "control", new FeatureValue(true, FeatureValueType.BOOL), 0)),
+                        UUID.randomUUID(),
+                        "control",
+                        new FeatureValue(true, FeatureValueType.BOOL),
+                        0,
+                        BigDecimal.ONE)),
                 state,
                 3L);
     }

@@ -7,6 +7,7 @@ import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -19,8 +20,8 @@ class ExperimentAggregateMapperTest {
     @Test
     void withVariants_shouldCopyVariantsAndPreserveOtherExperimentFields() {
         Experiment experiment = new Experiment(UUID.randomUUID(), "flag-a", List.of(), ExperimentState.RUNNING, 5L);
-        List<ExperimentVariant> variants = new ArrayList<>(List.of(
-                new ExperimentVariant(UUID.randomUUID(), "control", new FeatureValue(true, FeatureValueType.BOOL), 0)));
+        List<ExperimentVariant> variants = new ArrayList<>(List.of(new ExperimentVariant(
+                UUID.randomUUID(), "control", new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE)));
 
         Experiment result = experimentAggregateMapper.withVariants(experiment, variants);
 

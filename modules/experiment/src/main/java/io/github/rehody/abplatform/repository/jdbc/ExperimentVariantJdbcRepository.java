@@ -19,14 +19,14 @@ import org.springframework.stereotype.Repository;
 public class ExperimentVariantJdbcRepository {
 
     private static final String SELECT_VARIANTS_BY_EXPERIMENT_ID_SQL = """
-        SELECT id, experiment_id, key, value, value_type, position
+        SELECT id, experiment_id, key, value, value_type, position, weight
         FROM experiment_variants
         WHERE experiment_id = :experimentId
         ORDER BY position, id
         """;
 
     private static final String SELECT_VARIANTS_BY_EXPERIMENT_IDS_SQL = """
-        SELECT id, experiment_id, key, value, value_type, position
+        SELECT id, experiment_id, key, value, value_type, position, weight
         FROM experiment_variants
         WHERE experiment_id IN (:experimentIds)
         ORDER BY experiment_id, position, id
@@ -39,7 +39,8 @@ public class ExperimentVariantJdbcRepository {
             key,
             value,
             value_type,
-            position
+            position,
+            weight
         )
         VALUES (
             :id,
@@ -47,7 +48,8 @@ public class ExperimentVariantJdbcRepository {
             :key,
             :value,
             :valueType,
-            :position
+            :position,
+            :weight
         )
         """;
 
@@ -56,7 +58,8 @@ public class ExperimentVariantJdbcRepository {
         SET key = :key,
             value = :value,
             value_type = :valueType,
-            position = :position
+            position = :position,
+            weight = :weight
         WHERE id = :id
           AND experiment_id = :experimentId
         """;
@@ -108,7 +111,7 @@ public class ExperimentVariantJdbcRepository {
         return jdbcClient
                 .sql(SELECT_VARIANT_IDS_BY_EXPERIMENT_ID_SQL)
                 .param("experimentId", experimentId)
-                .query((rs, rowNum) -> rs.getObject("id", UUID.class))
+                .query((rs, _) -> rs.getObject("id", UUID.class))
                 .list();
     }
 
@@ -163,7 +166,8 @@ public class ExperimentVariantJdbcRepository {
                         .addValue("key", variant.key())
                         .addValue("value", variant.value().value())
                         .addValue("valueType", variant.value().type().name())
-                        .addValue("position", variant.position()))
+                        .addValue("position", variant.position())
+                        .addValue("weight", variant.weight()))
                 .toArray(SqlParameterSource[]::new);
     }
 

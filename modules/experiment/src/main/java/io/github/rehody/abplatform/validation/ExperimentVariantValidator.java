@@ -16,6 +16,9 @@ public class ExperimentVariantValidator implements ConstraintValidator<ValidExpe
         if (variant.key() == null || variant.key().isBlank()) {
             return false;
         }
+        if (variant.weight() == null || variant.weight().signum() <= 0) {
+            return false;
+        }
 
         return isValidFeatureValue(variant.value());
     }

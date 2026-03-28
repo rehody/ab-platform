@@ -7,6 +7,7 @@ import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
 import io.github.rehody.abplatform.repository.jdbc.ExperimentVariantJdbcRepository;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -26,10 +27,10 @@ class ExperimentVariantSynchronizerTest {
         UUID toUpdateId = UUID.randomUUID();
         UUID toDeleteId = UUID.randomUUID();
         UUID toInsertId = UUID.randomUUID();
-        ExperimentVariant toUpdate =
-                new ExperimentVariant(toUpdateId, "control", new FeatureValue(true, FeatureValueType.BOOL), 0);
-        ExperimentVariant toInsert =
-                new ExperimentVariant(toInsertId, "variant-a", new FeatureValue("blue", FeatureValueType.STRING), 1);
+        ExperimentVariant toUpdate = new ExperimentVariant(
+                toUpdateId, "control", new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE);
+        ExperimentVariant toInsert = new ExperimentVariant(
+                toInsertId, "variant-a", new FeatureValue("blue", FeatureValueType.STRING), 1, BigDecimal.ONE);
         ExperimentVariantSynchronizer synchronizer = new ExperimentVariantSynchronizer(experimentVariantJdbcRepository);
 
         when(experimentVariantJdbcRepository.findIdsByExperimentId(experimentId))

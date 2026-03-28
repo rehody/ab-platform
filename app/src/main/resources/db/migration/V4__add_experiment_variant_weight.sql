@@ -1,0 +1,2 @@
+ALTER TABLE experiment_variants
+    ADD COLUMN weight NUMERIC(10, 4) NOT NULL DEFAULT 1.0000;

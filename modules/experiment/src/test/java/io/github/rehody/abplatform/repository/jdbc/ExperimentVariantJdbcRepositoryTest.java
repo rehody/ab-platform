@@ -13,6 +13,7 @@ import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
 import io.github.rehody.abplatform.repository.rowmapper.ExperimentVariantRowMapper;
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.util.List;
 import java.util.Map;
@@ -232,7 +233,8 @@ class ExperimentVariantJdbcRepositoryTest {
     }
 
     private ExperimentVariant variant(String key) {
-        return new ExperimentVariant(UUID.randomUUID(), key, new FeatureValue(true, FeatureValueType.BOOL), 0);
+        return new ExperimentVariant(
+                UUID.randomUUID(), key, new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE);
     }
 
     private ResultSet resultSetWithExperimentId(UUID experimentId) throws Exception {

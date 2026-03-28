@@ -8,6 +8,7 @@ import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
 import io.github.rehody.abplatform.util.cache.ObjectMapperCacheCodec;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,8 @@ class ExperimentCacheCodecTest {
                         UUID.fromString("11111111-1111-1111-1111-111111111111"),
                         "control",
                         new FeatureValue(true, FeatureValueType.BOOL),
-                        0)),
+                        0,
+                        BigDecimal.ONE)),
                 ExperimentState.RUNNING,
                 6L);
 

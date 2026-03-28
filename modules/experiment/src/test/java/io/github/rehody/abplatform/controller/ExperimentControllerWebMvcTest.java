@@ -24,6 +24,7 @@ import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
 import io.github.rehody.abplatform.service.ExperimentService;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,7 +56,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
         mockMvc.perform(post("/api/v1/experiments")
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"flagKey":"flag-a","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0}],"state":"DRAFT"}
+                                {"flagKey":"flag-a","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"weight":1}],"state":"DRAFT"}
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.flagKey").value("flag-a"))
@@ -82,13 +83,17 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                 3L,
                 ExperimentState.RUNNING,
                 new ExperimentVariant(
-                        UUID.randomUUID(), "variant-a", new FeatureValue("blue", FeatureValueType.STRING), 0));
+                        UUID.randomUUID(),
+                        "variant-a",
+                        new FeatureValue("blue", FeatureValueType.STRING),
+                        0,
+                        BigDecimal.ONE));
         when(experimentService.update(eq(id), any())).thenReturn(response);
 
         mockMvc.perform(patch("/api/v1/experiments/{id}", id)
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":"blue","type":"STRING"},"position":0}],"version":2}
+                                {"variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":"blue","type":"STRING"},"position":0,"weight":1}],"version":2}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.flagKey").value("flag-b"))
@@ -153,7 +158,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
         mockMvc.perform(patch("/api/v1/experiments/{id}", id)
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"variants":[{"id":"11111111-1111-1111-1111-111111111111","key":" ","value":null,"position":0}],"version":-1}
+                                {"variants":[{"id":"11111111-1111-1111-1111-111111111111","key":" ","value":null,"position":0,"weight":1}],"version":-1}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
@@ -169,7 +174,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
         mockMvc.perform(post("/api/v1/experiments")
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"flagKey":"flag-a","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0}],"state":"DRAFT"}
+                                {"flagKey":"flag-a","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"weight":1}],"state":"DRAFT"}
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
@@ -197,7 +202,12 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                 flagKey,
                 version,
                 state,
-                new ExperimentVariant(UUID.randomUUID(), "control", new FeatureValue(true, FeatureValueType.BOOL), 0));
+                new ExperimentVariant(
+                        UUID.randomUUID(),
+                        "control",
+                        new FeatureValue(true, FeatureValueType.BOOL),
+                        0,
+                        BigDecimal.ONE));
     }
 
     private ExperimentResponse response(
