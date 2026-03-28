@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.rehody.abplatform.cache.CachedExperiment;
 import io.github.rehody.abplatform.cache.ExperimentCache;
 import io.github.rehody.abplatform.dto.request.ExperimentCreateRequest;
 import io.github.rehody.abplatform.dto.request.ExperimentUpdateRequest;
@@ -219,7 +220,7 @@ class ExperimentServiceTest {
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-g"));
         when(experimentRepository.findByFlagKey("flag-g")).thenReturn(Optional.of(persisted));
         when(experimentCache.getOrLoad(eq("flag-g"), any(Supplier.class))).thenAnswer(invocation -> {
-            Supplier<Optional<ExperimentResponse>> loader = invocation.getArgument(1);
+            Supplier<Optional<CachedExperiment>> loader = invocation.getArgument(1);
             return loader.get();
         });
 
@@ -235,14 +236,14 @@ class ExperimentServiceTest {
     @Test
     void getById_shouldReturnCachedResponseAndSkipRepositoryLookupByFlagKeyWhenCacheHit() {
         UUID id = UUID.randomUUID();
-        ExperimentResponse cachedResponse = new ExperimentResponse("flag-h", variants(), ExperimentState.DRAFT, 12L);
+        CachedExperiment cachedExperiment = new CachedExperiment(id, "flag-h", variants(), ExperimentState.DRAFT, 12L);
 
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-h"));
-        when(experimentCache.getOrLoad(eq("flag-h"), any(Supplier.class))).thenReturn(Optional.of(cachedResponse));
+        when(experimentCache.getOrLoad(eq("flag-h"), any(Supplier.class))).thenReturn(Optional.of(cachedExperiment));
 
         ExperimentResponse response = experimentService.getById(id);
 
-        assertThat(response).isEqualTo(cachedResponse);
+        assertThat(response).isEqualTo(cachedExperiment.toResponse());
         verify(experimentRepository, never()).findByFlagKey(any());
     }
 

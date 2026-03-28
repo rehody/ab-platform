@@ -2,11 +2,7 @@ package io.github.rehody.abplatform.service;
 
 import io.github.rehody.abplatform.dto.request.AssignmentRequest;
 import io.github.rehody.abplatform.dto.response.AssignmentResponse;
-import io.github.rehody.abplatform.exception.FeatureFlagNotFoundException;
 import io.github.rehody.abplatform.model.Experiment;
-import io.github.rehody.abplatform.model.FeatureFlag;
-import io.github.rehody.abplatform.repository.ExperimentRepository;
-import io.github.rehody.abplatform.repository.FeatureFlagRepository;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,13 +11,13 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AssignmentService {
 
-    private final ExperimentRepository experimentRepository;
-    private final FeatureFlagRepository featureFlagRepository;
+    private final ExperimentService experimentService;
+    private final FeatureFlagService featureFlagService;
     private final ExperimentVariantResolver experimentVariantResolver;
 
     public AssignmentResponse resolve(AssignmentRequest request) {
         String flagKey = request.flagKey();
-        Optional<Experiment> experimentOptional = experimentRepository.findByFlagKey(flagKey);
+        Optional<Experiment> experimentOptional = experimentService.findByFlagKey(flagKey);
 
         if (experimentOptional.isEmpty()) {
             return defaultAssignment(flagKey);
@@ -35,13 +31,6 @@ public class AssignmentService {
     }
 
     private AssignmentResponse defaultAssignment(String flagKey) {
-        FeatureFlag featureFlag = findByKeyOrThrow(flagKey);
-        return AssignmentResponse.of(featureFlag.defaultValue());
-    }
-
-    private FeatureFlag findByKeyOrThrow(String flagKey) {
-        return featureFlagRepository
-                .findByKey(flagKey)
-                .orElseThrow(() -> new FeatureFlagNotFoundException("Feature flag '%s' not found".formatted(flagKey)));
+        return AssignmentResponse.of(featureFlagService.getByKey(flagKey).defaultValue());
     }
 }

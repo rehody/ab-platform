@@ -10,11 +10,11 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import io.github.rehody.abplatform.dto.response.FeatureFlagResponse;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
@@ -90,32 +90,32 @@ class FeatureFlagCacheTest {
 
     @Test
     void getOrLoad_shouldReturnLoadedValueAndReuseL1CacheOnSecondCall() {
-        FeatureFlagResponse response =
-                new FeatureFlagResponse("flag-a", new FeatureValue(true, FeatureValueType.BOOL), 0L);
+        CachedFeatureFlag cachedFeatureFlag =
+                new CachedFeatureFlag(UUID.randomUUID(), "flag-a", new FeatureValue(true, FeatureValueType.BOOL), 0L);
         AtomicInteger loaderCalls = new AtomicInteger();
-        Supplier<Optional<FeatureFlagResponse>> loader = () -> {
+        Supplier<Optional<CachedFeatureFlag>> loader = () -> {
             loaderCalls.incrementAndGet();
-            return Optional.of(response);
+            return Optional.of(cachedFeatureFlag);
         };
 
-        Optional<FeatureFlagResponse> first = cache.getOrLoad("flag-a", loader);
-        Optional<FeatureFlagResponse> second = cache.getOrLoad("flag-a", loader);
+        Optional<CachedFeatureFlag> first = cache.getOrLoad("flag-a", loader);
+        Optional<CachedFeatureFlag> second = cache.getOrLoad("flag-a", loader);
 
-        assertThat(first).contains(response);
-        assertThat(second).contains(response);
+        assertThat(first).contains(cachedFeatureFlag);
+        assertThat(second).contains(cachedFeatureFlag);
         assertThat(loaderCalls.get()).isEqualTo(1);
     }
 
     @Test
     void getOrLoad_shouldCacheMissAndSkipLoaderAfterFirstMiss() {
         AtomicInteger loaderCalls = new AtomicInteger();
-        Supplier<Optional<FeatureFlagResponse>> loader = () -> {
+        Supplier<Optional<CachedFeatureFlag>> loader = () -> {
             loaderCalls.incrementAndGet();
             return Optional.empty();
         };
 
-        Optional<FeatureFlagResponse> first = cache.getOrLoad("flag-b", loader);
-        Optional<FeatureFlagResponse> second = cache.getOrLoad("flag-b", loader);
+        Optional<CachedFeatureFlag> first = cache.getOrLoad("flag-b", loader);
+        Optional<CachedFeatureFlag> second = cache.getOrLoad("flag-b", loader);
 
         assertThat(first).isEmpty();
         assertThat(second).isEmpty();

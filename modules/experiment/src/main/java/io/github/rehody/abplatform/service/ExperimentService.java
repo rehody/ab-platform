@@ -1,5 +1,6 @@
 package io.github.rehody.abplatform.service;
 
+import io.github.rehody.abplatform.cache.CachedExperiment;
 import io.github.rehody.abplatform.cache.ExperimentCache;
 import io.github.rehody.abplatform.dto.request.ExperimentCreateRequest;
 import io.github.rehody.abplatform.dto.request.ExperimentUpdateRequest;
@@ -12,6 +13,7 @@ import io.github.rehody.abplatform.repository.ExperimentRepository.ReplaceVarian
 import io.github.rehody.abplatform.util.lock.LockExecutor;
 import io.github.rehody.abplatform.util.lock.LockNamespace;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
@@ -74,7 +76,8 @@ public class ExperimentService {
         return experimentCache
                 .getOrLoad(
                         flagKey,
-                        () -> experimentRepository.findByFlagKey(flagKey).map(ExperimentResponse::from))
+                        () -> experimentRepository.findByFlagKey(flagKey).map(CachedExperiment::from))
+                .map(CachedExperiment::toResponse)
                 .orElseThrow(() -> new ExperimentNotFoundException("Experiment '%s' not found".formatted(id)));
     }
 
@@ -83,6 +86,15 @@ public class ExperimentService {
         return experimentRepository.findAll().stream()
                 .map(ExperimentResponse::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Experiment> findByFlagKey(String flagKey) {
+        return experimentCache
+                .getOrLoad(
+                        flagKey,
+                        () -> experimentRepository.findByFlagKey(flagKey).map(CachedExperiment::from))
+                .map(CachedExperiment::toModel);
     }
 
     private void replaceVariantsAndCheckOptimisticLocking(UUID experimentId, ExperimentUpdateRequest request) {

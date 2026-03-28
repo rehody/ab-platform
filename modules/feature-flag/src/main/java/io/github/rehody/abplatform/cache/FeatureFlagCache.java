@@ -1,8 +1,8 @@
 package io.github.rehody.abplatform.cache;
 
-import io.github.rehody.abplatform.dto.response.FeatureFlagResponse;
 import io.github.rehody.abplatform.util.cache.CacheCodec;
 import io.github.rehody.abplatform.util.cache.LocalCacheConfig;
+import io.github.rehody.abplatform.util.cache.ObjectMapperCacheCodec;
 import io.github.rehody.abplatform.util.cache.RedisCacheConfig;
 import io.github.rehody.abplatform.util.cache.RedisCacheStore;
 import io.github.rehody.abplatform.util.cache.TwoLevelCache;
@@ -17,7 +17,7 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 public class FeatureFlagCache {
 
-    private final TwoLevelCache<FeatureFlagResponse> cache;
+    private final TwoLevelCache<CachedFeatureFlag> cache;
 
     public FeatureFlagCache(
             RedissonClient redissonClient, ObjectMapper objectMapper, FeatureFlagCacheProperties properties) {
@@ -35,7 +35,7 @@ public class FeatureFlagCache {
                 properties.getRedisKeyPrefix(),
                 properties.getInvalidationTopic());
 
-        CacheCodec<FeatureFlagResponse> codec = new FeatureFlagResponseCacheCodec(objectMapper);
+        CacheCodec<CachedFeatureFlag> codec = ObjectMapperCacheCodec.forClass(objectMapper, CachedFeatureFlag.class);
 
         this.cache = new TwoLevelCache<>(new RedisCacheStore<>(redissonClient, codec, redisConfig), localConfig);
     }
@@ -54,7 +54,7 @@ public class FeatureFlagCache {
         cache.invalidate(key);
     }
 
-    public Optional<FeatureFlagResponse> getOrLoad(String key, Supplier<Optional<FeatureFlagResponse>> loader) {
+    public Optional<CachedFeatureFlag> getOrLoad(String key, Supplier<Optional<CachedFeatureFlag>> loader) {
         return cache.getOrLoad(key, loader);
     }
 }

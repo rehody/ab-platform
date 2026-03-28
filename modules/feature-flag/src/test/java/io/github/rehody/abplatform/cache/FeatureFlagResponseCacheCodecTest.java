@@ -3,23 +3,29 @@ package io.github.rehody.abplatform.cache;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.github.rehody.abplatform.dto.response.FeatureFlagResponse;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
+import io.github.rehody.abplatform.util.cache.ObjectMapperCacheCodec;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
-class FeatureFlagResponseCacheCodecTest {
+class FeatureFlagCacheCodecTest {
 
-    private final FeatureFlagResponseCacheCodec codec = new FeatureFlagResponseCacheCodec(new ObjectMapper());
+    private final ObjectMapperCacheCodec<CachedFeatureFlag> codec =
+            ObjectMapperCacheCodec.forClass(new ObjectMapper(), CachedFeatureFlag.class);
 
     @Test
     void write_shouldSerializeResponseAndPreserveFields() {
-        FeatureFlagResponse response =
-                new FeatureFlagResponse("flag-a", new FeatureValue(true, FeatureValueType.BOOL), 6L);
+        CachedFeatureFlag cachedFeatureFlag = new CachedFeatureFlag(
+                UUID.fromString("11111111-1111-1111-1111-111111111111"),
+                "flag-a",
+                new FeatureValue(true, FeatureValueType.BOOL),
+                6L);
 
-        String json = codec.write(response);
+        String json = codec.write(cachedFeatureFlag);
 
+        assertThat(json).contains("\"id\":\"11111111-1111-1111-1111-111111111111\"");
         assertThat(json).contains("\"key\":\"flag-a\"");
         assertThat(json).contains("\"type\":\"BOOL\"");
         assertThat(json).contains("\"version\":6");
@@ -28,15 +34,16 @@ class FeatureFlagResponseCacheCodecTest {
     @Test
     void read_shouldDeserializeResponseAndRestoreFields() {
         String json = """
-                {"key":"flag-b","defaultValue":{"value":123,"type":"NUMBER"},"version":4}
+                {"id":"11111111-1111-1111-1111-111111111111","key":"flag-b","defaultValue":{"value":123,"type":"NUMBER"},"version":4}
                 """;
 
-        FeatureFlagResponse response = codec.read(json);
+        CachedFeatureFlag cachedFeatureFlag = codec.read(json);
 
-        assertThat(response.key()).isEqualTo("flag-b");
-        assertThat(response.defaultValue().value()).isEqualTo(123);
-        assertThat(response.defaultValue().type()).isEqualTo(FeatureValueType.NUMBER);
-        assertThat(response.version()).isEqualTo(4L);
+        assertThat(cachedFeatureFlag.id()).isEqualTo(UUID.fromString("11111111-1111-1111-1111-111111111111"));
+        assertThat(cachedFeatureFlag.key()).isEqualTo("flag-b");
+        assertThat(cachedFeatureFlag.defaultValue().value()).isEqualTo(123);
+        assertThat(cachedFeatureFlag.defaultValue().type()).isEqualTo(FeatureValueType.NUMBER);
+        assertThat(cachedFeatureFlag.version()).isEqualTo(4L);
     }
 
     @Test

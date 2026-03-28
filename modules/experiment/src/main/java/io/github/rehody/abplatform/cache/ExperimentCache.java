@@ -1,8 +1,8 @@
 package io.github.rehody.abplatform.cache;
 
-import io.github.rehody.abplatform.dto.response.ExperimentResponse;
 import io.github.rehody.abplatform.util.cache.CacheCodec;
 import io.github.rehody.abplatform.util.cache.LocalCacheConfig;
+import io.github.rehody.abplatform.util.cache.ObjectMapperCacheCodec;
 import io.github.rehody.abplatform.util.cache.RedisCacheConfig;
 import io.github.rehody.abplatform.util.cache.RedisCacheStore;
 import io.github.rehody.abplatform.util.cache.TwoLevelCache;
@@ -17,7 +17,7 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 public class ExperimentCache {
 
-    private final TwoLevelCache<ExperimentResponse> cache;
+    private final TwoLevelCache<CachedExperiment> cache;
 
     public ExperimentCache(
             RedissonClient redissonClient, ObjectMapper objectMapper, ExperimentCacheProperties properties) {
@@ -35,7 +35,7 @@ public class ExperimentCache {
                 properties.getRedisKeyPrefix(),
                 properties.getInvalidationTopic());
 
-        CacheCodec<ExperimentResponse> codec = new ExperimentResponseCacheCodec(objectMapper);
+        CacheCodec<CachedExperiment> codec = ObjectMapperCacheCodec.forClass(objectMapper, CachedExperiment.class);
 
         this.cache = new TwoLevelCache<>(new RedisCacheStore<>(redissonClient, codec, redisConfig), localConfig);
     }
@@ -54,7 +54,7 @@ public class ExperimentCache {
         cache.invalidate(key);
     }
 
-    public Optional<ExperimentResponse> getOrLoad(String key, Supplier<Optional<ExperimentResponse>> loader) {
+    public Optional<CachedExperiment> getOrLoad(String key, Supplier<Optional<CachedExperiment>> loader) {
         return cache.getOrLoad(key, loader);
     }
 }

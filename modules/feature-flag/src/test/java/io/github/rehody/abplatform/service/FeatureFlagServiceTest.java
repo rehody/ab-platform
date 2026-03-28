@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.rehody.abplatform.cache.CachedFeatureFlag;
 import io.github.rehody.abplatform.cache.FeatureFlagCache;
 import io.github.rehody.abplatform.dto.request.FeatureFlagCreateRequest;
 import io.github.rehody.abplatform.dto.request.FeatureFlagUpdateRequest;
@@ -186,7 +187,7 @@ class FeatureFlagServiceTest {
 
         when(featureFlagRepository.findByKey(key)).thenReturn(Optional.of(persisted));
         when(featureFlagCache.getOrLoad(eq(key), any(Supplier.class))).thenAnswer(invocation -> {
-            Supplier<Optional<FeatureFlagResponse>> loader = invocation.getArgument(1);
+            Supplier<Optional<CachedFeatureFlag>> loader = invocation.getArgument(1);
             return loader.get();
         });
 
@@ -201,14 +202,14 @@ class FeatureFlagServiceTest {
     @Test
     void getByKey_shouldReturnCachedResponseAndSkipRepositoryWhenCacheHit() {
         String key = "flag-g";
-        FeatureFlagResponse cachedResponse =
-                new FeatureFlagResponse(key, new FeatureValue(true, FeatureValueType.BOOL), 12L);
+        CachedFeatureFlag cachedFeatureFlag =
+                new CachedFeatureFlag(UUID.randomUUID(), key, new FeatureValue(true, FeatureValueType.BOOL), 12L);
 
-        when(featureFlagCache.getOrLoad(eq(key), any(Supplier.class))).thenReturn(Optional.of(cachedResponse));
+        when(featureFlagCache.getOrLoad(eq(key), any(Supplier.class))).thenReturn(Optional.of(cachedFeatureFlag));
 
         FeatureFlagResponse response = featureFlagService.getByKey(key);
 
-        assertThat(response).isEqualTo(cachedResponse);
+        assertThat(response).isEqualTo(cachedFeatureFlag.toResponse());
         verify(featureFlagRepository, never()).findByKey(any());
     }
 
