@@ -132,7 +132,7 @@ class FeatureFlagServiceTest {
     void update_shouldUpdateAndReturnFeatureFlagResponseWhenFeatureFlagExists() {
         FeatureValue defaultValue = new FeatureValue(false, FeatureValueType.BOOL);
         FeatureFlagUpdateRequest request = new FeatureFlagUpdateRequest(defaultValue, 3L);
-        FeatureFlag persisted = new FeatureFlag(UUID.randomUUID(), "flag-d", defaultValue, 4L);
+        FeatureFlag persisted = new FeatureFlag(UUID.randomUUID(), "flag-d", defaultValue, 42L);
 
         when(featureFlagRepository.update("flag-d", defaultValue, 3L)).thenReturn(1);
         when(featureFlagRepository.findByKey("flag-d")).thenReturn(Optional.of(persisted));
@@ -143,7 +143,7 @@ class FeatureFlagServiceTest {
         verify(featureFlagCache).invalidate("flag-d");
         assertThat(response.key()).isEqualTo("flag-d");
         assertThat(response.defaultValue()).isEqualTo(defaultValue);
-        assertThat(response.version()).isEqualTo(4L);
+        assertThat(response.version()).isEqualTo(42L);
     }
 
     @Test
@@ -151,6 +151,7 @@ class FeatureFlagServiceTest {
         FeatureValue defaultValue = new FeatureValue(false, FeatureValueType.BOOL);
         FeatureFlagUpdateRequest request = new FeatureFlagUpdateRequest(defaultValue, 5L);
 
+        when(featureFlagRepository.update("flag-e", defaultValue, 5L)).thenReturn(0);
         when(featureFlagRepository.existsByKey("flag-e")).thenReturn(false);
 
         assertThatThrownBy(() -> featureFlagService.update("flag-e", request))

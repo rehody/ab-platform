@@ -198,7 +198,7 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         ExperimentRepository.UpdateOutcome staleResult = experimentRepository.update(
                 new Experiment(persisted.id(), flagKey, persisted.variants(), ExperimentState.APPROVED, 9L));
         ExperimentRepository.UpdateOutcome missingResult = experimentRepository.update(
-                new Experiment(UUID.randomUUID(), "missing", List.of(), ExperimentState.APPROVED, 0L));
+                new Experiment(UUID.randomUUID(), flagKey, List.of(), ExperimentState.APPROVED, 0L));
 
         assertThat(staleResult.status()).isEqualTo(ExperimentRepository.UpdateStatus.VERSION_CONFLICT);
         assertThat(staleResult.version()).isNull();

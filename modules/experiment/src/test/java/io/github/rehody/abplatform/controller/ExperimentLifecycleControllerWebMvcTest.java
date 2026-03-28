@@ -1,6 +1,5 @@
 package io.github.rehody.abplatform.controller;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -9,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.rehody.abplatform.config.AbstractWebMvcTest;
+import io.github.rehody.abplatform.dto.request.ExperimentStateTransitionRequest;
 import io.github.rehody.abplatform.dto.response.ExperimentResponse;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.exception.ExperimentExceptionHandler;
@@ -43,21 +43,22 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
     @Test
     void transitions_shouldReturnOkAndBodyForAllLifecycleEndpoints() throws Exception {
         UUID id = UUID.randomUUID();
-        when(experimentLifecycleService.submitForReview(eq(id), any()))
+        ExperimentStateTransitionRequest request = new ExperimentStateTransitionRequest(3L);
+        when(experimentLifecycleService.submitForReview(eq(id), eq(request)))
                 .thenReturn(response("flag-a", 4L, ExperimentState.IN_REVIEW));
-        when(experimentLifecycleService.approve(eq(id), any()))
+        when(experimentLifecycleService.approve(eq(id), eq(request)))
                 .thenReturn(response("flag-a", 5L, ExperimentState.APPROVED));
-        when(experimentLifecycleService.reject(eq(id), any()))
+        when(experimentLifecycleService.reject(eq(id), eq(request)))
                 .thenReturn(response("flag-a", 5L, ExperimentState.REJECTED));
-        when(experimentLifecycleService.start(eq(id), any()))
+        when(experimentLifecycleService.start(eq(id), eq(request)))
                 .thenReturn(response("flag-a", 6L, ExperimentState.RUNNING));
-        when(experimentLifecycleService.pause(eq(id), any()))
+        when(experimentLifecycleService.pause(eq(id), eq(request)))
                 .thenReturn(response("flag-a", 7L, ExperimentState.PAUSED));
-        when(experimentLifecycleService.resume(eq(id), any()))
+        when(experimentLifecycleService.resume(eq(id), eq(request)))
                 .thenReturn(response("flag-a", 8L, ExperimentState.RUNNING));
-        when(experimentLifecycleService.complete(eq(id), any()))
+        when(experimentLifecycleService.complete(eq(id), eq(request)))
                 .thenReturn(response("flag-a", 9L, ExperimentState.COMPLETED));
-        when(experimentLifecycleService.archive(eq(id), any()))
+        when(experimentLifecycleService.archive(eq(id), eq(request)))
                 .thenReturn(response("flag-a", 10L, ExperimentState.ARCHIVED));
 
         assertLifecycleResponse("/api/v1/experiments/{id}/submit-for-review", id, "IN_REVIEW", 4);
@@ -88,7 +89,7 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
     @Test
     void approve_shouldReturnConflictWhenTransitionIsInvalid() throws Exception {
         UUID id = UUID.randomUUID();
-        when(experimentLifecycleService.approve(eq(id), any()))
+        when(experimentLifecycleService.approve(eq(id), eq(new ExperimentStateTransitionRequest(3L))))
                 .thenThrow(new ExperimentStateTransitionException("Cannot approve experiment in state DRAFT"));
 
         mockMvc.perform(post("/api/v1/experiments/{id}/approve", id)

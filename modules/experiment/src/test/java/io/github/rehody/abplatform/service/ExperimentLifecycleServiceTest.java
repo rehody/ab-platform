@@ -208,12 +208,13 @@ class ExperimentLifecycleServiceTest {
             TransitionOperation operation, ExperimentState sourceState, ExperimentState targetState) {
         UUID id = UUID.randomUUID();
         long version = 3L;
+        long persistedVersion = 42L;
         String flagKey = "flag-" + targetState.name().toLowerCase();
         Experiment current = experiment(id, flagKey, sourceState, version);
 
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of(flagKey));
         when(experimentRepository.findById(id)).thenReturn(Optional.of(current));
-        when(experimentRepository.update(any(Experiment.class))).thenReturn(UpdateOutcome.updated(version + 1));
+        when(experimentRepository.update(any(Experiment.class))).thenReturn(UpdateOutcome.updated(persistedVersion));
 
         ExperimentResponse response = operation.apply(id, new ExperimentStateTransitionRequest(version));
 
@@ -232,7 +233,8 @@ class ExperimentLifecycleServiceTest {
         assertThat(updated.version()).isEqualTo(version);
         assertThat(namespaceCaptor.getValue().value()).isEqualTo("experiment");
 
-        assertThat(response).isEqualTo(new ExperimentResponse(flagKey, current.variants(), targetState, version + 1));
+        assertThat(response)
+                .isEqualTo(new ExperimentResponse(flagKey, current.variants(), targetState, persistedVersion));
     }
 
     private Experiment experiment(UUID id, String flagKey, ExperimentState state, long version) {
