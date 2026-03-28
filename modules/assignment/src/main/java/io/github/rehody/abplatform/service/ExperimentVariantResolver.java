@@ -1,80 +1,60 @@
 package io.github.rehody.abplatform.service;
 
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
-import java.nio.charset.StandardCharsets;
+import io.github.rehody.abplatform.service.allocation.VariantBucketAllocator;
+import io.github.rehody.abplatform.service.allocation.VariantBucketAllocator.BucketAllocation;
+import io.github.rehody.abplatform.service.bucket.UserExperimentBucketResolver;
+import io.github.rehody.abplatform.service.validation.ExperimentVariantAssignmentValidator;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class ExperimentVariantResolver {
 
-    private static final int BUCKET_POOL_SIZE = 10_000;
-    private static final HashFunction VARIANT_HASH_FUNCTION = Hashing.murmur3_32_fixed();
+    private final ExperimentVariantAssignmentValidator experimentVariantAssignmentValidator;
+    private final VariantBucketAllocator variantBucketAllocator;
+    private final UserExperimentBucketResolver userExperimentBucketResolver;
 
     public Optional<ExperimentVariant> resolve(Experiment experiment, UUID userId) {
-        List<ExperimentVariant> variants = getOrderedVariants(experiment);
+        List<ExperimentVariant> variants = experiment.variants();
         if (variants.isEmpty()) {
             return Optional.empty();
         }
 
-        int bucket = resolveBucket(experiment.id(), userId);
-        int bucketSize = BUCKET_POOL_SIZE / variants.size();
-        int remainder = BUCKET_POOL_SIZE % variants.size();
-        int intervalStart = 0;
+        experimentVariantAssignmentValidator.validate(experiment.id(), variants);
 
-        for (int index = 0; index < variants.size(); index++) {
-            int intervalSize = bucketSize + (index < remainder ? 1 : 0);
-            int intervalEnd = intervalStart + intervalSize;
-            if (bucket < intervalEnd) {
-                return Optional.of(variants.get(index));
-            }
-            intervalStart = intervalEnd;
-        }
+        List<ExperimentVariant> orderedVariants = sortVariants(variants);
+        int bucket = userExperimentBucketResolver.resolve(experiment.id(), userId);
+        List<BucketAllocation> allocations = variantBucketAllocator.allocate(experiment.id(), orderedVariants);
 
-        return Optional.of(variants.getLast());
+        return Optional.of(selectVariantByBucket(bucket, allocations, orderedVariants));
     }
 
-    int resolveBucket(UUID experimentId, UUID userId) {
-        validateInputs(experimentId, userId);
-
-        String hashInput = userId + ":" + experimentId;
-        int hash = VARIANT_HASH_FUNCTION
-                .hashString(hashInput, StandardCharsets.UTF_8)
-                .asInt();
-        return Integer.remainderUnsigned(hash, BUCKET_POOL_SIZE);
-    }
-
-    private void validateInputs(UUID experimentId, UUID userId) {
-        Objects.requireNonNull(experimentId, "experimentId must not be null");
-        Objects.requireNonNull(userId, "userId must not be null");
-    }
-
-    private List<ExperimentVariant> getOrderedVariants(Experiment experiment) {
-        List<ExperimentVariant> variants = experiment.variants();
-        validateUniquePositions(experiment.id(), variants);
+    private List<ExperimentVariant> sortVariants(List<ExperimentVariant> variants) {
         return variants.stream()
                 .sorted(Comparator.comparingInt(ExperimentVariant::position))
                 .toList();
     }
 
-    private void validateUniquePositions(UUID experimentId, List<ExperimentVariant> variants) {
-        Set<Integer> seenPositions = new HashSet<>();
-        for (ExperimentVariant variant : variants) {
-            int position = variant.position();
-            boolean added = seenPositions.add(position);
-            if (!added) {
-                throw new IllegalStateException(
-                        "Duplicate variant position for experiment %s: %d".formatted(experimentId, position));
+    private ExperimentVariant selectVariantByBucket(
+            int bucket, List<BucketAllocation> allocations, List<ExperimentVariant> orderedVariants) {
+
+        int intervalStart = 0;
+
+        for (BucketAllocation allocation : allocations) {
+            int intervalEnd = intervalStart + allocation.bucketCount();
+            if (bucket < intervalEnd) {
+                return allocation.variant();
             }
+            intervalStart = intervalEnd;
         }
+
+        return orderedVariants.getLast();
     }
 }
