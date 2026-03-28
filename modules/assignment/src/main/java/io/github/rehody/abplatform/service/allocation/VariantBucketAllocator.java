@@ -29,8 +29,6 @@ public class VariantBucketAllocator {
                 .mapToInt(BucketAllocation::bucketCount)
                 .sum();
 
-        validateAllocatedBucketCount(experimentId, allocatedBucketCount);
-
         int remainingBuckets = BUCKET_POOL_SIZE - allocatedBucketCount;
         if (remainingBuckets == 0) {
             return initialAllocations;
@@ -85,13 +83,6 @@ public class VariantBucketAllocator {
         if (remainingBucketPool < 0) {
             throw new IllegalStateException("Experiment %s has %d variants, which exceeds bucket pool size %d"
                     .formatted(experimentId, variantCount, BUCKET_POOL_SIZE));
-        }
-    }
-
-    private void validateAllocatedBucketCount(UUID experimentId, int allocatedBucketCount) {
-        if (allocatedBucketCount > BUCKET_POOL_SIZE) {
-            throw new IllegalStateException(
-                    "Allocated bucket count exceeded pool size for experiment %s".formatted(experimentId));
         }
     }
 }

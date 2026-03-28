@@ -20,24 +20,24 @@ public class AssignmentService {
 
     public AssignmentResponse resolve(AssignmentRequest request) {
         String flagKey = request.flagKey();
-        Optional<Experiment> experimentOptional = experimentService.findByFlagKey(flagKey);
-
-        if (experimentOptional.isEmpty()) {
+        Optional<Experiment> experiment = findResolvableExperiment(flagKey);
+        if (experiment.isEmpty()) {
             return defaultAssignment(flagKey);
         }
 
-        Experiment experiment = experimentOptional.get();
-        if (!experimentAssignmentPolicy.canResolveAssignment(experiment)) {
-            return defaultAssignment(flagKey);
-        }
+        FeatureValue value = experimentVariantResolver
+                .resolve(experiment.get(), request.userId())
+                .value();
 
-        FeatureValue value =
-                experimentVariantResolver.resolve(experiment, request.userId()).value();
         return AssignmentResponse.of(value);
     }
 
     private AssignmentResponse defaultAssignment(String flagKey) {
         FeatureValue defaultValue = featureFlagService.getByKey(flagKey).defaultValue();
         return AssignmentResponse.of(defaultValue);
+    }
+
+    private Optional<Experiment> findResolvableExperiment(String flagKey) {
+        return experimentService.findByFlagKey(flagKey).filter(experimentAssignmentPolicy::canResolveAssignment);
     }
 }

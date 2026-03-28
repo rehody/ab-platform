@@ -45,16 +45,9 @@ public class VariantAllocationSnapshotFactory {
     }
 
     private void validateAllocationInputs(UUID experimentId, List<ExperimentVariant> variants) {
-        BigDecimal totalWeight = BigDecimal.ZERO;
-
-        for (ExperimentVariant variant : variants) {
-            BigDecimal weight = variant.weight();
-            if (weight == null || weight.signum() <= 0) {
-                throw new IllegalStateException("Invalid assignment weight for experiment %s, variant %s: %s"
-                        .formatted(experimentId, variant.id(), weight));
-            }
-            totalWeight = totalWeight.add(weight);
-        }
+        BigDecimal totalWeight = variants.stream()
+                .map(variant -> validatePositiveWeight(experimentId, variant))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         if (totalWeight.signum() <= 0) {
             throw new IllegalStateException(
@@ -62,20 +55,24 @@ public class VariantAllocationSnapshotFactory {
         }
     }
 
-    private void validateFullBucketCoverage(UUID experimentId, List<BucketRange> bucketRanges) {
-        int expectedRangeStart = 0;
+    private BigDecimal validatePositiveWeight(UUID experimentId, ExperimentVariant variant) {
+        BigDecimal weight = variant.weight();
+        if (weight == null || weight.signum() <= 0) {
+            throw new IllegalStateException("Invalid assignment weight for experiment %s, variant %s: %s"
+                    .formatted(experimentId, variant.id(), weight));
+        }
+        return weight;
+    }
 
-        for (BucketRange bucketRange : bucketRanges) {
-            if (bucketRange.startInclusive() != expectedRangeStart) {
-                throw new IllegalStateException("Bucket ranges contain a gap for experiment %s at bucket %d"
-                        .formatted(experimentId, expectedRangeStart));
-            }
-            expectedRangeStart = bucketRange.endExclusive();
+    private void validateFullBucketCoverage(UUID experimentId, List<BucketRange> bucketRanges) {
+        int coveredBuckets = 0;
+        if (!bucketRanges.isEmpty()) {
+            coveredBuckets = bucketRanges.getLast().endExclusive();
         }
 
-        if (expectedRangeStart != BUCKET_POOL_SIZE) {
+        if (coveredBuckets != BUCKET_POOL_SIZE) {
             throw new IllegalStateException("Bucket ranges do not cover pool size for experiment %s. Covered: %d"
-                    .formatted(experimentId, expectedRangeStart));
+                    .formatted(experimentId, coveredBuckets));
         }
     }
 }
