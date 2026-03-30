@@ -1,8 +1,8 @@
 package io.github.rehody.abplatform.event.controller;
 
-import io.github.rehody.abplatform.event.dto.request.MetricEventSaveRequest;
+import io.github.rehody.abplatform.event.dto.request.MetricEventCreateRequest;
 import io.github.rehody.abplatform.event.dto.response.MetricEventResponse;
-import io.github.rehody.abplatform.event.service.EventService;
+import io.github.rehody.abplatform.event.service.MetricEventService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,12 +12,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/events")
 @RequiredArgsConstructor
-public class EventController {
+public class MetricEventController {
 
-    private final EventService eventService;
+    private final MetricEventService metricEventService;
 
     @PostMapping("/metrics")
-    public MetricEventResponse save(@RequestBody MetricEventSaveRequest request) {
-        return eventService.save(request);
+    public MetricEventResponse create(@RequestBody MetricEventCreateRequest request) {
+        return metricEventService.create(request);
     }
 }
