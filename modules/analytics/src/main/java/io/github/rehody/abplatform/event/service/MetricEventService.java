@@ -40,7 +40,7 @@ public class MetricEventService {
     }
 
     private MetricEvent createUniqueMetricEvent(UUID userId, MetricDefinition metricDefinition) {
-        if (metricEventRepository.existsUniqueEventForUser(userId, metricDefinition.id())) {
+        if (metricEventRepository.existsUniqueEventForUser(userId, metricDefinition.key())) {
             throw new MetricEventAlreadyExistsException("Metric event for user '%s' and metric '%s' already exists"
                     .formatted(userId, metricDefinition.key()));
         }
@@ -49,6 +49,6 @@ public class MetricEventService {
     }
 
     private MetricEvent createMetricEvent(UUID userId, MetricDefinition metricDefinition) {
-        return new MetricEvent(UUID.randomUUID(), userId, metricDefinition, Instant.now());
+        return new MetricEvent(UUID.randomUUID(), userId, metricDefinition.key(), Instant.now());
     }
 }
