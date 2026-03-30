@@ -1,4 +1,7 @@
 dependencies {
     implementation libs.spring.boot.starter.web
     implementation libs.spring.boot.starter.data.jdbc
+    implementation libs.spring.boot.starter.validation
+
+    implementation project(':shared:contracts')
 }

@@ -3,6 +3,7 @@ package io.github.rehody.abplatform.event.controller;
 import io.github.rehody.abplatform.event.dto.request.MetricEventCreateRequest;
 import io.github.rehody.abplatform.event.dto.response.MetricEventResponse;
 import io.github.rehody.abplatform.event.service.MetricEventService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,7 +18,7 @@ public class MetricEventController {
     private final MetricEventService metricEventService;
 
     @PostMapping("/metrics")
-    public MetricEventResponse create(@RequestBody MetricEventCreateRequest request) {
+    public MetricEventResponse create(@Valid @RequestBody MetricEventCreateRequest request) {
         return metricEventService.create(request);
     }
 }
