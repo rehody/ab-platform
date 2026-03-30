@@ -3,5 +3,7 @@ dependencies {
     implementation libs.spring.boot.starter.data.jdbc
     implementation libs.spring.boot.starter.validation
 
+    implementation project(':modules:experiment')
+
     implementation project(':shared:contracts')
 }
