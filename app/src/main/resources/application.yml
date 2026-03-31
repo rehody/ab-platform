@@ -46,6 +46,28 @@ ab:
       redis-key-prefix: ${AB_CACHE_EXPERIMENT_REDIS_KEY_PREFIX:ab-platform:cache:experiment:v1:}
       invalidation-topic: ${AB_CACHE_EXPERIMENT_INVALIDATION_TOPIC:ab-platform:cache:experiment:v1:invalidation}
 
+    metric-definition:
+      l1-value-ttl: ${AB_CACHE_METRIC_DEFINITION_L1_VALUE_TTL:5m}
+      l1-miss-ttl: ${AB_CACHE_METRIC_DEFINITION_L1_MISS_TTL:30s}
+      l1-value-size: ${AB_CACHE_METRIC_DEFINITION_L1_VALUE_SIZE:10000}
+      l1-miss-size: ${AB_CACHE_METRIC_DEFINITION_L1_MISS_SIZE:5000}
+      l2-value-ttl: ${AB_CACHE_METRIC_DEFINITION_L2_VALUE_TTL:30m}
+      l2-miss-ttl: ${AB_CACHE_METRIC_DEFINITION_L2_MISS_TTL:2m}
+      ttl-spread: ${AB_CACHE_METRIC_DEFINITION_TTL_SPREAD:0.1}
+      redis-key-prefix: ${AB_CACHE_METRIC_DEFINITION_REDIS_KEY_PREFIX:ab-platform:cache:metric-definition:v1:}
+      invalidation-topic: ${AB_CACHE_METRIC_DEFINITION_INVALIDATION_TOPIC:ab-platform:cache:metric-definition:v1:invalidation}
+
+    experiment-metric-report:
+      l1-value-ttl: ${AB_CACHE_EXPERIMENT_METRIC_REPORT_L1_VALUE_TTL:15s}
+      l1-miss-ttl: ${AB_CACHE_EXPERIMENT_METRIC_REPORT_L1_MISS_TTL:5s}
+      l1-value-size: ${AB_CACHE_EXPERIMENT_METRIC_REPORT_L1_VALUE_SIZE:1000}
+      l1-miss-size: ${AB_CACHE_EXPERIMENT_METRIC_REPORT_L1_MISS_SIZE:500}
+      l2-value-ttl: ${AB_CACHE_EXPERIMENT_METRIC_REPORT_L2_VALUE_TTL:60s}
+      l2-miss-ttl: ${AB_CACHE_EXPERIMENT_METRIC_REPORT_L2_MISS_TTL:10s}
+      ttl-spread: ${AB_CACHE_EXPERIMENT_METRIC_REPORT_TTL_SPREAD:0.1}
+      redis-key-prefix: ${AB_CACHE_EXPERIMENT_METRIC_REPORT_REDIS_KEY_PREFIX:ab-platform:cache:experiment-metric-report:v1:}
+      invalidation-topic: ${AB_CACHE_EXPERIMENT_METRIC_REPORT_INVALIDATION_TOPIC:ab-platform:cache:experiment-metric-report:v1:invalidation}
+
     assignment-plan:
       l1-value-ttl: ${AB_CACHE_ASSIGNMENT_PLAN_L1_VALUE_TTL:60s}
       l1-miss-ttl: ${AB_CACHE_ASSIGNMENT_PLAN_L1_MISS_TTL:10s}

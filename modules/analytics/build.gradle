@@ -4,6 +4,8 @@ dependencies {
     implementation libs.spring.boot.starter.validation
 
     implementation project(':modules:experiment')
+    implementation project(':shared:caching')
 
     implementation project(':shared:contracts')
+    implementation project(':shared:locking')
 }

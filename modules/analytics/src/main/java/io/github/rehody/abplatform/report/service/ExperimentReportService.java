@@ -1,5 +1,7 @@
 package io.github.rehody.abplatform.report.service;
 
+import io.github.rehody.abplatform.cache.CachedExperimentMetricReport;
+import io.github.rehody.abplatform.cache.ExperimentMetricReportCache;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.metric.service.MetricDefinitionService;
 import io.github.rehody.abplatform.model.Experiment;
@@ -20,26 +22,41 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class ExperimentReportService {
 
+    private final ExperimentMetricReportCache experimentMetricReportCache;
     private final ExperimentService experimentService;
     private final MetricDefinitionService metricDefinitionService;
     private final AssignmentEventReportRepository assignmentEventReportRepository;
     private final UniqueMetricEventReportRepository uniqueMetricEventReportRepository;
     private final CountableMetricEventReportRepository countableMetricEventReportRepository;
     private final ExperimentReportWindowFactory experimentReportWindowFactory;
-    private final UniqueMetricReportAssembler uniqueReportAssembler;
-    private final CountableMetricReportAssembler countableReportAssembler;
+    private final UniqueMetricReportAssembler uniqueMetricReportAssembler;
+    private final CountableMetricReportAssembler countableMetricReportAssembler;
 
+    @Transactional(readOnly = true)
     public ExperimentMetricReport getExperimentReport(UUID experimentId, String metricKey) {
+        return experimentMetricReportCache
+                .getOrLoad(buildCacheKey(experimentId, metricKey), () -> loadCachedReport(experimentId, metricKey))
+                .map(CachedExperimentMetricReport::toModel)
+                .orElseThrow(() -> new IllegalStateException("Experiment metric report cache loader returned empty"));
+    }
+
+    private Optional<CachedExperimentMetricReport> loadCachedReport(UUID experimentId, String metricKey) {
+        return Optional.of(CachedExperimentMetricReport.from(loadReport(experimentId, metricKey)));
+    }
+
+    private ExperimentMetricReport loadReport(UUID experimentId, String metricKey) {
         Instant now = Instant.now();
 
         Experiment experiment = experimentService.getById(experimentId);
@@ -53,7 +70,7 @@ public class ExperimentReportService {
 
         return switch (metricDefinition.type()) {
             case UNIQUE ->
-                uniqueReportAssembler.assemble(
+                uniqueMetricReportAssembler.assemble(
                         experiment,
                         metricDefinition,
                         orderedVariants,
@@ -64,7 +81,7 @@ public class ExperimentReportService {
                         reportWindow);
 
             case COUNTABLE ->
-                countableReportAssembler.assemble(
+                countableMetricReportAssembler.assemble(
                         experiment,
                         metricDefinition,
                         orderedVariants,
@@ -74,6 +91,10 @@ public class ExperimentReportService {
                                         experiment.id(), metricDefinition.key(), reportWindow)),
                         reportWindow);
         };
+    }
+
+    private String buildCacheKey(UUID experimentId, String metricKey) {
+        return "%s:metric:%s".formatted(experimentId, metricKey);
     }
 
     private List<ExperimentVariant> sortVariantsByPosition(List<ExperimentVariant> variants) {
