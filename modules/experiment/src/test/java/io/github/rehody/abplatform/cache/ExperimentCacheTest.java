@@ -137,7 +137,9 @@ class ExperimentCacheTest {
                         0,
                         BigDecimal.ONE)),
                 ExperimentState.RUNNING,
-                0L);
+                0L,
+                null,
+                null);
     }
 
     private ExperimentCacheProperties properties() {

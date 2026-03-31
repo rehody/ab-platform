@@ -99,6 +99,8 @@ class ExperimentTest {
                         0,
                         BigDecimal.ONE)),
                 state,
-                3L);
+                3L,
+                null,
+                null);
     }
 }

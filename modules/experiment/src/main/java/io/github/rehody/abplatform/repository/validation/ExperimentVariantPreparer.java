@@ -37,6 +37,10 @@ public class ExperimentVariantPreparer {
     }
 
     private UUID resolveId(UUID id) {
-        return id == null ? UUID.randomUUID() : id;
+        if (id == null) {
+            return UUID.randomUUID();
+        }
+
+        return id;
     }
 }

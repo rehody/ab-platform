@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-public record CountableMetricExperimentReportResponse(
+public record CountableMetricReportResponse(
         ExperimentMetricReportMeta meta,
 
         int totalParticipants,
@@ -15,7 +15,7 @@ public record CountableMetricExperimentReportResponse(
         BigDecimal eventsPerParticipant,
 
         List<CountableVariantSummary> variants)
-        implements ExperimentReportResponse {
+        implements ExperimentMetricReportResponse {
 
     public record CountableVariantSummary(
             UUID variantId,

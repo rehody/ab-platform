@@ -6,10 +6,12 @@ import io.github.rehody.abplatform.dto.response.ExperimentResponse;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
+import io.github.rehody.abplatform.policy.ExperimentTimestampPolicy;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
 import io.github.rehody.abplatform.repository.ExperimentRepository.UpdateOutcome;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
 import io.github.rehody.abplatform.util.lock.LockNamespace;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -29,6 +31,7 @@ public class ExperimentLifecycleService {
     private final ServiceActionExecutor serviceActionExecutor;
     private final ExperimentCache experimentCache;
     private final ExperimentAssignmentPolicy experimentAssignmentPolicy;
+    private final ExperimentTimestampPolicy experimentTimestampPolicy;
 
     @Transactional
     public ExperimentResponse submitForReview(UUID id, ExperimentStateTransitionRequest request) {
@@ -76,13 +79,15 @@ public class ExperimentLifecycleService {
         return executeUnderLock(flagKey, () -> {
             Experiment experiment = findByIdOrThrow(id);
             Experiment transitedExperiment = stateTransition.apply(experiment);
-            experimentAssignmentPolicy.validateAssignmentInvariants(transitedExperiment);
-            Experiment experimentToUpdate = transitedExperiment.withVersion(expectedVersion);
+            Experiment timestampedExperiment =
+                    experimentTimestampPolicy.applyTransitionTimestamps(experiment, transitedExperiment, Instant.now());
+            experimentAssignmentPolicy.validateAssignmentInvariants(timestampedExperiment);
+            Experiment experimentToUpdate = timestampedExperiment.withVersion(expectedVersion);
 
             long newVersion = updateAndCheckOptimisticLocking(experimentToUpdate, expectedVersion);
             invalidateCacheAfterCommit(flagKey);
 
-            Experiment persistedExperiment = transitedExperiment.withVersion(newVersion);
+            Experiment persistedExperiment = timestampedExperiment.withVersion(newVersion);
             return ExperimentResponse.from(persistedExperiment);
         });
     }

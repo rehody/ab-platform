@@ -4,17 +4,22 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-public record UniqueMetricExperimentReportResponse(
+public record UniqueMetricReportResponse(
         ExperimentMetricReportMeta meta,
 
         int totalParticipants,
-        int totalConverters,
+        int participantsWithMetricEvent,
 
         BigDecimal conversionRate,
 
         List<UniqueVariantSummary> variants)
-        implements ExperimentReportResponse {
+        implements ExperimentMetricReportResponse {
 
     public record UniqueVariantSummary(
-            UUID variantId, String key, int position, int participants, int converters, BigDecimal conversionRate) {}
+            UUID variantId,
+            String key,
+            int position,
+            int participants,
+            int participantsWithMetricEvent,
+            BigDecimal conversionRate) {}
 }

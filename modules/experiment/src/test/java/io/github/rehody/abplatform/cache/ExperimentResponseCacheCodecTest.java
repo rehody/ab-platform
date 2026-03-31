@@ -9,6 +9,7 @@ import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
 import io.github.rehody.abplatform.util.cache.ObjectMapperCacheCodec;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,9 @@ class ExperimentCacheCodecTest {
                         0,
                         BigDecimal.ONE)),
                 ExperimentState.RUNNING,
-                6L);
+                6L,
+                Instant.parse("2026-03-30T10:15:30Z"),
+                null);
 
         String json = codec.write(cachedExperiment);
 
@@ -45,7 +48,7 @@ class ExperimentCacheCodecTest {
     @Test
     void read_shouldDeserializeResponseAndRestoreFields() {
         String json = """
-                {"id":"00000000-0000-0000-0000-000000000001","flagKey":"flag-b","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":123,"type":"NUMBER"},"position":1}],"state":"APPROVED","version":4}
+                {"id":"00000000-0000-0000-0000-000000000001","flagKey":"flag-b","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":123,"type":"NUMBER"},"position":1}],"state":"APPROVED","version":4,"startedAt":null,"completedAt":null}
                 """;
 
         CachedExperiment cachedExperiment = codec.read(json);

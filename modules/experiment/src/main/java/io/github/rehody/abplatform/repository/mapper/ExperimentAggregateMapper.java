@@ -14,7 +14,9 @@ public class ExperimentAggregateMapper {
                 experiment.flagKey(),
                 copyVariants(variants),
                 experiment.state(),
-                experiment.version());
+                experiment.version(),
+                experiment.startedAt(),
+                experiment.completedAt());
     }
 
     private List<ExperimentVariant> copyVariants(List<ExperimentVariant> variants) {

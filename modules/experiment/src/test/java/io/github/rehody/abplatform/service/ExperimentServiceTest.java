@@ -22,6 +22,7 @@ import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
 import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
+import io.github.rehody.abplatform.policy.ExperimentTimestampPolicy;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
 import io.github.rehody.abplatform.repository.ExperimentRepository.ReplaceVariantsResult;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
@@ -57,6 +58,9 @@ class ExperimentServiceTest {
     @Mock
     private ExperimentAssignmentPolicy experimentAssignmentPolicy;
 
+    @Mock
+    private ExperimentTimestampPolicy experimentTimestampPolicy;
+
     private ServiceActionExecutor serviceActionExecutor;
     private ExperimentService experimentService;
 
@@ -64,10 +68,18 @@ class ExperimentServiceTest {
     void setUp() {
         serviceActionExecutor = new ServiceActionExecutor();
         experimentService = new ExperimentService(
-                experimentRepository, lockExecutor, serviceActionExecutor, experimentCache, experimentAssignmentPolicy);
+                experimentRepository,
+                lockExecutor,
+                serviceActionExecutor,
+                experimentCache,
+                experimentAssignmentPolicy,
+                experimentTimestampPolicy);
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(2)).get());
+        lenient()
+                .when(experimentTimestampPolicy.initializeTimestamps(any(Experiment.class), any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @AfterEach
@@ -140,7 +152,7 @@ class ExperimentServiceTest {
     void update_shouldReplaceVariantsInvalidateCacheAndReturnUpdatedResponse() {
         UUID id = UUID.randomUUID();
         ExperimentUpdateRequest request = new ExperimentUpdateRequest(variants(), 3L);
-        Experiment updated = new Experiment(id, "flag-d", variants(), ExperimentState.RUNNING, 4L);
+        Experiment updated = new Experiment(id, "flag-d", variants(), ExperimentState.RUNNING, 4L, null, null);
 
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-d"));
         when(experimentRepository.replaceVariants(id, 3L, request.variants()))
@@ -175,7 +187,7 @@ class ExperimentServiceTest {
     void update_shouldThrowExperimentNotFoundExceptionWhenRepositoryReturnsNotFound() {
         UUID id = UUID.randomUUID();
         ExperimentUpdateRequest request = new ExperimentUpdateRequest(variants(), 2L);
-        Experiment current = new Experiment(id, "flag-e", variants(), ExperimentState.RUNNING, 2L);
+        Experiment current = new Experiment(id, "flag-e", variants(), ExperimentState.RUNNING, 2L, null, null);
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-e"));
         when(experimentRepository.findById(id)).thenReturn(Optional.of(current));
         when(experimentRepository.replaceVariants(id, 2L, request.variants()))
@@ -192,7 +204,7 @@ class ExperimentServiceTest {
     void update_shouldThrowOptimisticLockingFailureExceptionWhenVersionMismatch() {
         UUID id = UUID.randomUUID();
         ExperimentUpdateRequest request = new ExperimentUpdateRequest(variants(), 2L);
-        Experiment current = new Experiment(id, "flag-f", variants(), ExperimentState.RUNNING, 2L);
+        Experiment current = new Experiment(id, "flag-f", variants(), ExperimentState.RUNNING, 2L, null, null);
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-f"));
         when(experimentRepository.findById(id)).thenReturn(Optional.of(current));
         when(experimentRepository.replaceVariants(id, 2L, request.variants()))
@@ -209,7 +221,7 @@ class ExperimentServiceTest {
     void update_shouldThrowExperimentNotFoundExceptionWhenUpdatedExperimentCannotBeReadBack() {
         UUID id = UUID.randomUUID();
         ExperimentUpdateRequest request = new ExperimentUpdateRequest(variants(), 2L);
-        Experiment current = new Experiment(id, "flag-g", variants(), ExperimentState.RUNNING, 2L);
+        Experiment current = new Experiment(id, "flag-g", variants(), ExperimentState.RUNNING, 2L, null, null);
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-g"));
         when(experimentRepository.replaceVariants(id, 2L, request.variants()))
                 .thenReturn(ReplaceVariantsResult.UPDATED);
@@ -225,7 +237,7 @@ class ExperimentServiceTest {
     @Test
     void getById_shouldLoadFromRepositoryAndReturnResponseWhenCacheNeedsLoader() {
         UUID id = UUID.randomUUID();
-        Experiment persisted = new Experiment(id, "flag-g", variants(), ExperimentState.PAUSED, 8L);
+        Experiment persisted = new Experiment(id, "flag-g", variants(), ExperimentState.PAUSED, 8L, null, null);
 
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-g"));
         when(experimentRepository.findByFlagKey("flag-g")).thenReturn(Optional.of(persisted));
@@ -246,7 +258,8 @@ class ExperimentServiceTest {
     @Test
     void getById_shouldReturnCachedResponseAndSkipRepositoryLookupByFlagKeyWhenCacheHit() {
         UUID id = UUID.randomUUID();
-        CachedExperiment cachedExperiment = new CachedExperiment(id, "flag-h", variants(), ExperimentState.DRAFT, 12L);
+        CachedExperiment cachedExperiment =
+                new CachedExperiment(id, "flag-h", variants(), ExperimentState.DRAFT, 12L, null, null);
 
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-h"));
         when(experimentCache.getOrLoad(eq("flag-h"), any(Supplier.class))).thenReturn(Optional.of(cachedExperiment));
@@ -270,8 +283,10 @@ class ExperimentServiceTest {
 
     @Test
     void getAll_shouldReturnMappedResponses() {
-        Experiment first = new Experiment(UUID.randomUUID(), "flag-j", variants(), ExperimentState.DRAFT, 1L);
-        Experiment second = new Experiment(UUID.randomUUID(), "flag-k", variants(), ExperimentState.ARCHIVED, 2L);
+        Experiment first =
+                new Experiment(UUID.randomUUID(), "flag-j", variants(), ExperimentState.DRAFT, 1L, null, null);
+        Experiment second =
+                new Experiment(UUID.randomUUID(), "flag-k", variants(), ExperimentState.ARCHIVED, 2L, null, null);
         when(experimentRepository.findAll()).thenReturn(List.of(first, second));
 
         List<ExperimentResponse> responses = experimentService.getAll();

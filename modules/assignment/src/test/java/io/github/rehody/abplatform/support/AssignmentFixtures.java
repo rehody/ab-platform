@@ -19,7 +19,7 @@ public final class AssignmentFixtures {
 
     public static Experiment experiment(
             String flagKey, List<ExperimentVariant> variants, ExperimentState state, long version) {
-        return new Experiment(UUID.randomUUID(), flagKey, List.copyOf(variants), state, version);
+        return new Experiment(UUID.randomUUID(), flagKey, List.copyOf(variants), state, version, null, null);
     }
 
     public static ExperimentVariant variant(int position, String key, String value, BigDecimal weight) {

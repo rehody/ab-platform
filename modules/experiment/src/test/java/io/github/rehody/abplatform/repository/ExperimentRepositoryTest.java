@@ -275,7 +275,7 @@ class ExperimentRepositoryTest {
     }
 
     private Experiment experiment(String flagKey, long version) {
-        return new Experiment(UUID.randomUUID(), flagKey, variants(), ExperimentState.RUNNING, version);
+        return new Experiment(UUID.randomUUID(), flagKey, variants(), ExperimentState.RUNNING, version, null, null);
     }
 
     private List<ExperimentVariant> variants() {

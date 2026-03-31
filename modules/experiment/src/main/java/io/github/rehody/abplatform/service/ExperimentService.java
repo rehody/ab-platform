@@ -9,10 +9,12 @@ import io.github.rehody.abplatform.exception.ExperimentAlreadyExistsException;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
+import io.github.rehody.abplatform.policy.ExperimentTimestampPolicy;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
 import io.github.rehody.abplatform.repository.ExperimentRepository.ReplaceVariantsResult;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
 import io.github.rehody.abplatform.util.lock.LockNamespace;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,6 +35,7 @@ public class ExperimentService {
     private final ServiceActionExecutor serviceActionExecutor;
     private final ExperimentCache experimentCache;
     private final ExperimentAssignmentPolicy experimentAssignmentPolicy;
+    private final ExperimentTimestampPolicy experimentTimestampPolicy;
 
     @Transactional
     public ExperimentResponse create(ExperimentCreateRequest request) {
@@ -50,7 +53,9 @@ public class ExperimentService {
     }
 
     private Experiment buildExperiment(ExperimentCreateRequest request) {
-        return new Experiment(UUID.randomUUID(), request.flagKey(), request.variants(), request.state(), 0L);
+        Experiment experiment = new Experiment(
+                UUID.randomUUID(), request.flagKey(), request.variants(), request.state(), 0L, null, null);
+        return experimentTimestampPolicy.initializeTimestamps(experiment, Instant.now());
     }
 
     private void ensureExperimentNotExists(String flagKey) {

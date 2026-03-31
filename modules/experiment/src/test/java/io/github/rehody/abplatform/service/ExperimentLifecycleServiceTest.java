@@ -20,6 +20,7 @@ import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
 import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
+import io.github.rehody.abplatform.policy.ExperimentTimestampPolicy;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
 import io.github.rehody.abplatform.repository.ExperimentRepository.UpdateOutcome;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
@@ -52,6 +53,9 @@ class ExperimentLifecycleServiceTest {
     @Mock
     private ExperimentAssignmentPolicy experimentAssignmentPolicy;
 
+    @Mock
+    private ExperimentTimestampPolicy experimentTimestampPolicy;
+
     private ExperimentLifecycleService experimentLifecycleService;
 
     @BeforeEach
@@ -61,10 +65,15 @@ class ExperimentLifecycleServiceTest {
                 lockExecutor,
                 new ServiceActionExecutor(),
                 experimentCache,
-                experimentAssignmentPolicy);
+                experimentAssignmentPolicy,
+                experimentTimestampPolicy);
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(2)).get());
+        lenient()
+                .when(experimentTimestampPolicy.applyTransitionTimestamps(
+                        any(Experiment.class), any(Experiment.class), any()))
+                .thenAnswer(invocation -> invocation.getArgument(1));
     }
 
     @Test
@@ -247,7 +256,7 @@ class ExperimentLifecycleServiceTest {
     }
 
     private Experiment experiment(UUID id, String flagKey, ExperimentState state, long version) {
-        return new Experiment(id, flagKey, variants(), state, version);
+        return new Experiment(id, flagKey, variants(), state, version, null, null);
     }
 
     private List<ExperimentVariant> variants() {

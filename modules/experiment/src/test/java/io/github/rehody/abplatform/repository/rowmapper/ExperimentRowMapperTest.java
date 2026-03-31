@@ -7,6 +7,8 @@ import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,11 +26,15 @@ class ExperimentRowMapperTest {
     @Test
     void mapRow_shouldMapAllColumnsAndCreateExperiment() throws SQLException {
         UUID id = UUID.randomUUID();
+        Instant startedAt = Instant.parse("2026-03-30T10:15:30Z");
+        Instant completedAt = Instant.parse("2026-03-30T11:15:30Z");
 
         when(resultSet.getObject("id", UUID.class)).thenReturn(id);
         when(resultSet.getString("flag_key")).thenReturn("checkout-redesign");
         when(resultSet.getString("state")).thenReturn("RUNNING");
         when(resultSet.getLong("version")).thenReturn(5L);
+        when(resultSet.getTimestamp("started_at")).thenReturn(Timestamp.from(startedAt));
+        when(resultSet.getTimestamp("completed_at")).thenReturn(Timestamp.from(completedAt));
 
         Experiment experiment = rowMapper.mapRow(resultSet, 0);
 
@@ -37,5 +43,7 @@ class ExperimentRowMapperTest {
         assertThat(experiment.variants()).isEmpty();
         assertThat(experiment.state()).isEqualTo(ExperimentState.RUNNING);
         assertThat(experiment.version()).isEqualTo(5L);
+        assertThat(experiment.startedAt()).isEqualTo(startedAt);
+        assertThat(experiment.completedAt()).isEqualTo(completedAt);
     }
 }

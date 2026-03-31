@@ -14,14 +14,16 @@ import org.springframework.stereotype.Repository;
 public class ExperimentJdbcRepository {
 
     private static final String INSERT_EXPERIMENT_SQL = """
-        INSERT INTO experiments (id, flag_key, state, version)
-        VALUES (:id, :flagKey, :state, :version)
+        INSERT INTO experiments (id, flag_key, state, version, started_at, completed_at)
+        VALUES (:id, :flagKey, :state, :version, :startedAt, :completedAt)
         """;
 
     private static final String UPDATE_EXPERIMENT_SQL = """
         UPDATE experiments
         SET flag_key = :flagKey,
             state = :state,
+            started_at = :startedAt,
+            completed_at = :completedAt,
             version = version + 1
         WHERE id = :id
           AND version = :expectedVersion
@@ -48,19 +50,19 @@ public class ExperimentJdbcRepository {
         """;
 
     private static final String SELECT_EXPERIMENT_BY_ID_SQL = """
-        SELECT id, flag_key, state, version
+        SELECT id, flag_key, state, version, started_at, completed_at
         FROM experiments
         WHERE id = :id
         """;
 
     private static final String SELECT_EXPERIMENT_BY_FLAG_KEY_SQL = """
-        SELECT id, flag_key, state, version
+        SELECT id, flag_key, state, version, started_at, completed_at
         FROM experiments
         WHERE flag_key = :flagKey
         """;
 
     private static final String SELECT_ALL_EXPERIMENTS_SQL = """
-        SELECT id, flag_key, state, version
+        SELECT id, flag_key, state, version, started_at, completed_at
         FROM experiments
         ORDER BY created_at DESC, id
         """;
@@ -96,6 +98,8 @@ public class ExperimentJdbcRepository {
                 .param("flagKey", experiment.flagKey())
                 .param("state", experiment.state().name())
                 .param("version", experiment.version())
+                .param("startedAt", experiment.startedAt())
+                .param("completedAt", experiment.completedAt())
                 .update();
     }
 
@@ -144,6 +148,8 @@ public class ExperimentJdbcRepository {
                 .param("id", experiment.id())
                 .param("flagKey", experiment.flagKey())
                 .param("state", experiment.state().name())
+                .param("startedAt", experiment.startedAt())
+                .param("completedAt", experiment.completedAt())
                 .param("expectedVersion", experiment.version())
                 .query(Long.class)
                 .optional();

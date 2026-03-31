@@ -62,6 +62,8 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                             flag_key VARCHAR(255) NOT NULL REFERENCES feature_flags (feature_key),
                             state VARCHAR(16) NOT NULL,
                             version BIGINT NOT NULL DEFAULT 0,
+                            started_at TIMESTAMPTZ NULL,
+                            completed_at TIMESTAMPTZ NULL,
                             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                             updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
                         )
@@ -106,7 +108,9 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                                 4,
                                 BigDecimal.ONE)),
                 ExperimentState.DRAFT,
-                0L);
+                0L,
+                null,
+                null);
 
         experimentRepository.save(experiment);
         Experiment loaded = experimentRepository.findById(experimentId).orElseThrow();
@@ -140,7 +144,9 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                         0,
                         BigDecimal.ONE)),
                 ExperimentState.RUNNING,
-                0L);
+                0L,
+                null,
+                null);
         Experiment second = new Experiment(
                 UUID.randomUUID(),
                 secondFlagKey,
@@ -151,7 +157,9 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                         0,
                         BigDecimal.ONE)),
                 ExperimentState.APPROVED,
-                0L);
+                0L,
+                null,
+                null);
 
         experimentRepository.save(first);
         experimentRepository.save(second);
@@ -186,11 +194,13 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                         0,
                         BigDecimal.ONE)),
                 ExperimentState.DRAFT,
-                0L);
+                0L,
+                null,
+                null);
         experimentRepository.save(initial);
 
         ExperimentRepository.UpdateOutcome result = experimentRepository.update(
-                new Experiment(initial.id(), flagKey, initial.variants(), ExperimentState.RUNNING, 0L));
+                new Experiment(initial.id(), flagKey, initial.variants(), ExperimentState.RUNNING, 0L, null, null));
         Experiment updated = experimentRepository.findById(initial.id()).orElseThrow();
 
         assertThat(result.status()).isEqualTo(ExperimentRepository.UpdateStatus.UPDATED);
@@ -214,13 +224,15 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                         0,
                         BigDecimal.ONE)),
                 ExperimentState.DRAFT,
-                0L);
+                0L,
+                null,
+                null);
         experimentRepository.save(persisted);
 
-        ExperimentRepository.UpdateOutcome staleResult = experimentRepository.update(
-                new Experiment(persisted.id(), flagKey, persisted.variants(), ExperimentState.APPROVED, 9L));
+        ExperimentRepository.UpdateOutcome staleResult = experimentRepository.update(new Experiment(
+                persisted.id(), flagKey, persisted.variants(), ExperimentState.APPROVED, 9L, null, null));
         ExperimentRepository.UpdateOutcome missingResult = experimentRepository.update(
-                new Experiment(UUID.randomUUID(), flagKey, List.of(), ExperimentState.APPROVED, 0L));
+                new Experiment(UUID.randomUUID(), flagKey, List.of(), ExperimentState.APPROVED, 0L, null, null));
 
         assertThat(staleResult.status()).isEqualTo(ExperimentRepository.UpdateStatus.VERSION_CONFLICT);
         assertThat(staleResult.version()).isNull();
@@ -252,7 +264,9 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                                 1,
                                 BigDecimal.ONE)),
                 ExperimentState.RUNNING,
-                0L);
+                0L,
+                null,
+                null);
         experimentRepository.save(experiment);
 
         ExperimentRepository.ReplaceVariantsResult result = experimentRepository.replaceVariants(
@@ -300,7 +314,9 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                         0,
                         BigDecimal.ONE)),
                 ExperimentState.RUNNING,
-                0L);
+                0L,
+                null,
+                null);
         experimentRepository.save(experiment);
 
         ExperimentRepository.ReplaceVariantsResult staleResult = experimentRepository.replaceVariants(
@@ -341,7 +357,9 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                         0,
                         BigDecimal.ONE)),
                 ExperimentState.APPROVED,
-                0L);
+                0L,
+                null,
+                null);
         experimentRepository.save(experiment);
 
         assertThat(experimentRepository.existsById(experiment.id())).isTrue();
