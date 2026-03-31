@@ -3,6 +3,7 @@ package io.github.rehody.abplatform.controller;
 import io.github.rehody.abplatform.dto.request.ExperimentCreateRequest;
 import io.github.rehody.abplatform.dto.request.ExperimentUpdateRequest;
 import io.github.rehody.abplatform.dto.response.ExperimentResponse;
+import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.service.ExperimentService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -28,21 +29,25 @@ public class ExperimentController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ExperimentResponse create(@Valid @RequestBody ExperimentCreateRequest request) {
-        return experimentService.create(request);
+        Experiment experiment = experimentService.create(request.flagKey(), request.variants(), request.state());
+        return ExperimentResponse.from(experiment);
     }
 
     @PatchMapping("/{id}")
     public ExperimentResponse update(@PathVariable UUID id, @Valid @RequestBody ExperimentUpdateRequest request) {
-        return experimentService.update(id, request);
+        Experiment experiment = experimentService.update(id, request.variants(), request.version());
+        return ExperimentResponse.from(experiment);
     }
 
     @GetMapping("/{id}")
     public ExperimentResponse get(@PathVariable UUID id) {
-        return experimentService.getById(id);
+        Experiment experiment = experimentService.getById(id);
+        return ExperimentResponse.from(experiment);
     }
 
     @GetMapping
     public List<ExperimentResponse> getAll() {
-        return experimentService.getAll();
+        List<Experiment> experiments = experimentService.getAll();
+        return experiments.stream().map(ExperimentResponse::from).toList();
     }
 }

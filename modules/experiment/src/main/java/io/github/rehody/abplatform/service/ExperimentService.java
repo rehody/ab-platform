@@ -2,23 +2,19 @@ package io.github.rehody.abplatform.service;
 
 import io.github.rehody.abplatform.cache.CachedExperiment;
 import io.github.rehody.abplatform.cache.ExperimentCache;
-import io.github.rehody.abplatform.dto.request.ExperimentCreateRequest;
-import io.github.rehody.abplatform.dto.request.ExperimentUpdateRequest;
-import io.github.rehody.abplatform.dto.response.ExperimentResponse;
+import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.exception.ExperimentAlreadyExistsException;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
 import io.github.rehody.abplatform.policy.ExperimentTimestampPolicy;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
 import io.github.rehody.abplatform.repository.ExperimentRepository.ReplaceVariantsResult;
-import io.github.rehody.abplatform.util.lock.LockExecutor;
-import io.github.rehody.abplatform.util.lock.LockNamespace;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
@@ -28,33 +24,28 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ExperimentService {
 
-    private static final LockNamespace EXPERIMENT_LOCK_NAMESPACE = LockNamespace.of("experiment");
-
     private final ExperimentRepository experimentRepository;
-    private final LockExecutor lockExecutor;
-    private final ServiceActionExecutor serviceActionExecutor;
+    private final ExperimentCommandSupport experimentCommandSupport;
     private final ExperimentCache experimentCache;
     private final ExperimentAssignmentPolicy experimentAssignmentPolicy;
     private final ExperimentTimestampPolicy experimentTimestampPolicy;
 
     @Transactional
-    public ExperimentResponse create(ExperimentCreateRequest request) {
-        String flagKey = request.flagKey();
-        return executeUnderLock(flagKey, () -> {
+    public Experiment create(String flagKey, List<ExperimentVariant> variants, ExperimentState state) {
+        return experimentCommandSupport.withExperimentLock(flagKey, () -> {
             ensureExperimentNotExists(flagKey);
 
-            Experiment experiment = buildExperiment(request);
+            Experiment experiment = buildExperiment(flagKey, variants, state);
             experimentAssignmentPolicy.validateAssignmentInvariants(experiment);
             experimentRepository.save(experiment);
-            invalidateCacheAfterCommit(flagKey);
+            experimentCommandSupport.invalidateCacheAfterCommit(flagKey);
 
-            return ExperimentResponse.from(experiment);
+            return experiment;
         });
     }
 
-    private Experiment buildExperiment(ExperimentCreateRequest request) {
-        Experiment experiment = new Experiment(
-                UUID.randomUUID(), request.flagKey(), request.variants(), request.state(), 0L, null, null);
+    private Experiment buildExperiment(String flagKey, List<ExperimentVariant> variants, ExperimentState state) {
+        Experiment experiment = new Experiment(UUID.randomUUID(), flagKey, variants, state, 0L, null, null);
         return experimentTimestampPolicy.initializeTimestamps(experiment, Instant.now());
     }
 
@@ -66,35 +57,32 @@ public class ExperimentService {
     }
 
     @Transactional
-    public ExperimentResponse update(UUID id, ExperimentUpdateRequest request) {
-        String flagKey = findFlagKeyByIdOrThrow(id);
+    public Experiment update(UUID id, List<ExperimentVariant> variants, long version) {
+        String flagKey = experimentCommandSupport.getFlagKeyById(id);
 
-        return executeUnderLock(flagKey, () -> {
-            validateAssignmentInvariantsForUpdatedVariants(id, request);
-            replaceVariantsAndCheckOptimisticLocking(id, request);
-            invalidateCacheAfterCommit(flagKey);
-            Experiment experiment = findByIdOrThrow(id);
-            return ExperimentResponse.from(experiment);
+        return experimentCommandSupport.withExperimentLock(flagKey, () -> {
+            validateAssignmentInvariantsForUpdatedVariants(id, variants);
+            replaceVariantsAndCheckOptimisticLocking(id, variants, version);
+            experimentCommandSupport.invalidateCacheAfterCommit(flagKey);
+            return experimentCommandSupport.getById(id);
         });
     }
 
     @Transactional(readOnly = true)
-    public ExperimentResponse getById(UUID id) {
-        String flagKey = findFlagKeyByIdOrThrow(id);
+    public Experiment getById(UUID id) {
+        String flagKey = experimentCommandSupport.getFlagKeyById(id);
 
         return experimentCache
                 .getOrLoad(
                         flagKey,
                         () -> experimentRepository.findByFlagKey(flagKey).map(CachedExperiment::from))
-                .map(CachedExperiment::toResponse)
+                .map(CachedExperiment::toModel)
                 .orElseThrow(() -> new ExperimentNotFoundException("Experiment '%s' not found".formatted(id)));
     }
 
     @Transactional(readOnly = true)
-    public List<ExperimentResponse> getAll() {
-        return experimentRepository.findAll().stream()
-                .map(ExperimentResponse::from)
-                .toList();
+    public List<Experiment> getAll() {
+        return experimentRepository.findAll();
     }
 
     @Transactional(readOnly = true)
@@ -106,43 +94,23 @@ public class ExperimentService {
                 .map(CachedExperiment::toModel);
     }
 
-    private void replaceVariantsAndCheckOptimisticLocking(UUID experimentId, ExperimentUpdateRequest request) {
-        ReplaceVariantsResult result =
-                experimentRepository.replaceVariants(experimentId, request.version(), request.variants());
+    private void replaceVariantsAndCheckOptimisticLocking(
+            UUID experimentId, List<ExperimentVariant> variants, long version) {
+        ReplaceVariantsResult result = experimentRepository.replaceVariants(experimentId, version, variants);
 
         switch (result) {
             case NOT_FOUND ->
                 throw new ExperimentNotFoundException("Experiment '%s' not found".formatted(experimentId));
 
             case VERSION_CONFLICT ->
-                throw new OptimisticLockingFailureException("Experiment '%s' version mismatch. Expected version %d"
-                        .formatted(experimentId, request.version()));
+                throw new OptimisticLockingFailureException(
+                        "Experiment '%s' version mismatch. Expected version %d".formatted(experimentId, version));
         }
     }
 
-    private void validateAssignmentInvariantsForUpdatedVariants(UUID experimentId, ExperimentUpdateRequest request) {
-        Experiment currentExperiment = findByIdOrThrow(experimentId);
-        Experiment updatedExperiment = currentExperiment.withVariants(request.variants());
+    private void validateAssignmentInvariantsForUpdatedVariants(UUID experimentId, List<ExperimentVariant> variants) {
+        Experiment currentExperiment = experimentCommandSupport.getById(experimentId);
+        Experiment updatedExperiment = currentExperiment.withVariants(variants);
         experimentAssignmentPolicy.validateAssignmentInvariants(updatedExperiment);
-    }
-
-    private Experiment findByIdOrThrow(UUID id) {
-        return experimentRepository
-                .findById(id)
-                .orElseThrow(() -> new ExperimentNotFoundException("Experiment '%s' not found".formatted(id)));
-    }
-
-    private String findFlagKeyByIdOrThrow(UUID id) {
-        return experimentRepository
-                .findFlagKeyById(id)
-                .orElseThrow(() -> new ExperimentNotFoundException("Experiment '%s' not found".formatted(id)));
-    }
-
-    private void invalidateCacheAfterCommit(String flagKey) {
-        serviceActionExecutor.executeAfterCommit(() -> experimentCache.invalidate(flagKey));
-    }
-
-    private <T> T executeUnderLock(String key, Supplier<T> action) {
-        return lockExecutor.withLock(EXPERIMENT_LOCK_NAMESPACE, key, action);
     }
 }

@@ -1,15 +1,13 @@
 package io.github.rehody.abplatform.report.service;
 
-import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
-import io.github.rehody.abplatform.exception.MetricDefinitionNotFoundException;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
-import io.github.rehody.abplatform.metric.repository.MetricDefinitionRepository;
+import io.github.rehody.abplatform.metric.service.MetricDefinitionService;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
-import io.github.rehody.abplatform.report.dto.response.ExperimentMetricReportResponse;
 import io.github.rehody.abplatform.report.factory.CountableMetricReportAssembler;
 import io.github.rehody.abplatform.report.factory.ExperimentReportWindowFactory;
 import io.github.rehody.abplatform.report.factory.UniqueMetricReportAssembler;
+import io.github.rehody.abplatform.report.model.ExperimentMetricReport;
 import io.github.rehody.abplatform.report.model.ExperimentReportWindow;
 import io.github.rehody.abplatform.report.repository.AssignmentEventReportRepository;
 import io.github.rehody.abplatform.report.repository.CountableMetricEventReportRepository;
@@ -17,7 +15,7 @@ import io.github.rehody.abplatform.report.repository.UniqueMetricEventReportRepo
 import io.github.rehody.abplatform.report.repository.aggregate.AssignmentVariantAggregate;
 import io.github.rehody.abplatform.report.repository.aggregate.CountableMetricVariantAggregate;
 import io.github.rehody.abplatform.report.repository.aggregate.UniqueMetricVariantAggregate;
-import io.github.rehody.abplatform.repository.ExperimentRepository;
+import io.github.rehody.abplatform.service.ExperimentService;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -32,8 +30,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ExperimentReportService {
 
-    private final ExperimentRepository experimentRepository;
-    private final MetricDefinitionRepository metricDefinitionRepository;
+    private final ExperimentService experimentService;
+    private final MetricDefinitionService metricDefinitionService;
     private final AssignmentEventReportRepository assignmentEventReportRepository;
     private final UniqueMetricEventReportRepository uniqueMetricEventReportRepository;
     private final CountableMetricEventReportRepository countableMetricEventReportRepository;
@@ -41,12 +39,12 @@ public class ExperimentReportService {
     private final UniqueMetricReportAssembler uniqueReportAssembler;
     private final CountableMetricReportAssembler countableReportAssembler;
 
-    public ExperimentMetricReportResponse getExperimentReport(UUID experimentId, String metricKey) {
+    public ExperimentMetricReport getExperimentReport(UUID experimentId, String metricKey) {
         Instant now = Instant.now();
 
-        Experiment experiment = findExperimentOrThrow(experimentId);
+        Experiment experiment = experimentService.getById(experimentId);
         ExperimentReportWindow reportWindow = experimentReportWindowFactory.create(experiment, now);
-        MetricDefinition metricDefinition = findMetricDefinitionOrThrow(metricKey);
+        MetricDefinition metricDefinition = metricDefinitionService.getByKey(metricKey);
 
         List<ExperimentVariant> orderedVariants = sortVariantsByPosition(experiment.variants());
 
@@ -76,20 +74,6 @@ public class ExperimentReportService {
                                         experiment.id(), metricDefinition.key(), reportWindow)),
                         reportWindow);
         };
-    }
-
-    private Experiment findExperimentOrThrow(UUID experimentId) {
-        return experimentRepository
-                .findById(experimentId)
-                .orElseThrow(
-                        () -> new ExperimentNotFoundException("Experiment '%s' not found".formatted(experimentId)));
-    }
-
-    private MetricDefinition findMetricDefinitionOrThrow(String metricKey) {
-        return metricDefinitionRepository
-                .findByKey(metricKey)
-                .orElseThrow(() ->
-                        new MetricDefinitionNotFoundException("Metric definition '%s' not found".formatted(metricKey)));
     }
 
     private List<ExperimentVariant> sortVariantsByPosition(List<ExperimentVariant> variants) {

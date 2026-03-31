@@ -12,12 +12,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.github.rehody.abplatform.dto.request.AssignmentRequest;
-import io.github.rehody.abplatform.dto.response.AssignmentResponse;
-import io.github.rehody.abplatform.dto.response.FeatureFlagResponse;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
+import io.github.rehody.abplatform.model.FeatureFlag;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
 import java.util.List;
@@ -56,13 +54,13 @@ class AssignmentServiceTest {
     void resolve_shouldReturnDefaultFlagValueWhenExperimentMissing() {
         UUID userId = UUID.randomUUID();
         FeatureValue defaultValue = boolValue(true);
-        AssignmentRequest request = new AssignmentRequest(userId, "flag-a");
         when(experimentService.findByFlagKey("flag-a")).thenReturn(Optional.empty());
-        when(featureFlagService.getByKey("flag-a")).thenReturn(new FeatureFlagResponse("flag-a", defaultValue, 3L));
+        when(featureFlagService.getByKey("flag-a"))
+                .thenReturn(new FeatureFlag(UUID.randomUUID(), "flag-a", defaultValue, 3L));
 
-        AssignmentResponse response = assignmentService.resolve(request);
+        FeatureValue response = assignmentService.resolve(userId, "flag-a");
 
-        assertThat(response).isEqualTo(AssignmentResponse.of(defaultValue));
+        assertThat(response).isEqualTo(defaultValue);
         verify(featureFlagService).getByKey("flag-a");
         verify(experimentAssignmentPolicy, never()).canResolveAssignment(any());
         verify(experimentVariantResolver, never()).resolve(any(), any());
@@ -74,14 +72,14 @@ class AssignmentServiceTest {
         Experiment experiment =
                 experiment("flag-b", List.of(variant(0, "control", "blue", 1)), ExperimentState.PAUSED, 2L);
         FeatureValue defaultValue = stringValue("gray");
-        AssignmentRequest request = new AssignmentRequest(userId, "flag-b");
         when(experimentService.findByFlagKey("flag-b")).thenReturn(Optional.of(experiment));
         when(experimentAssignmentPolicy.canResolveAssignment(experiment)).thenReturn(false);
-        when(featureFlagService.getByKey("flag-b")).thenReturn(new FeatureFlagResponse("flag-b", defaultValue, 1L));
+        when(featureFlagService.getByKey("flag-b"))
+                .thenReturn(new FeatureFlag(UUID.randomUUID(), "flag-b", defaultValue, 1L));
 
-        AssignmentResponse response = assignmentService.resolve(request);
+        FeatureValue response = assignmentService.resolve(userId, "flag-b");
 
-        assertThat(response).isEqualTo(AssignmentResponse.of(defaultValue));
+        assertThat(response).isEqualTo(defaultValue);
         verify(experimentAssignmentPolicy).canResolveAssignment(experiment);
         verify(experimentVariantResolver, never()).resolve(any(), any());
     }
@@ -91,14 +89,13 @@ class AssignmentServiceTest {
         UUID userId = UUID.randomUUID();
         Experiment experiment = runningExperiment("flag-c", List.of(variant(0, "control", "green", 1)), 5L);
         ExperimentVariant variant = variant(0, "treatment", "red", 2);
-        AssignmentRequest request = new AssignmentRequest(userId, "flag-c");
         when(experimentService.findByFlagKey("flag-c")).thenReturn(Optional.of(experiment));
         when(experimentAssignmentPolicy.canResolveAssignment(experiment)).thenReturn(true);
         when(experimentVariantResolver.resolve(experiment, userId)).thenReturn(variant);
 
-        AssignmentResponse response = assignmentService.resolve(request);
+        FeatureValue response = assignmentService.resolve(userId, "flag-c");
 
-        assertThat(response).isEqualTo(AssignmentResponse.of(variant.value()));
+        assertThat(response).isEqualTo(variant.value());
         verify(experimentVariantResolver).resolve(experiment, userId);
         verify(featureFlagService, never()).getByKey(anyString());
     }

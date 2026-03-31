@@ -3,8 +3,8 @@ package io.github.rehody.abplatform.report.factory;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
-import io.github.rehody.abplatform.report.dto.response.CountableMetricReportResponse;
-import io.github.rehody.abplatform.report.dto.response.CountableMetricReportResponse.CountableVariantSummary;
+import io.github.rehody.abplatform.report.model.CountableMetricReport;
+import io.github.rehody.abplatform.report.model.CountableMetricReport.CountableVariantSummary;
 import io.github.rehody.abplatform.report.model.ExperimentReportWindow;
 import io.github.rehody.abplatform.report.repository.aggregate.CountableMetricVariantAggregate;
 import java.math.BigDecimal;
@@ -23,7 +23,7 @@ public class CountableMetricReportAssembler {
 
     private final ExperimentReportMetaFactory experimentReportMetaFactory;
 
-    public CountableMetricReportResponse assemble(
+    public CountableMetricReport assemble(
             Experiment experiment,
             MetricDefinition metricDefinition,
             List<ExperimentVariant> orderedVariants,
@@ -47,7 +47,7 @@ public class CountableMetricReportAssembler {
                 .mapToInt(CountableVariantSummary::totalMetricEvents)
                 .sum();
 
-        return new CountableMetricReportResponse(
+        return new CountableMetricReport(
                 experimentReportMetaFactory.create(experiment, metricDefinition, reportWindow),
                 totalParticipants,
                 participantsWithMetricEvent,

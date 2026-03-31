@@ -2,9 +2,6 @@ package io.github.rehody.abplatform.service;
 
 import io.github.rehody.abplatform.cache.CachedFeatureFlag;
 import io.github.rehody.abplatform.cache.FeatureFlagCache;
-import io.github.rehody.abplatform.dto.request.FeatureFlagCreateRequest;
-import io.github.rehody.abplatform.dto.request.FeatureFlagUpdateRequest;
-import io.github.rehody.abplatform.dto.response.FeatureFlagResponse;
 import io.github.rehody.abplatform.exception.FeatureFlagAlreadyExistsException;
 import io.github.rehody.abplatform.exception.FeatureFlagNotFoundException;
 import io.github.rehody.abplatform.model.FeatureFlag;
@@ -31,18 +28,17 @@ public class FeatureFlagService {
     private final FeatureFlagCache featureFlagCache;
 
     @Transactional
-    public FeatureFlagResponse create(FeatureFlagCreateRequest request) {
-        String key = request.key();
+    public FeatureFlag create(String key, FeatureValue defaultValue) {
         return executeUnderLock(key, () -> {
             if (featureFlagRepository.existsByKey(key)) {
                 throw new FeatureFlagAlreadyExistsException("Feature flag '%s' already exists".formatted(key));
             }
 
-            FeatureFlag featureFlag = buildFeatureFlag(key, request.defaultValue());
+            FeatureFlag featureFlag = buildFeatureFlag(key, defaultValue);
             featureFlagRepository.save(featureFlag);
             invalidateCacheAfterCommit(key);
 
-            return FeatureFlagResponse.from(featureFlag);
+            return featureFlag;
         });
     }
 
@@ -51,38 +47,31 @@ public class FeatureFlagService {
     }
 
     @Transactional
-    public FeatureFlagResponse update(String key, FeatureFlagUpdateRequest request) {
+    public FeatureFlag update(String key, FeatureValue defaultValue, long version) {
         return executeUnderLock(key, () -> {
-            updateAndCheckOptimisticLocking(key, request);
+            updateAndCheckOptimisticLocking(key, defaultValue, version);
             invalidateCacheAfterCommit(key);
 
-            FeatureFlag featureFlag = findByKeyOrThrow(key);
-            return FeatureFlagResponse.from(featureFlag);
+            return getByKey(key);
         });
     }
 
-    private void updateAndCheckOptimisticLocking(String key, FeatureFlagUpdateRequest request) {
-        int affectedRows = featureFlagRepository.update(key, request.defaultValue(), request.version());
+    private void updateAndCheckOptimisticLocking(String key, FeatureValue defaultValue, long version) {
+        int affectedRows = featureFlagRepository.update(key, defaultValue, version);
         if (affectedRows == 0) {
             if (!featureFlagRepository.existsByKey(key)) {
                 throw new FeatureFlagNotFoundException("Feature flag '%s' not found".formatted(key));
             }
             throw new OptimisticLockingFailureException(
-                    "Feature flag '%s' version mismatch. Expected version %d".formatted(key, request.version()));
+                    "Feature flag '%s' version mismatch. Expected version %d".formatted(key, version));
         }
     }
 
-    private FeatureFlag findByKeyOrThrow(String key) {
-        return featureFlagRepository
-                .findByKey(key)
-                .orElseThrow(() -> new FeatureFlagNotFoundException("Feature flag '%s' not found".formatted(key)));
-    }
-
     @Transactional(readOnly = true)
-    public FeatureFlagResponse getByKey(String key) {
+    public FeatureFlag getByKey(String key) {
         return featureFlagCache
                 .getOrLoad(key, () -> featureFlagRepository.findByKey(key).map(CachedFeatureFlag::from))
-                .map(CachedFeatureFlag::toResponse)
+                .map(CachedFeatureFlag::toModel)
                 .orElseThrow(() -> new FeatureFlagNotFoundException("Feature flag '%s' not found".formatted(key)));
     }
 

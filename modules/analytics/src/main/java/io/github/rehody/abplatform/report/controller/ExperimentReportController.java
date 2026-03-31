@@ -1,6 +1,7 @@
 package io.github.rehody.abplatform.report.controller;
 
 import io.github.rehody.abplatform.report.dto.response.ExperimentMetricReportResponse;
+import io.github.rehody.abplatform.report.model.ExperimentMetricReport;
 import io.github.rehody.abplatform.report.service.ExperimentReportService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,8 @@ public class ExperimentReportController {
     @GetMapping("/{experimentId}/metrics/{metricKey}")
     public ExperimentMetricReportResponse getExperimentReport(
             @PathVariable UUID experimentId, @PathVariable String metricKey) {
-        return experimentReportService.getExperimentReport(experimentId, metricKey);
+        ExperimentMetricReport experimentMetricReport =
+                experimentReportService.getExperimentReport(experimentId, metricKey);
+        return ExperimentMetricReportResponse.from(experimentMetricReport);
     }
 }

@@ -1,11 +1,10 @@
 package io.github.rehody.abplatform.service;
 
-import io.github.rehody.abplatform.dto.request.AssignmentRequest;
-import io.github.rehody.abplatform.dto.response.AssignmentResponse;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,23 +17,17 @@ public class AssignmentService {
     private final ExperimentVariantResolver experimentVariantResolver;
     private final ExperimentAssignmentPolicy experimentAssignmentPolicy;
 
-    public AssignmentResponse resolve(AssignmentRequest request) {
-        String flagKey = request.flagKey();
+    public FeatureValue resolve(UUID userId, String flagKey) {
         Optional<Experiment> experiment = findResolvableExperiment(flagKey);
         if (experiment.isEmpty()) {
             return defaultAssignment(flagKey);
         }
 
-        FeatureValue value = experimentVariantResolver
-                .resolve(experiment.get(), request.userId())
-                .value();
-
-        return AssignmentResponse.of(value);
+        return experimentVariantResolver.resolve(experiment.get(), userId).value();
     }
 
-    private AssignmentResponse defaultAssignment(String flagKey) {
-        FeatureValue defaultValue = featureFlagService.getByKey(flagKey).defaultValue();
-        return AssignmentResponse.of(defaultValue);
+    private FeatureValue defaultAssignment(String flagKey) {
+        return featureFlagService.getByKey(flagKey).defaultValue();
     }
 
     private Optional<Experiment> findResolvableExperiment(String flagKey) {

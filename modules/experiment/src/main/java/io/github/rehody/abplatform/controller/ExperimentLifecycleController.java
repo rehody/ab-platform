@@ -2,6 +2,7 @@ package io.github.rehody.abplatform.controller;
 
 import io.github.rehody.abplatform.dto.request.ExperimentStateTransitionRequest;
 import io.github.rehody.abplatform.dto.response.ExperimentResponse;
+import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.service.ExperimentLifecycleService;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -22,48 +23,56 @@ public class ExperimentLifecycleController {
     @PostMapping("/{id}/submit-for-review")
     public ExperimentResponse submitForReview(
             @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
-        return experimentLifecycleService.submitForReview(id, request);
+        Experiment experiment = experimentLifecycleService.submitForReview(id, request.version());
+        return ExperimentResponse.from(experiment);
     }
 
     @PostMapping("/{id}/approve")
     public ExperimentResponse approve(
             @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
-        return experimentLifecycleService.approve(id, request);
+        Experiment experiment = experimentLifecycleService.approve(id, request.version());
+        return ExperimentResponse.from(experiment);
     }
 
     @PostMapping("/{id}/reject")
     public ExperimentResponse reject(
             @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
-        return experimentLifecycleService.reject(id, request);
+        Experiment experiment = experimentLifecycleService.reject(id, request.version());
+        return ExperimentResponse.from(experiment);
     }
 
     @PostMapping("/{id}/start")
     public ExperimentResponse start(
             @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
-        return experimentLifecycleService.start(id, request);
+        Experiment experiment = experimentLifecycleService.start(id, request.version());
+        return ExperimentResponse.from(experiment);
     }
 
     @PostMapping("/{id}/pause")
     public ExperimentResponse pause(
             @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
-        return experimentLifecycleService.pause(id, request);
+        Experiment experiment = experimentLifecycleService.pause(id, request.version());
+        return ExperimentResponse.from(experiment);
     }
 
     @PostMapping("/{id}/resume")
     public ExperimentResponse resume(
             @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
-        return experimentLifecycleService.resume(id, request);
+        Experiment experiment = experimentLifecycleService.resume(id, request.version());
+        return ExperimentResponse.from(experiment);
     }
 
     @PostMapping("/{id}/complete")
     public ExperimentResponse complete(
             @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
-        return experimentLifecycleService.complete(id, request);
+        Experiment experiment = experimentLifecycleService.complete(id, request.version());
+        return ExperimentResponse.from(experiment);
     }
 
     @PostMapping("/{id}/archive")
     public ExperimentResponse archive(
             @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
-        return experimentLifecycleService.archive(id, request);
+        Experiment experiment = experimentLifecycleService.archive(id, request.version());
+        return ExperimentResponse.from(experiment);
     }
 }

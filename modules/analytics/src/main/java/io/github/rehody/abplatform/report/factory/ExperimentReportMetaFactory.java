@@ -2,7 +2,7 @@ package io.github.rehody.abplatform.report.factory;
 
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.model.Experiment;
-import io.github.rehody.abplatform.report.dto.response.ExperimentMetricReportMeta;
+import io.github.rehody.abplatform.report.model.ExperimentMetricReportMeta;
 import io.github.rehody.abplatform.report.model.ExperimentReportWindow;
 import org.springframework.stereotype.Component;
 

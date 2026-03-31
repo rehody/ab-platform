@@ -1,6 +1,5 @@
 package io.github.rehody.abplatform.cache;
 
-import io.github.rehody.abplatform.dto.response.ExperimentResponse;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
@@ -30,10 +29,6 @@ public record CachedExperiment(
                 experiment.version(),
                 experiment.startedAt(),
                 experiment.completedAt());
-    }
-
-    public ExperimentResponse toResponse() {
-        return new ExperimentResponse(flagKey, variants, state, version);
     }
 
     public Experiment toModel() {

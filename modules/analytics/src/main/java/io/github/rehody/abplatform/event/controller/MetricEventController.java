@@ -2,6 +2,7 @@ package io.github.rehody.abplatform.event.controller;
 
 import io.github.rehody.abplatform.event.dto.request.MetricEventCreateRequest;
 import io.github.rehody.abplatform.event.dto.response.MetricEventResponse;
+import io.github.rehody.abplatform.event.model.MetricEvent;
 import io.github.rehody.abplatform.event.service.MetricEventService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ public class MetricEventController {
 
     @PostMapping("/metrics")
     public MetricEventResponse create(@Valid @RequestBody MetricEventCreateRequest request) {
-        return metricEventService.create(request);
+        MetricEvent metricEvent = metricEventService.create(request.userId(), request.metricKey());
+        return MetricEventResponse.from(metricEvent);
     }
 }

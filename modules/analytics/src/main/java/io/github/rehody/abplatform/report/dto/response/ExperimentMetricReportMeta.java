@@ -16,4 +16,19 @@ public record ExperimentMetricReportMeta(
         Instant experimentCompletedAt,
 
         Instant trackedFrom,
-        Instant trackedTo) {}
+        Instant trackedTo) {
+
+    public static ExperimentMetricReportMeta from(
+            io.github.rehody.abplatform.report.model.ExperimentMetricReportMeta experimentMetricReportMeta) {
+        return new ExperimentMetricReportMeta(
+                experimentMetricReportMeta.experimentId(),
+                experimentMetricReportMeta.flagKey(),
+                experimentMetricReportMeta.metricKey(),
+                experimentMetricReportMeta.metricType(),
+                experimentMetricReportMeta.experimentState(),
+                experimentMetricReportMeta.experimentStartedAt(),
+                experimentMetricReportMeta.experimentCompletedAt(),
+                experimentMetricReportMeta.trackedFrom(),
+                experimentMetricReportMeta.trackedTo());
+    }
+}

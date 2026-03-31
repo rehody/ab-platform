@@ -3,9 +3,9 @@ package io.github.rehody.abplatform.report.factory;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
-import io.github.rehody.abplatform.report.dto.response.UniqueMetricReportResponse;
-import io.github.rehody.abplatform.report.dto.response.UniqueMetricReportResponse.UniqueVariantSummary;
 import io.github.rehody.abplatform.report.model.ExperimentReportWindow;
+import io.github.rehody.abplatform.report.model.UniqueMetricReport;
+import io.github.rehody.abplatform.report.model.UniqueMetricReport.UniqueVariantSummary;
 import io.github.rehody.abplatform.report.repository.aggregate.UniqueMetricVariantAggregate;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -23,7 +23,7 @@ public class UniqueMetricReportAssembler {
 
     private final ExperimentReportMetaFactory experimentReportMetaFactory;
 
-    public UniqueMetricReportResponse assemble(
+    public UniqueMetricReport assemble(
             Experiment experiment,
             MetricDefinition metricDefinition,
             List<ExperimentVariant> orderedVariants,
@@ -42,7 +42,7 @@ public class UniqueMetricReportAssembler {
                 .mapToInt(UniqueVariantSummary::participantsWithMetricEvent)
                 .sum();
 
-        return new UniqueMetricReportResponse(
+        return new UniqueMetricReport(
                 experimentReportMetaFactory.create(experiment, metricDefinition, reportWindow),
                 totalParticipants,
                 participantsWithMetricEvent,

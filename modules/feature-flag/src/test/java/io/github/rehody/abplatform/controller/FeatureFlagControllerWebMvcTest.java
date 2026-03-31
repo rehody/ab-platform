@@ -1,6 +1,5 @@
 package io.github.rehody.abplatform.controller;
 
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -11,12 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.rehody.abplatform.config.AbstractWebMvcTest;
-import io.github.rehody.abplatform.dto.request.FeatureFlagCreateRequest;
-import io.github.rehody.abplatform.dto.request.FeatureFlagUpdateRequest;
-import io.github.rehody.abplatform.dto.response.FeatureFlagResponse;
 import io.github.rehody.abplatform.exception.FeatureFlagAlreadyExistsException;
 import io.github.rehody.abplatform.exception.FeatureFlagExceptionHandler;
 import io.github.rehody.abplatform.exception.FeatureFlagNotFoundException;
+import io.github.rehody.abplatform.model.FeatureFlag;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
 import io.github.rehody.abplatform.service.FeatureFlagService;
@@ -28,6 +25,7 @@ import jakarta.validation.Validator;
 import jakarta.validation.constraints.NotBlank;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,11 +49,8 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
 
     @Test
     void create_shouldReturnCreatedAndBodyWhenRequestIsValid() throws Exception {
-        FeatureFlagCreateRequest request =
-                new FeatureFlagCreateRequest("flag-a", new FeatureValue(true, FeatureValueType.BOOL));
-        FeatureFlagResponse response =
-                new FeatureFlagResponse("flag-a", new FeatureValue(true, FeatureValueType.BOOL), 0L);
-        when(featureFlagService.create(eq(request))).thenReturn(response);
+        FeatureValue defaultValue = new FeatureValue(true, FeatureValueType.BOOL);
+        when(featureFlagService.create("flag-a", defaultValue)).thenReturn(featureFlag("flag-a", defaultValue, 0L));
 
         mockMvc.perform(post("/api/v1/flags").contentType(APPLICATION_JSON).content("""
                                 {"key":"flag-a","defaultValue":{"value":true,"type":"BOOL"}}
@@ -66,16 +61,13 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.defaultValue.type").value("BOOL"))
                 .andExpect(jsonPath("$.version").value(0));
 
-        verify(featureFlagService).create(request);
+        verify(featureFlagService).create("flag-a", defaultValue);
     }
 
     @Test
     void update_shouldReturnOkAndBodyWhenRequestIsValid() throws Exception {
-        FeatureFlagUpdateRequest request =
-                new FeatureFlagUpdateRequest(new FeatureValue("variant-a", FeatureValueType.STRING), 2L);
-        FeatureFlagResponse response =
-                new FeatureFlagResponse("flag-b", new FeatureValue("variant-a", FeatureValueType.STRING), 3L);
-        when(featureFlagService.update("flag-b", request)).thenReturn(response);
+        FeatureValue defaultValue = new FeatureValue("variant-a", FeatureValueType.STRING);
+        when(featureFlagService.update("flag-b", defaultValue, 2L)).thenReturn(featureFlag("flag-b", defaultValue, 3L));
 
         mockMvc.perform(put("/api/v1/flags/flag-b")
                         .contentType(APPLICATION_JSON)
@@ -88,14 +80,13 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.defaultValue.type").value("STRING"))
                 .andExpect(jsonPath("$.version").value(3));
 
-        verify(featureFlagService).update("flag-b", request);
+        verify(featureFlagService).update("flag-b", defaultValue, 2L);
     }
 
     @Test
     void get_shouldReturnOkAndBodyWhenFeatureFlagExists() throws Exception {
-        FeatureFlagResponse response =
-                new FeatureFlagResponse("flag-c", new FeatureValue(12, FeatureValueType.NUMBER), 4L);
-        when(featureFlagService.getByKey("flag-c")).thenReturn(response);
+        FeatureValue defaultValue = new FeatureValue(12, FeatureValueType.NUMBER);
+        when(featureFlagService.getByKey("flag-c")).thenReturn(featureFlag("flag-c", defaultValue, 4L));
 
         mockMvc.perform(get("/api/v1/flags/flag-c"))
                 .andExpect(status().isOk())
@@ -118,10 +109,9 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
 
     @Test
     void create_shouldReturnConflictAndErrorResponseWhenFeatureFlagAlreadyExists() throws Exception {
-        FeatureFlagCreateRequest request =
-                new FeatureFlagCreateRequest("flag-d", new FeatureValue(true, FeatureValueType.BOOL));
+        FeatureValue defaultValue = new FeatureValue(true, FeatureValueType.BOOL);
 
-        when(featureFlagService.create(eq(request)))
+        when(featureFlagService.create("flag-d", defaultValue))
                 .thenThrow(new FeatureFlagAlreadyExistsException("Feature flag 'flag-d' already exists"));
 
         mockMvc.perform(post("/api/v1/flags").contentType(APPLICATION_JSON).content("""
@@ -133,15 +123,15 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.message").value("Feature flag 'flag-d' already exists"))
                 .andExpect(jsonPath("$.path").value("/api/v1/flags"));
 
-        verify(featureFlagService).create(request);
+        verify(featureFlagService).create("flag-d", defaultValue);
     }
 
     @Test
     void update_shouldReturnConflictAndErrorResponseWhenLockCannotBeObtained() throws Exception {
-        FeatureFlagUpdateRequest request =
-                new FeatureFlagUpdateRequest(new FeatureValue(true, FeatureValueType.BOOL), 1L);
+        FeatureValue defaultValue = new FeatureValue(true, FeatureValueType.BOOL);
 
-        when(featureFlagService.update("flag-e", request)).thenThrow(new LockObtainingException("Lock timeout"));
+        when(featureFlagService.update("flag-e", defaultValue, 1L))
+                .thenThrow(new LockObtainingException("Lock timeout"));
 
         mockMvc.perform(put("/api/v1/flags/flag-e")
                         .contentType(APPLICATION_JSON)
@@ -154,7 +144,7 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.message").value("Feature flag is busy"))
                 .andExpect(jsonPath("$.path").value("/api/v1/flags/flag-e"));
 
-        verify(featureFlagService).update("flag-e", request);
+        verify(featureFlagService).update("flag-e", defaultValue, 1L);
     }
 
     @Test
@@ -212,6 +202,10 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
             Set<ConstraintViolation<ValidationInput>> violations = validator.validate(new ValidationInput(""));
             return new HashSet<>(violations);
         }
+    }
+
+    private FeatureFlag featureFlag(String key, FeatureValue defaultValue, long version) {
+        return new FeatureFlag(UUID.randomUUID(), key, defaultValue, version);
     }
 
     private record ValidationInput(@NotBlank String key) {}

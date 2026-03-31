@@ -1,7 +1,7 @@
 package io.github.rehody.abplatform.controller;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -13,13 +13,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.rehody.abplatform.config.AbstractWebMvcTest;
-import io.github.rehody.abplatform.dto.request.ExperimentCreateRequest;
-import io.github.rehody.abplatform.dto.request.ExperimentUpdateRequest;
-import io.github.rehody.abplatform.dto.response.ExperimentResponse;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.exception.ExperimentAlreadyExistsException;
 import io.github.rehody.abplatform.exception.ExperimentExceptionHandler;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
+import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
@@ -30,7 +28,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
@@ -50,8 +47,9 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
 
     @Test
     void create_shouldReturnCreatedAndBodyWhenRequestIsValid() throws Exception {
-        ExperimentResponse response = response("flag-a", 0L, ExperimentState.DRAFT);
-        when(experimentService.create(any())).thenReturn(response);
+        Experiment response = experiment("flag-a", 0L, ExperimentState.DRAFT);
+        when(experimentService.create(anyString(), any(), any(ExperimentState.class)))
+                .thenReturn(response);
 
         mockMvc.perform(post("/api/v1/experiments")
                         .contentType(APPLICATION_JSON)
@@ -65,20 +63,19 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.state").value("DRAFT"))
                 .andExpect(jsonPath("$.version").value(0));
 
-        ArgumentCaptor<ExperimentCreateRequest> requestCaptor = ArgumentCaptor.forClass(ExperimentCreateRequest.class);
-        verify(experimentService).create(requestCaptor.capture());
-        assertThat(requestCaptor.getValue().flagKey()).isEqualTo("flag-a");
-        assertThat(requestCaptor.getValue().state()).isEqualTo(ExperimentState.DRAFT);
-        assertThat(requestCaptor.getValue().variants()).hasSize(1);
-        assertThat(requestCaptor.getValue().variants().getFirst().key()).isEqualTo("control");
-        assertThat(requestCaptor.getValue().variants().getFirst().value().value())
-                .isEqualTo(true);
+        List<ExperimentVariant> expectedVariants = List.of(new ExperimentVariant(
+                UUID.fromString("11111111-1111-1111-1111-111111111111"),
+                "control",
+                new FeatureValue(true, FeatureValueType.BOOL),
+                0,
+                BigDecimal.ONE));
+        verify(experimentService).create("flag-a", expectedVariants, ExperimentState.DRAFT);
     }
 
     @Test
     void update_shouldReturnOkAndBodyWhenRequestIsValid() throws Exception {
         UUID id = UUID.randomUUID();
-        ExperimentResponse response = response(
+        Experiment response = experiment(
                 "flag-b",
                 3L,
                 ExperimentState.RUNNING,
@@ -88,7 +85,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                         new FeatureValue("blue", FeatureValueType.STRING),
                         0,
                         BigDecimal.ONE));
-        when(experimentService.update(eq(id), any())).thenReturn(response);
+        when(experimentService.update(eq(id), any(), eq(2L))).thenReturn(response);
 
         mockMvc.perform(patch("/api/v1/experiments/{id}", id)
                         .contentType(APPLICATION_JSON)
@@ -101,19 +98,19 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.state").value("RUNNING"))
                 .andExpect(jsonPath("$.version").value(3));
 
-        ArgumentCaptor<ExperimentUpdateRequest> requestCaptor = ArgumentCaptor.forClass(ExperimentUpdateRequest.class);
-        verify(experimentService).update(eq(id), requestCaptor.capture());
-        assertThat(requestCaptor.getValue().version()).isEqualTo(2L);
-        assertThat(requestCaptor.getValue().variants()).hasSize(1);
-        assertThat(requestCaptor.getValue().variants().getFirst().key()).isEqualTo("variant-a");
-        assertThat(requestCaptor.getValue().variants().getFirst().value().value())
-                .isEqualTo("blue");
+        List<ExperimentVariant> expectedVariants = List.of(new ExperimentVariant(
+                UUID.fromString("11111111-1111-1111-1111-111111111111"),
+                "variant-a",
+                new FeatureValue("blue", FeatureValueType.STRING),
+                0,
+                BigDecimal.ONE));
+        verify(experimentService).update(id, expectedVariants, 2L);
     }
 
     @Test
     void get_shouldReturnOkAndBodyWhenExperimentExists() throws Exception {
         UUID id = UUID.randomUUID();
-        ExperimentResponse response = response("flag-c", 4L, ExperimentState.APPROVED);
+        Experiment response = experiment("flag-c", 4L, ExperimentState.APPROVED);
         when(experimentService.getById(id)).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/experiments/{id}", id))
@@ -128,8 +125,8 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
     void getAll_shouldReturnOkAndBodyWhenExperimentsExist() throws Exception {
         when(experimentService.getAll())
                 .thenReturn(List.of(
-                        response("flag-d", 1L, ExperimentState.DRAFT),
-                        response("flag-e", 2L, ExperimentState.ARCHIVED)));
+                        experiment("flag-d", 1L, ExperimentState.DRAFT),
+                        experiment("flag-e", 2L, ExperimentState.ARCHIVED)));
 
         mockMvc.perform(get("/api/v1/experiments"))
                 .andExpect(status().isOk())
@@ -168,7 +165,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
 
     @Test
     void create_shouldReturnConflictWhenExperimentAlreadyExists() throws Exception {
-        when(experimentService.create(any()))
+        when(experimentService.create(anyString(), any(), any(ExperimentState.class)))
                 .thenThrow(new ExperimentAlreadyExistsException("Experiment with flag key 'flag-a' already exists"));
 
         mockMvc.perform(post("/api/v1/experiments")
@@ -197,8 +194,8 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.path").value("/api/v1/experiments/%s".formatted(id)));
     }
 
-    private ExperimentResponse response(String flagKey, long version, ExperimentState state) {
-        return response(
+    private Experiment experiment(String flagKey, long version, ExperimentState state) {
+        return experiment(
                 flagKey,
                 version,
                 state,
@@ -210,8 +207,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                         BigDecimal.ONE));
     }
 
-    private ExperimentResponse response(
-            String flagKey, long version, ExperimentState state, ExperimentVariant variant) {
-        return new ExperimentResponse(flagKey, List.of(variant), state, version);
+    private Experiment experiment(String flagKey, long version, ExperimentState state, ExperimentVariant variant) {
+        return new Experiment(UUID.randomUUID(), flagKey, List.of(variant), state, version, null, null);
     }
 }

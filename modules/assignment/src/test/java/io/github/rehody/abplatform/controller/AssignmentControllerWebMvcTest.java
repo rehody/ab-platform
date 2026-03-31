@@ -10,8 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.rehody.abplatform.config.AbstractWebMvcTest;
-import io.github.rehody.abplatform.dto.request.AssignmentRequest;
-import io.github.rehody.abplatform.dto.response.AssignmentResponse;
 import io.github.rehody.abplatform.service.AssignmentService;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,9 +35,7 @@ class AssignmentControllerWebMvcTest extends AbstractWebMvcTest {
     @Test
     void resolve_shouldReturnResolvedValueWhenRequestIsValid() throws Exception {
         UUID userId = UUID.randomUUID();
-        AssignmentRequest request = new AssignmentRequest(userId, "flag-a");
-        AssignmentResponse response = AssignmentResponse.of(stringValue("red"));
-        when(assignmentService.resolve(eq(request))).thenReturn(response);
+        when(assignmentService.resolve(eq(userId), eq("flag-a"))).thenReturn(stringValue("red"));
 
         mockMvc.perform(post("/api/v1/assignments/resolve")
                         .contentType(APPLICATION_JSON)
@@ -50,6 +46,6 @@ class AssignmentControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.value.value").value("red"))
                 .andExpect(jsonPath("$.value.type").value("STRING"));
 
-        verify(assignmentService).resolve(request);
+        verify(assignmentService).resolve(userId, "flag-a");
     }
 }

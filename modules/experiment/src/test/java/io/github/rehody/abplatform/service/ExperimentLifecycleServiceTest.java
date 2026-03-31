@@ -10,8 +10,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.rehody.abplatform.cache.ExperimentCache;
-import io.github.rehody.abplatform.dto.request.ExperimentStateTransitionRequest;
-import io.github.rehody.abplatform.dto.response.ExperimentResponse;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
 import io.github.rehody.abplatform.exception.ExperimentStateTransitionException;
@@ -56,17 +54,15 @@ class ExperimentLifecycleServiceTest {
     @Mock
     private ExperimentTimestampPolicy experimentTimestampPolicy;
 
+    private ExperimentCommandSupport experimentCommandSupport;
     private ExperimentLifecycleService experimentLifecycleService;
 
     @BeforeEach
     void setUp() {
+        experimentCommandSupport = new ExperimentCommandSupport(
+                experimentRepository, lockExecutor, new ServiceActionExecutor(), experimentCache);
         experimentLifecycleService = new ExperimentLifecycleService(
-                experimentRepository,
-                lockExecutor,
-                new ServiceActionExecutor(),
-                experimentCache,
-                experimentAssignmentPolicy,
-                experimentTimestampPolicy);
+                experimentRepository, experimentCommandSupport, experimentAssignmentPolicy, experimentTimestampPolicy);
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(2)).get());
@@ -127,7 +123,7 @@ class ExperimentLifecycleServiceTest {
         UUID id = UUID.randomUUID();
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> experimentLifecycleService.approve(id, new ExperimentStateTransitionRequest(3L)))
+        assertThatThrownBy(() -> experimentLifecycleService.approve(id, 3L))
                 .isInstanceOf(ExperimentNotFoundException.class)
                 .hasMessage("Experiment '%s' not found".formatted(id));
 
@@ -143,7 +139,7 @@ class ExperimentLifecycleServiceTest {
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of(flagKey));
         when(experimentRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> experimentLifecycleService.approve(id, new ExperimentStateTransitionRequest(3L)))
+        assertThatThrownBy(() -> experimentLifecycleService.approve(id, 3L))
                 .isInstanceOf(ExperimentNotFoundException.class)
                 .hasMessage("Experiment '%s' not found".formatted(id));
 
@@ -161,7 +157,7 @@ class ExperimentLifecycleServiceTest {
         when(experimentRepository.findById(id)).thenReturn(Optional.of(experiment));
         when(experimentRepository.update(any(Experiment.class))).thenReturn(UpdateOutcome.versionConflict());
 
-        assertThatThrownBy(() -> experimentLifecycleService.approve(id, new ExperimentStateTransitionRequest(3L)))
+        assertThatThrownBy(() -> experimentLifecycleService.approve(id, 3L))
                 .isInstanceOf(OptimisticLockingFailureException.class)
                 .hasMessage("Experiment '%s' version mismatch. Expected version %d".formatted(id, 3L));
 
@@ -180,7 +176,7 @@ class ExperimentLifecycleServiceTest {
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of(flagKey));
         when(experimentRepository.findById(id)).thenReturn(Optional.of(experiment));
 
-        assertThatThrownBy(() -> experimentLifecycleService.approve(id, new ExperimentStateTransitionRequest(3L)))
+        assertThatThrownBy(() -> experimentLifecycleService.approve(id, 3L))
                 .isInstanceOf(ExperimentStateTransitionException.class)
                 .hasMessageContaining("Cannot approve experiment in state DRAFT");
 
@@ -198,7 +194,7 @@ class ExperimentLifecycleServiceTest {
         when(experimentRepository.findById(id)).thenReturn(Optional.of(experiment));
         when(experimentRepository.update(any(Experiment.class))).thenReturn(UpdateOutcome.notFound());
 
-        assertThatThrownBy(() -> experimentLifecycleService.approve(id, new ExperimentStateTransitionRequest(3L)))
+        assertThatThrownBy(() -> experimentLifecycleService.approve(id, 3L))
                 .isInstanceOf(ExperimentNotFoundException.class)
                 .hasMessage("Experiment '%s' not found".formatted(id));
 
@@ -215,7 +211,7 @@ class ExperimentLifecycleServiceTest {
         when(experimentRepository.findById(id)).thenReturn(Optional.of(experiment));
         when(experimentRepository.update(any(Experiment.class))).thenReturn(UpdateOutcome.versionConflict());
 
-        assertThatThrownBy(() -> experimentLifecycleService.approve(id, new ExperimentStateTransitionRequest(3L)))
+        assertThatThrownBy(() -> experimentLifecycleService.approve(id, 3L))
                 .isInstanceOf(OptimisticLockingFailureException.class)
                 .hasMessage("Experiment '%s' version mismatch. Expected version %d".formatted(id, 3L));
 
@@ -234,7 +230,7 @@ class ExperimentLifecycleServiceTest {
         when(experimentRepository.findById(id)).thenReturn(Optional.of(current));
         when(experimentRepository.update(any(Experiment.class))).thenReturn(UpdateOutcome.updated(persistedVersion));
 
-        ExperimentResponse response = operation.apply(id, new ExperimentStateTransitionRequest(version));
+        Experiment response = operation.apply(id, version);
 
         ArgumentCaptor<Experiment> experimentCaptor = ArgumentCaptor.forClass(Experiment.class);
         ArgumentCaptor<LockNamespace> namespaceCaptor = ArgumentCaptor.forClass(LockNamespace.class);
@@ -252,7 +248,7 @@ class ExperimentLifecycleServiceTest {
         assertThat(namespaceCaptor.getValue().value()).isEqualTo("experiment");
 
         assertThat(response)
-                .isEqualTo(new ExperimentResponse(flagKey, current.variants(), targetState, persistedVersion));
+                .isEqualTo(new Experiment(id, flagKey, current.variants(), targetState, persistedVersion, null, null));
     }
 
     private Experiment experiment(UUID id, String flagKey, ExperimentState state, long version) {
@@ -266,6 +262,6 @@ class ExperimentLifecycleServiceTest {
 
     @FunctionalInterface
     private interface TransitionOperation {
-        ExperimentResponse apply(UUID id, ExperimentStateTransitionRequest request);
+        Experiment apply(UUID id, long version);
     }
 }

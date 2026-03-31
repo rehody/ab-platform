@@ -3,6 +3,7 @@ package io.github.rehody.abplatform.controller;
 import io.github.rehody.abplatform.dto.request.FeatureFlagCreateRequest;
 import io.github.rehody.abplatform.dto.request.FeatureFlagUpdateRequest;
 import io.github.rehody.abplatform.dto.response.FeatureFlagResponse;
+import io.github.rehody.abplatform.model.FeatureFlag;
 import io.github.rehody.abplatform.service.FeatureFlagService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,16 +27,19 @@ public class FeatureFlagController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public FeatureFlagResponse create(@Valid @RequestBody FeatureFlagCreateRequest request) {
-        return featureFlagService.create(request);
+        FeatureFlag featureFlag = featureFlagService.create(request.key(), request.defaultValue());
+        return FeatureFlagResponse.from(featureFlag);
     }
 
     @PutMapping("/{key}")
     public FeatureFlagResponse update(@PathVariable String key, @Valid @RequestBody FeatureFlagUpdateRequest request) {
-        return featureFlagService.update(key, request);
+        FeatureFlag featureFlag = featureFlagService.update(key, request.defaultValue(), request.version());
+        return FeatureFlagResponse.from(featureFlag);
     }
 
     @GetMapping("/{key}")
     public FeatureFlagResponse get(@PathVariable String key) {
-        return featureFlagService.getByKey(key);
+        FeatureFlag featureFlag = featureFlagService.getByKey(key);
+        return FeatureFlagResponse.from(featureFlag);
     }
 }
