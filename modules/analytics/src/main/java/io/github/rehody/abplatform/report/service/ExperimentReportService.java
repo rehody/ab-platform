@@ -1,6 +1,5 @@
 package io.github.rehody.abplatform.report.service;
 
-import io.github.rehody.abplatform.cache.CachedExperimentMetricReport;
 import io.github.rehody.abplatform.cache.ExperimentMetricReportCache;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.metric.service.MetricDefinitionService;
@@ -47,13 +46,8 @@ public class ExperimentReportService {
     @Transactional(readOnly = true)
     public ExperimentMetricReport getExperimentReport(UUID experimentId, String metricKey) {
         return experimentMetricReportCache
-                .getOrLoad(buildCacheKey(experimentId, metricKey), () -> loadCachedReport(experimentId, metricKey))
-                .map(CachedExperimentMetricReport::toModel)
+                .getOrLoad(cacheKey(experimentId, metricKey), () -> Optional.of(loadReport(experimentId, metricKey)))
                 .orElseThrow(() -> new IllegalStateException("Experiment metric report cache loader returned empty"));
-    }
-
-    private Optional<CachedExperimentMetricReport> loadCachedReport(UUID experimentId, String metricKey) {
-        return Optional.of(CachedExperimentMetricReport.from(loadReport(experimentId, metricKey)));
     }
 
     private ExperimentMetricReport loadReport(UUID experimentId, String metricKey) {
@@ -93,7 +87,7 @@ public class ExperimentReportService {
         };
     }
 
-    private String buildCacheKey(UUID experimentId, String metricKey) {
+    private String cacheKey(UUID experimentId, String metricKey) {
         return "%s:metric:%s".formatted(experimentId, metricKey);
     }
 

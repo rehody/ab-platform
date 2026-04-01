@@ -1,6 +1,5 @@
 package io.github.rehody.abplatform.service;
 
-import io.github.rehody.abplatform.cache.CachedFeatureFlag;
 import io.github.rehody.abplatform.cache.FeatureFlagCache;
 import io.github.rehody.abplatform.exception.FeatureFlagAlreadyExistsException;
 import io.github.rehody.abplatform.exception.FeatureFlagNotFoundException;
@@ -70,8 +69,7 @@ public class FeatureFlagService {
     @Transactional(readOnly = true)
     public FeatureFlag getByKey(String key) {
         return featureFlagCache
-                .getOrLoad(key, () -> featureFlagRepository.findByKey(key).map(CachedFeatureFlag::from))
-                .map(CachedFeatureFlag::toModel)
+                .getOrLoad(key, () -> featureFlagRepository.findByKey(key))
                 .orElseThrow(() -> new FeatureFlagNotFoundException("Feature flag '%s' not found".formatted(key)));
     }
 

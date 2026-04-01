@@ -1,6 +1,5 @@
 package io.github.rehody.abplatform.service;
 
-import io.github.rehody.abplatform.cache.CachedExperiment;
 import io.github.rehody.abplatform.cache.ExperimentCache;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.exception.ExperimentAlreadyExistsException;
@@ -73,10 +72,7 @@ public class ExperimentService {
         String flagKey = experimentCommandSupport.getFlagKeyById(id);
 
         return experimentCache
-                .getOrLoad(
-                        flagKey,
-                        () -> experimentRepository.findByFlagKey(flagKey).map(CachedExperiment::from))
-                .map(CachedExperiment::toModel)
+                .getOrLoad(flagKey, () -> experimentRepository.findByFlagKey(flagKey))
                 .orElseThrow(() -> new ExperimentNotFoundException("Experiment '%s' not found".formatted(id)));
     }
 
@@ -87,11 +83,7 @@ public class ExperimentService {
 
     @Transactional(readOnly = true)
     public Optional<Experiment> findByFlagKey(String flagKey) {
-        return experimentCache
-                .getOrLoad(
-                        flagKey,
-                        () -> experimentRepository.findByFlagKey(flagKey).map(CachedExperiment::from))
-                .map(CachedExperiment::toModel);
+        return experimentCache.getOrLoad(flagKey, () -> experimentRepository.findByFlagKey(flagKey));
     }
 
     private void replaceVariantsAndCheckOptimisticLocking(

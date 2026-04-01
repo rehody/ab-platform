@@ -1,6 +1,5 @@
 package io.github.rehody.abplatform.metric.service;
 
-import io.github.rehody.abplatform.cache.CachedMetricDefinition;
 import io.github.rehody.abplatform.cache.MetricDefinitionCache;
 import io.github.rehody.abplatform.exception.MetricDefinitionNotFoundException;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
@@ -19,8 +18,7 @@ public class MetricDefinitionService {
     @Transactional(readOnly = true)
     public MetricDefinition getByKey(String key) {
         return metricDefinitionCache
-                .getOrLoad(key, () -> metricDefinitionRepository.findByKey(key).map(CachedMetricDefinition::from))
-                .map(CachedMetricDefinition::toModel)
+                .getOrLoad(key, () -> metricDefinitionRepository.findByKey(key))
                 .orElseThrow(
                         () -> new MetricDefinitionNotFoundException("Metric definition '%s' not found".formatted(key)));
     }

@@ -1,11 +1,8 @@
 package io.github.rehody.abplatform.cache;
 
-import io.github.rehody.abplatform.util.cache.CacheCodec;
-import io.github.rehody.abplatform.util.cache.LocalCacheConfig;
-import io.github.rehody.abplatform.util.cache.ObjectMapperCacheCodec;
-import io.github.rehody.abplatform.util.cache.RedisCacheConfig;
-import io.github.rehody.abplatform.util.cache.RedisCacheStore;
+import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.util.cache.TwoLevelCache;
+import io.github.rehody.abplatform.util.cache.TwoLevelCacheFactory;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.util.Optional;
@@ -21,23 +18,7 @@ public class ExperimentCache {
 
     public ExperimentCache(
             RedissonClient redissonClient, ObjectMapper objectMapper, ExperimentCacheProperties properties) {
-
-        LocalCacheConfig localConfig = new LocalCacheConfig(
-                properties.getL1ValueTtl(),
-                properties.getL1MissTtl(),
-                properties.getL1ValueSize(),
-                properties.getL1MissSize());
-
-        RedisCacheConfig redisConfig = new RedisCacheConfig(
-                properties.getL2ValueTtl(),
-                properties.getL2MissTtl(),
-                properties.getTtlSpread(),
-                properties.getRedisKeyPrefix(),
-                properties.getInvalidationTopic());
-
-        CacheCodec<CachedExperiment> codec = ObjectMapperCacheCodec.forClass(objectMapper, CachedExperiment.class);
-
-        this.cache = new TwoLevelCache<>(new RedisCacheStore<>(redissonClient, codec, redisConfig), localConfig);
+        this.cache = TwoLevelCacheFactory.create(redissonClient, objectMapper, properties, CachedExperiment.class);
     }
 
     @PostConstruct
@@ -54,7 +35,8 @@ public class ExperimentCache {
         cache.invalidate(key);
     }
 
-    public Optional<CachedExperiment> getOrLoad(String key, Supplier<Optional<CachedExperiment>> loader) {
-        return cache.getOrLoad(key, loader);
+    public Optional<Experiment> getOrLoad(String key, Supplier<Optional<Experiment>> loader) {
+        return cache.getOrLoad(key, () -> loader.get().map(CachedExperiment::from))
+                .map(CachedExperiment::toModel);
     }
 }

@@ -1,5 +1,6 @@
 package io.github.rehody.abplatform.cache;
 
+import io.github.rehody.abplatform.util.cache.TwoLevelCacheProperties;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -17,7 +18,7 @@ import org.springframework.validation.annotation.Validated;
 @Setter
 @Validated
 @ConfigurationProperties(prefix = "ab.cache.experiment-metric-report")
-public class ExperimentMetricReportCacheProperties {
+public class ExperimentMetricReportCacheProperties implements TwoLevelCacheProperties {
 
     @NotNull private Duration l1ValueTtl;
 

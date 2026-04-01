@@ -1,11 +1,8 @@
 package io.github.rehody.abplatform.cache;
 
-import io.github.rehody.abplatform.util.cache.CacheCodec;
-import io.github.rehody.abplatform.util.cache.LocalCacheConfig;
-import io.github.rehody.abplatform.util.cache.ObjectMapperCacheCodec;
-import io.github.rehody.abplatform.util.cache.RedisCacheConfig;
-import io.github.rehody.abplatform.util.cache.RedisCacheStore;
+import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.util.cache.TwoLevelCache;
+import io.github.rehody.abplatform.util.cache.TwoLevelCacheFactory;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.util.Optional;
@@ -21,24 +18,8 @@ public class MetricDefinitionCache {
 
     public MetricDefinitionCache(
             RedissonClient redissonClient, ObjectMapper objectMapper, MetricDefinitionCacheProperties properties) {
-
-        LocalCacheConfig localConfig = new LocalCacheConfig(
-                properties.getL1ValueTtl(),
-                properties.getL1MissTtl(),
-                properties.getL1ValueSize(),
-                properties.getL1MissSize());
-
-        RedisCacheConfig redisConfig = new RedisCacheConfig(
-                properties.getL2ValueTtl(),
-                properties.getL2MissTtl(),
-                properties.getTtlSpread(),
-                properties.getRedisKeyPrefix(),
-                properties.getInvalidationTopic());
-
-        CacheCodec<CachedMetricDefinition> codec =
-                ObjectMapperCacheCodec.forClass(objectMapper, CachedMetricDefinition.class);
-
-        this.cache = new TwoLevelCache<>(new RedisCacheStore<>(redissonClient, codec, redisConfig), localConfig);
+        this.cache =
+                TwoLevelCacheFactory.create(redissonClient, objectMapper, properties, CachedMetricDefinition.class);
     }
 
     @PostConstruct
@@ -51,7 +32,8 @@ public class MetricDefinitionCache {
         cache.stop();
     }
 
-    public Optional<CachedMetricDefinition> getOrLoad(String key, Supplier<Optional<CachedMetricDefinition>> loader) {
-        return cache.getOrLoad(key, loader);
+    public Optional<MetricDefinition> getOrLoad(String key, Supplier<Optional<MetricDefinition>> loader) {
+        return cache.getOrLoad(key, () -> loader.get().map(CachedMetricDefinition::from))
+                .map(CachedMetricDefinition::toModel);
     }
 }

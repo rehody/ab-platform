@@ -9,7 +9,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.github.rehody.abplatform.cache.CachedFeatureFlag;
 import io.github.rehody.abplatform.cache.FeatureFlagCache;
 import io.github.rehody.abplatform.exception.FeatureFlagAlreadyExistsException;
 import io.github.rehody.abplatform.exception.FeatureFlagNotFoundException;
@@ -131,7 +130,7 @@ class FeatureFlagServiceTest {
         when(featureFlagRepository.update("flag-d", defaultValue, 3L)).thenReturn(1);
         when(featureFlagRepository.findByKey("flag-d")).thenReturn(Optional.of(persisted));
         when(featureFlagCache.getOrLoad(eq("flag-d"), any(Supplier.class))).thenAnswer(invocation -> {
-            Supplier<Optional<CachedFeatureFlag>> loader = invocation.getArgument(1);
+            Supplier<Optional<FeatureFlag>> loader = invocation.getArgument(1);
             return loader.get();
         });
 
@@ -183,7 +182,7 @@ class FeatureFlagServiceTest {
 
         when(featureFlagRepository.findByKey(key)).thenReturn(Optional.of(persisted));
         when(featureFlagCache.getOrLoad(eq(key), any(Supplier.class))).thenAnswer(invocation -> {
-            Supplier<Optional<CachedFeatureFlag>> loader = invocation.getArgument(1);
+            Supplier<Optional<FeatureFlag>> loader = invocation.getArgument(1);
             return loader.get();
         });
 
@@ -198,14 +197,14 @@ class FeatureFlagServiceTest {
     @Test
     void getByKey_shouldReturnCachedResponseAndSkipRepositoryWhenCacheHit() {
         String key = "flag-g";
-        CachedFeatureFlag cachedFeatureFlag =
-                new CachedFeatureFlag(UUID.randomUUID(), key, new FeatureValue(true, FeatureValueType.BOOL), 12L);
+        FeatureFlag featureFlag =
+                new FeatureFlag(UUID.randomUUID(), key, new FeatureValue(true, FeatureValueType.BOOL), 12L);
 
-        when(featureFlagCache.getOrLoad(eq(key), any(Supplier.class))).thenReturn(Optional.of(cachedFeatureFlag));
+        when(featureFlagCache.getOrLoad(eq(key), any(Supplier.class))).thenReturn(Optional.of(featureFlag));
 
         FeatureFlag response = featureFlagService.getByKey(key);
 
-        assertThat(response).isEqualTo(cachedFeatureFlag.toModel());
+        assertThat(response).isEqualTo(featureFlag);
         verify(featureFlagRepository, never()).findByKey(any());
     }
 

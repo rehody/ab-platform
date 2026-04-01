@@ -11,6 +11,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
@@ -94,31 +95,31 @@ class ExperimentCacheTest {
 
     @Test
     void getOrLoad_shouldReturnLoadedValueAndReuseL1CacheOnSecondCall() {
-        CachedExperiment cachedExperiment = cachedExperiment("flag-a");
+        Experiment experiment = experiment("flag-a");
         AtomicInteger loaderCalls = new AtomicInteger();
-        Supplier<Optional<CachedExperiment>> loader = () -> {
+        Supplier<Optional<Experiment>> loader = () -> {
             loaderCalls.incrementAndGet();
-            return Optional.of(cachedExperiment);
+            return Optional.of(experiment);
         };
 
-        Optional<CachedExperiment> first = cache.getOrLoad("flag-a", loader);
-        Optional<CachedExperiment> second = cache.getOrLoad("flag-a", loader);
+        Optional<Experiment> first = cache.getOrLoad("flag-a", loader);
+        Optional<Experiment> second = cache.getOrLoad("flag-a", loader);
 
-        assertThat(first).contains(cachedExperiment);
-        assertThat(second).contains(cachedExperiment);
+        assertThat(first).contains(experiment);
+        assertThat(second).contains(experiment);
         assertThat(loaderCalls.get()).isEqualTo(1);
     }
 
     @Test
     void getOrLoad_shouldCacheMissAndSkipLoaderAfterFirstMiss() {
         AtomicInteger loaderCalls = new AtomicInteger();
-        Supplier<Optional<CachedExperiment>> loader = () -> {
+        Supplier<Optional<Experiment>> loader = () -> {
             loaderCalls.incrementAndGet();
             return Optional.empty();
         };
 
-        Optional<CachedExperiment> first = cache.getOrLoad("flag-b", loader);
-        Optional<CachedExperiment> second = cache.getOrLoad("flag-b", loader);
+        Optional<Experiment> first = cache.getOrLoad("flag-b", loader);
+        Optional<Experiment> second = cache.getOrLoad("flag-b", loader);
 
         assertThat(first).isEmpty();
         assertThat(second).isEmpty();
@@ -126,8 +127,8 @@ class ExperimentCacheTest {
         verify(missBucket).set(eq("1"), any(Duration.class));
     }
 
-    private CachedExperiment cachedExperiment(String flagKey) {
-        return new CachedExperiment(
+    private Experiment experiment(String flagKey) {
+        return new Experiment(
                 UUID.randomUUID(),
                 flagKey,
                 List.of(new ExperimentVariant(
