@@ -11,14 +11,17 @@ import static org.mockito.Mockito.when;
 
 import io.github.rehody.abplatform.cache.ExperimentCache;
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.exception.ExperimentAlreadyExistsException;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
+import io.github.rehody.abplatform.model.FeatureFlag;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
 import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
 import io.github.rehody.abplatform.policy.ExperimentTimestampPolicy;
+import io.github.rehody.abplatform.policy.ExperimentVariantPolicy;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
 import io.github.rehody.abplatform.repository.ExperimentRepository.ReplaceVariantsResult;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
@@ -57,6 +60,12 @@ class ExperimentServiceTest {
     @Mock
     private ExperimentTimestampPolicy experimentTimestampPolicy;
 
+    @Mock
+    private FeatureFlagService featureFlagService;
+
+    @Mock
+    private ExperimentVariantPolicy experimentVariantPolicy;
+
     private ServiceActionExecutor serviceActionExecutor;
     private ExperimentCommandSupport experimentCommandSupport;
     private ExperimentService experimentService;
@@ -71,13 +80,22 @@ class ExperimentServiceTest {
                 experimentCommandSupport,
                 experimentCache,
                 experimentAssignmentPolicy,
-                experimentTimestampPolicy);
+                experimentTimestampPolicy,
+                featureFlagService,
+                experimentVariantPolicy);
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(2)).get());
         lenient()
                 .when(experimentTimestampPolicy.initializeTimestamps(any(Experiment.class), any()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        lenient()
+                .when(featureFlagService.getByKey(any()))
+                .thenAnswer(invocation -> new FeatureFlag(
+                        UUID.randomUUID(),
+                        invocation.getArgument(0),
+                        new FeatureValue(true, FeatureValueType.BOOL),
+                        0L));
     }
 
     @AfterEach
@@ -288,7 +306,20 @@ class ExperimentServiceTest {
     }
 
     private List<ExperimentVariant> variants() {
-        return List.of(new ExperimentVariant(
-                UUID.randomUUID(), "control", new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE));
+        return List.of(
+                new ExperimentVariant(
+                        UUID.randomUUID(),
+                        "control",
+                        new FeatureValue(true, FeatureValueType.BOOL),
+                        0,
+                        BigDecimal.ONE,
+                        ExperimentVariantType.CONTROL),
+                new ExperimentVariant(
+                        UUID.randomUUID(),
+                        "variant-a",
+                        new FeatureValue(false, FeatureValueType.BOOL),
+                        1,
+                        BigDecimal.ONE,
+                        ExperimentVariantType.REGULAR));
     }
 }

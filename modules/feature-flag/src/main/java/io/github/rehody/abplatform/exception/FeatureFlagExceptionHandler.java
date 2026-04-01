@@ -33,6 +33,13 @@ public class FeatureFlagExceptionHandler {
                 HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
     }
 
+    @ExceptionHandler(FeatureFlagUpdateBlockedException.class)
+    public ResponseEntity<ErrorResponse> handleUpdateBlocked(
+            FeatureFlagUpdateBlockedException ex, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
+    }
+
     @ExceptionHandler(LockObtainingException.class)
     public ResponseEntity<ErrorResponse> handleLockAcquisition(LockObtainingException ex, HttpServletRequest request) {
         return buildResponse(

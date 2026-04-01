@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import io.github.rehody.abplatform.cache.ExperimentCache;
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
 import io.github.rehody.abplatform.exception.ExperimentStateTransitionException;
 import io.github.rehody.abplatform.model.Experiment;
@@ -257,7 +258,12 @@ class ExperimentLifecycleServiceTest {
 
     private List<ExperimentVariant> variants() {
         return List.of(new ExperimentVariant(
-                UUID.randomUUID(), "control", new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE));
+                UUID.randomUUID(),
+                "control",
+                new FeatureValue(true, FeatureValueType.BOOL),
+                0,
+                BigDecimal.ONE,
+                ExperimentVariantType.CONTROL));
     }
 
     @FunctionalInterface

@@ -3,6 +3,7 @@ package io.github.rehody.abplatform.repository.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
@@ -22,7 +23,12 @@ class ExperimentAggregateMapperTest {
         Experiment experiment =
                 new Experiment(UUID.randomUUID(), "flag-a", List.of(), ExperimentState.RUNNING, 5L, null, null);
         List<ExperimentVariant> variants = new ArrayList<>(List.of(new ExperimentVariant(
-                UUID.randomUUID(), "control", new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE)));
+                UUID.randomUUID(),
+                "control",
+                new FeatureValue(true, FeatureValueType.BOOL),
+                0,
+                BigDecimal.ONE,
+                ExperimentVariantType.CONTROL)));
 
         Experiment result = experimentAggregateMapper.withVariants(experiment, variants);
 

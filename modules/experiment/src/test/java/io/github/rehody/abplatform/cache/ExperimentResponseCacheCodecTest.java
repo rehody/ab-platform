@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
@@ -30,7 +31,8 @@ class ExperimentCacheCodecTest {
                         "control",
                         new FeatureValue(true, FeatureValueType.BOOL),
                         0,
-                        BigDecimal.ONE)),
+                        BigDecimal.ONE,
+                        ExperimentVariantType.CONTROL)),
                 ExperimentState.RUNNING,
                 6L,
                 Instant.parse("2026-03-30T10:15:30Z"),
@@ -48,7 +50,7 @@ class ExperimentCacheCodecTest {
     @Test
     void read_shouldDeserializeResponseAndRestoreFields() {
         String json = """
-                {"id":"00000000-0000-0000-0000-000000000001","flagKey":"flag-b","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":123,"type":"NUMBER"},"position":1}],"state":"APPROVED","version":4,"startedAt":null,"completedAt":null}
+                {"id":"00000000-0000-0000-0000-000000000001","flagKey":"flag-b","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":123,"type":"NUMBER"},"position":1,"weight":2,"variantType":"REGULAR"}],"state":"APPROVED","version":4,"startedAt":null,"completedAt":null}
                 """;
 
         CachedExperiment cachedExperiment = codec.read(json);
@@ -59,6 +61,8 @@ class ExperimentCacheCodecTest {
         assertThat(cachedExperiment.variants().get(0).key()).isEqualTo("variant-a");
         assertThat(cachedExperiment.variants().get(0).value().value()).isEqualTo(123);
         assertThat(cachedExperiment.variants().get(0).value().type()).isEqualTo(FeatureValueType.NUMBER);
+        assertThat(cachedExperiment.variants().get(0).weight()).isEqualByComparingTo("2");
+        assertThat(cachedExperiment.variants().get(0).variantType()).isEqualTo(ExperimentVariantType.REGULAR);
         assertThat(cachedExperiment.state()).isEqualTo(ExperimentState.APPROVED);
         assertThat(cachedExperiment.version()).isEqualTo(4L);
     }

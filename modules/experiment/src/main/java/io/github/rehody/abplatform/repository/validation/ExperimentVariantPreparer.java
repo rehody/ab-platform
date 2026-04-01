@@ -26,7 +26,12 @@ public class ExperimentVariantPreparer {
             }
 
             result.add(new ExperimentVariant(
-                    resolveId(variant.id()), normalizedKey, variant.value(), position, variant.weight()));
+                    resolveId(variant.id()),
+                    normalizedKey,
+                    variant.value(),
+                    position,
+                    variant.weight(),
+                    variant.variantType()));
         }
 
         return result;

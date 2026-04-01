@@ -1,6 +1,7 @@
 package io.github.rehody.abplatform.support;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
@@ -23,7 +24,7 @@ public final class AssignmentFixtures {
     }
 
     public static ExperimentVariant variant(int position, String key, String value, BigDecimal weight) {
-        return new ExperimentVariant(UUID.randomUUID(), key, stringValue(value), position, weight);
+        return new ExperimentVariant(UUID.randomUUID(), key, stringValue(value), position, weight, variantType(key));
     }
 
     public static ExperimentVariant variant(int position, String key, String value, int weight) {
@@ -36,5 +37,13 @@ public final class AssignmentFixtures {
 
     public static FeatureValue boolValue(boolean value) {
         return new FeatureValue(value, FeatureValueType.BOOL);
+    }
+
+    private static ExperimentVariantType variantType(String key) {
+        if ("control".equals(key)) {
+            return ExperimentVariantType.CONTROL;
+        }
+
+        return ExperimentVariantType.REGULAR;
     }
 }

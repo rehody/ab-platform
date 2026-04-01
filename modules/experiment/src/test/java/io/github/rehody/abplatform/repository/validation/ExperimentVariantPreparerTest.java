@@ -3,6 +3,7 @@ package io.github.rehody.abplatform.repository.validation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
@@ -22,13 +23,19 @@ class ExperimentVariantPreparerTest {
                 UUID.randomUUID(),
                 List.of(
                         new ExperimentVariant(
-                                null, " control ", new FeatureValue(true, FeatureValueType.BOOL), 100, BigDecimal.ONE),
+                                null,
+                                " control ",
+                                new FeatureValue(true, FeatureValueType.BOOL),
+                                100,
+                                BigDecimal.ONE,
+                                ExperimentVariantType.CONTROL),
                         new ExperimentVariant(
                                 existingId,
                                 "variant-a",
                                 new FeatureValue("blue", FeatureValueType.STRING),
                                 200,
-                                BigDecimal.ONE)));
+                                BigDecimal.ONE,
+                                ExperimentVariantType.REGULAR)));
 
         assertThat(prepared).hasSize(2);
         assertThat(prepared.get(0).id()).isNotNull();
@@ -52,13 +59,15 @@ class ExperimentVariantPreparerTest {
                                         "control",
                                         new FeatureValue(true, FeatureValueType.BOOL),
                                         0,
-                                        BigDecimal.ONE),
+                                        BigDecimal.ONE,
+                                        ExperimentVariantType.CONTROL),
                                 new ExperimentVariant(
                                         null,
                                         " control ",
                                         new FeatureValue(false, FeatureValueType.BOOL),
                                         1,
-                                        BigDecimal.ONE))))
+                                        BigDecimal.ONE,
+                                        ExperimentVariantType.CONTROL))))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Duplicate variant key for experiment %s: control".formatted(experimentId));
     }

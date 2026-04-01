@@ -3,6 +3,7 @@ package io.github.rehody.abplatform.repository.sync;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
@@ -28,9 +29,19 @@ class ExperimentVariantSynchronizerTest {
         UUID toDeleteId = UUID.randomUUID();
         UUID toInsertId = UUID.randomUUID();
         ExperimentVariant toUpdate = new ExperimentVariant(
-                toUpdateId, "control", new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE);
+                toUpdateId,
+                "control",
+                new FeatureValue(true, FeatureValueType.BOOL),
+                0,
+                BigDecimal.ONE,
+                ExperimentVariantType.CONTROL);
         ExperimentVariant toInsert = new ExperimentVariant(
-                toInsertId, "variant-a", new FeatureValue("blue", FeatureValueType.STRING), 1, BigDecimal.ONE);
+                toInsertId,
+                "variant-a",
+                new FeatureValue("blue", FeatureValueType.STRING),
+                1,
+                BigDecimal.ONE,
+                ExperimentVariantType.REGULAR);
         ExperimentVariantSynchronizer synchronizer = new ExperimentVariantSynchronizer(experimentVariantJdbcRepository);
 
         when(experimentVariantJdbcRepository.findIdsByExperimentId(experimentId))

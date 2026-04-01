@@ -22,4 +22,25 @@ class FeatureValueTest {
         assertThat(featureValueTypes)
                 .containsExactly(FeatureValueType.NUMBER, FeatureValueType.STRING, FeatureValueType.BOOL);
     }
+
+    @Test
+    void hasMatchingType_shouldReturnTrueForCompatibleValue() {
+        FeatureValue featureValue = new FeatureValue("variant-a", FeatureValueType.STRING);
+
+        assertThat(featureValue.hasMatchingType()).isTrue();
+    }
+
+    @Test
+    void hasMatchingType_shouldReturnFalseForNullTypeOrValue() {
+        assertThat(new FeatureValue("variant-a", null).hasMatchingType()).isFalse();
+        assertThat(new FeatureValue(null, FeatureValueType.STRING).hasMatchingType())
+                .isFalse();
+    }
+
+    @Test
+    void hasMatchingType_shouldReturnFalseForIncompatibleValue() {
+        FeatureValue featureValue = new FeatureValue(10, FeatureValueType.STRING);
+
+        assertThat(featureValue.hasMatchingType()).isFalse();
+    }
 }

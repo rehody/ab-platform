@@ -6,8 +6,10 @@ import io.github.rehody.abplatform.exception.ExperimentAlreadyExistsException;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
+import io.github.rehody.abplatform.model.FeatureFlag;
 import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
 import io.github.rehody.abplatform.policy.ExperimentTimestampPolicy;
+import io.github.rehody.abplatform.policy.ExperimentVariantPolicy;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
 import io.github.rehody.abplatform.repository.ExperimentRepository.ReplaceVariantsResult;
 import java.time.Instant;
@@ -28,13 +30,18 @@ public class ExperimentService {
     private final ExperimentCache experimentCache;
     private final ExperimentAssignmentPolicy experimentAssignmentPolicy;
     private final ExperimentTimestampPolicy experimentTimestampPolicy;
+    private final FeatureFlagService featureFlagService;
+    private final ExperimentVariantPolicy experimentVariantPolicy;
 
     @Transactional
     public Experiment create(String flagKey, List<ExperimentVariant> variants, ExperimentState state) {
         return experimentCommandSupport.withExperimentLock(flagKey, () -> {
             ensureExperimentNotExists(flagKey);
+            FeatureFlag featureFlag = featureFlagService.getByKey(flagKey);
+            UUID experimentId = UUID.randomUUID();
+            validateVariantsForFlagDefault(experimentId, variants, featureFlag);
 
-            Experiment experiment = buildExperiment(flagKey, variants, state);
+            Experiment experiment = buildExperiment(experimentId, flagKey, variants, state);
             experimentAssignmentPolicy.validateAssignmentInvariants(experiment);
             experimentRepository.save(experiment);
             experimentCommandSupport.invalidateCacheAfterCommit(flagKey);
@@ -43,8 +50,9 @@ public class ExperimentService {
         });
     }
 
-    private Experiment buildExperiment(String flagKey, List<ExperimentVariant> variants, ExperimentState state) {
-        Experiment experiment = new Experiment(UUID.randomUUID(), flagKey, variants, state, 0L, null, null);
+    private Experiment buildExperiment(
+            UUID experimentId, String flagKey, List<ExperimentVariant> variants, ExperimentState state) {
+        Experiment experiment = new Experiment(experimentId, flagKey, variants, state, 0L, null, null);
         return experimentTimestampPolicy.initializeTimestamps(experiment, Instant.now());
     }
 
@@ -60,7 +68,7 @@ public class ExperimentService {
         String flagKey = experimentCommandSupport.getFlagKeyById(id);
 
         return experimentCommandSupport.withExperimentLock(flagKey, () -> {
-            validateAssignmentInvariantsForUpdatedVariants(id, variants);
+            validateUpdatedVariantConfiguration(id, flagKey, variants);
             replaceVariantsAndCheckOptimisticLocking(id, variants, version);
             experimentCommandSupport.invalidateCacheAfterCommit(flagKey);
             return experimentCommandSupport.getById(id);
@@ -100,9 +108,17 @@ public class ExperimentService {
         }
     }
 
-    private void validateAssignmentInvariantsForUpdatedVariants(UUID experimentId, List<ExperimentVariant> variants) {
+    private void validateUpdatedVariantConfiguration(
+            UUID experimentId, String flagKey, List<ExperimentVariant> variants) {
         Experiment currentExperiment = experimentCommandSupport.getById(experimentId);
+        FeatureFlag featureFlag = featureFlagService.getByKey(flagKey);
+        validateVariantsForFlagDefault(experimentId, variants, featureFlag);
         Experiment updatedExperiment = currentExperiment.withVariants(variants);
         experimentAssignmentPolicy.validateAssignmentInvariants(updatedExperiment);
+    }
+
+    private void validateVariantsForFlagDefault(
+            UUID experimentId, List<ExperimentVariant> variants, FeatureFlag featureFlag) {
+        experimentVariantPolicy.validateVariantConfiguration(experimentId, variants, featureFlag.defaultValue());
     }
 }

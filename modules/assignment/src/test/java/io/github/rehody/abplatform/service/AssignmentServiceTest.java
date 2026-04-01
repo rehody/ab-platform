@@ -85,15 +85,36 @@ class AssignmentServiceTest {
     }
 
     @Test
-    void resolve_shouldReturnResolvedVariantValueWhenExperimentCanBeResolved() {
+    void resolve_shouldReturnDefaultFlagValueWhenControlVariantIsSelected() {
         UUID userId = UUID.randomUUID();
-        Experiment experiment = runningExperiment("flag-c", List.of(variant(0, "control", "green", 1)), 5L);
-        ExperimentVariant variant = variant(0, "treatment", "red", 2);
+        FeatureValue defaultValue = stringValue("green");
+        Experiment experiment = runningExperiment(
+                "flag-c", List.of(variant(0, "control", "green", 1), variant(1, "treatment", "red", 2)), 5L);
+        ExperimentVariant controlVariant = variant(0, "control", "green", 1);
         when(experimentService.findByFlagKey("flag-c")).thenReturn(Optional.of(experiment));
+        when(experimentAssignmentPolicy.canResolveAssignment(experiment)).thenReturn(true);
+        when(experimentVariantResolver.resolve(experiment, userId)).thenReturn(controlVariant);
+        when(featureFlagService.getByKey("flag-c"))
+                .thenReturn(new FeatureFlag(UUID.randomUUID(), "flag-c", defaultValue, 5L));
+
+        FeatureValue response = assignmentService.resolve(userId, "flag-c");
+
+        assertThat(response).isEqualTo(defaultValue);
+        verify(experimentVariantResolver).resolve(experiment, userId);
+        verify(featureFlagService).getByKey("flag-c");
+    }
+
+    @Test
+    void resolve_shouldReturnResolvedVariantValueWhenRegularVariantIsSelected() {
+        UUID userId = UUID.randomUUID();
+        Experiment experiment = runningExperiment(
+                "flag-d", List.of(variant(0, "control", "green", 1), variant(1, "treatment", "red", 2)), 5L);
+        ExperimentVariant variant = variant(1, "treatment", "red", 2);
+        when(experimentService.findByFlagKey("flag-d")).thenReturn(Optional.of(experiment));
         when(experimentAssignmentPolicy.canResolveAssignment(experiment)).thenReturn(true);
         when(experimentVariantResolver.resolve(experiment, userId)).thenReturn(variant);
 
-        FeatureValue response = assignmentService.resolve(userId, "flag-c");
+        FeatureValue response = assignmentService.resolve(userId, "flag-d");
 
         assertThat(response).isEqualTo(variant.value());
         verify(experimentVariantResolver).resolve(experiment, userId);

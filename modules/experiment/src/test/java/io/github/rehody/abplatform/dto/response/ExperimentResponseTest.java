@@ -3,6 +3,7 @@ package io.github.rehody.abplatform.dto.response;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
@@ -18,7 +19,12 @@ class ExperimentResponseTest {
     @Test
     void from_shouldMapAllFieldsFromExperiment() {
         ExperimentVariant variant = new ExperimentVariant(
-                UUID.randomUUID(), "control", new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE);
+                UUID.randomUUID(),
+                "control",
+                new FeatureValue(true, FeatureValueType.BOOL),
+                0,
+                BigDecimal.ONE,
+                ExperimentVariantType.CONTROL);
         Experiment experiment = new Experiment(
                 UUID.randomUUID(),
                 "checkout-redesign",

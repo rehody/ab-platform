@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.exception.ExperimentStateTransitionException;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
 import java.math.BigDecimal;
@@ -97,7 +98,8 @@ class ExperimentTest {
                         "control",
                         new FeatureValue(true, FeatureValueType.BOOL),
                         0,
-                        BigDecimal.ONE)),
+                        BigDecimal.ONE,
+                        ExperimentVariantType.CONTROL)),
                 state,
                 3L,
                 null,

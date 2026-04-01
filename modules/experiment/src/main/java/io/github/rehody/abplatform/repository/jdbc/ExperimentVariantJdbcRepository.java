@@ -19,14 +19,14 @@ import org.springframework.stereotype.Repository;
 public class ExperimentVariantJdbcRepository {
 
     private static final String SELECT_VARIANTS_BY_EXPERIMENT_ID_SQL = """
-        SELECT id, experiment_id, key, value, value_type, position, weight
+        SELECT id, experiment_id, key, value, value_type, position, weight, variant_type
         FROM experiment_variants
         WHERE experiment_id = :experimentId
         ORDER BY position, id
         """;
 
     private static final String SELECT_VARIANTS_BY_EXPERIMENT_IDS_SQL = """
-        SELECT id, experiment_id, key, value, value_type, position, weight
+        SELECT id, experiment_id, key, value, value_type, position, weight, variant_type
         FROM experiment_variants
         WHERE experiment_id IN (:experimentIds)
         ORDER BY experiment_id, position, id
@@ -40,7 +40,8 @@ public class ExperimentVariantJdbcRepository {
             value,
             value_type,
             position,
-            weight
+            weight,
+            variant_type
         )
         VALUES (
             :id,
@@ -49,7 +50,8 @@ public class ExperimentVariantJdbcRepository {
             :value,
             :valueType,
             :position,
-            :weight
+            :weight,
+            :variantType
         )
         """;
 
@@ -59,7 +61,8 @@ public class ExperimentVariantJdbcRepository {
             value = :value,
             value_type = :valueType,
             position = :position,
-            weight = :weight
+            weight = :weight,
+            variant_type = :variantType
         WHERE id = :id
           AND experiment_id = :experimentId
         """;
@@ -167,7 +170,8 @@ public class ExperimentVariantJdbcRepository {
                         .addValue("value", variant.value().value())
                         .addValue("valueType", variant.value().type().name())
                         .addValue("position", variant.position())
-                        .addValue("weight", variant.weight()))
+                        .addValue("weight", variant.weight())
+                        .addValue("variantType", variant.variantType().name()))
                 .toArray(SqlParameterSource[]::new);
     }
 

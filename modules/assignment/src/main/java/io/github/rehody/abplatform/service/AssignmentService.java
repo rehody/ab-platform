@@ -1,6 +1,7 @@
 package io.github.rehody.abplatform.service;
 
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
 import java.util.Optional;
@@ -23,7 +24,12 @@ public class AssignmentService {
             return defaultAssignment(flagKey);
         }
 
-        return experimentVariantResolver.resolve(experiment.get(), userId).value();
+        ExperimentVariant resolvedVariant = experimentVariantResolver.resolve(experiment.get(), userId);
+        if (resolvedVariant.isControl()) {
+            return defaultAssignment(flagKey);
+        }
+
+        return resolvedVariant.value();
     }
 
     private FeatureValue defaultAssignment(String flagKey) {

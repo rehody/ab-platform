@@ -10,6 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.service.allocation.BucketAllocation;
@@ -59,7 +60,8 @@ class VariantAllocationSnapshotFactoryTest {
 
     @Test
     void create_shouldRejectVariantWithNullWeight() {
-        ExperimentVariant invalid = new ExperimentVariant(UUID.randomUUID(), "broken", stringValue("red"), 0, null);
+        ExperimentVariant invalid = new ExperimentVariant(
+                UUID.randomUUID(), "broken", stringValue("red"), 0, null, ExperimentVariantType.REGULAR);
         Experiment experiment = runningExperiment("flag-b", List.of(invalid), 1L);
         when(assignmentVariantsPreparer.prepare(experiment)).thenReturn(List.of(invalid));
 

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
@@ -279,7 +280,20 @@ class ExperimentRepositoryTest {
     }
 
     private List<ExperimentVariant> variants() {
-        return List.of(new ExperimentVariant(
-                UUID.randomUUID(), "control", new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE));
+        return List.of(
+                new ExperimentVariant(
+                        UUID.randomUUID(),
+                        "control",
+                        new FeatureValue(true, FeatureValueType.BOOL),
+                        0,
+                        BigDecimal.ONE,
+                        ExperimentVariantType.CONTROL),
+                new ExperimentVariant(
+                        UUID.randomUUID(),
+                        "variant-a",
+                        new FeatureValue(false, FeatureValueType.BOOL),
+                        1,
+                        BigDecimal.ONE,
+                        ExperimentVariantType.REGULAR));
     }
 }

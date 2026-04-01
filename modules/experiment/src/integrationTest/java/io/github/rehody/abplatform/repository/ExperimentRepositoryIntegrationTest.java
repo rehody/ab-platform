@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.rehody.abplatform.config.AbstractIntegrationDatabaseTest;
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
@@ -77,11 +78,23 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                             value TEXT NOT NULL,
                             value_type VARCHAR(16) NOT NULL,
                             position INT NOT NULL,
+                            weight NUMERIC NOT NULL,
+                            variant_type VARCHAR(16) NOT NULL CHECK (variant_type IN ('CONTROL', 'REGULAR')),
                             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                             updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                             UNIQUE (experiment_id, key),
-                            UNIQUE (experiment_id, position)
+                            UNIQUE (experiment_id, position),
+                            UNIQUE (experiment_id, value, value_type),
+                            CHECK (
+                                (variant_type = 'CONTROL' AND key = 'control')
+                                OR (variant_type = 'REGULAR' AND key <> 'control')
+                            )
                         )
+                        """).update();
+        jdbcClient.sql("""
+                        CREATE UNIQUE INDEX IF NOT EXISTS experiment_variants_single_control_per_experiment_idx
+                        ON experiment_variants (experiment_id)
+                        WHERE variant_type = 'CONTROL'
                         """).update();
 
         jdbcClient.sql("DELETE FROM experiment_variants").update();
@@ -99,9 +112,8 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                 experimentId,
                 flagKey,
                 List.of(
-                        new ExperimentVariant(
-                                null, " control ", new FeatureValue(true, FeatureValueType.BOOL), 10, BigDecimal.ONE),
-                        new ExperimentVariant(
+                        controlVariant(null, new FeatureValue(true, FeatureValueType.BOOL), 10, BigDecimal.ONE),
+                        regularVariant(
                                 UUID.randomUUID(),
                                 "variant-a",
                                 new FeatureValue("blue", FeatureValueType.STRING),
@@ -137,12 +149,8 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         Experiment first = new Experiment(
                 UUID.randomUUID(),
                 firstFlagKey,
-                List.of(new ExperimentVariant(
-                        UUID.randomUUID(),
-                        "control",
-                        new FeatureValue(true, FeatureValueType.BOOL),
-                        0,
-                        BigDecimal.ONE)),
+                List.of(controlVariant(
+                        UUID.randomUUID(), new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE)),
                 ExperimentState.RUNNING,
                 0L,
                 null,
@@ -150,7 +158,7 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         Experiment second = new Experiment(
                 UUID.randomUUID(),
                 secondFlagKey,
-                List.of(new ExperimentVariant(
+                List.of(regularVariant(
                         UUID.randomUUID(),
                         "variant-b",
                         new FeatureValue(10, FeatureValueType.NUMBER),
@@ -187,12 +195,8 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         Experiment initial = new Experiment(
                 UUID.randomUUID(),
                 flagKey,
-                List.of(new ExperimentVariant(
-                        UUID.randomUUID(),
-                        "control",
-                        new FeatureValue(true, FeatureValueType.BOOL),
-                        0,
-                        BigDecimal.ONE)),
+                List.of(controlVariant(
+                        UUID.randomUUID(), new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE)),
                 ExperimentState.DRAFT,
                 0L,
                 null,
@@ -217,12 +221,8 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         Experiment persisted = new Experiment(
                 UUID.randomUUID(),
                 flagKey,
-                List.of(new ExperimentVariant(
-                        UUID.randomUUID(),
-                        "control",
-                        new FeatureValue(true, FeatureValueType.BOOL),
-                        0,
-                        BigDecimal.ONE)),
+                List.of(controlVariant(
+                        UUID.randomUUID(), new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE)),
                 ExperimentState.DRAFT,
                 0L,
                 null,
@@ -251,13 +251,8 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                 UUID.randomUUID(),
                 flagKey,
                 List.of(
-                        new ExperimentVariant(
-                                keptVariantId,
-                                "control",
-                                new FeatureValue(true, FeatureValueType.BOOL),
-                                0,
-                                BigDecimal.ONE),
-                        new ExperimentVariant(
+                        controlVariant(keptVariantId, new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE),
+                        regularVariant(
                                 deletedVariantId,
                                 "old",
                                 new FeatureValue("old", FeatureValueType.STRING),
@@ -273,13 +268,9 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                 experiment.id(),
                 0L,
                 List.of(
-                        new ExperimentVariant(
-                                keptVariantId,
-                                "control",
-                                new FeatureValue(false, FeatureValueType.BOOL),
-                                8,
-                                BigDecimal.ONE),
-                        new ExperimentVariant(
+                        controlVariant(
+                                keptVariantId, new FeatureValue(false, FeatureValueType.BOOL), 8, BigDecimal.ONE),
+                        regularVariant(
                                 null,
                                 " new-variant ",
                                 new FeatureValue(42, FeatureValueType.NUMBER),
@@ -307,12 +298,8 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         Experiment experiment = new Experiment(
                 UUID.randomUUID(),
                 flagKey,
-                List.of(new ExperimentVariant(
-                        UUID.randomUUID(),
-                        "control",
-                        new FeatureValue(true, FeatureValueType.BOOL),
-                        0,
-                        BigDecimal.ONE)),
+                List.of(controlVariant(
+                        UUID.randomUUID(), new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE)),
                 ExperimentState.RUNNING,
                 0L,
                 null,
@@ -322,21 +309,13 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         ExperimentRepository.ReplaceVariantsResult staleResult = experimentRepository.replaceVariants(
                 experiment.id(),
                 9L,
-                List.of(new ExperimentVariant(
-                        UUID.randomUUID(),
-                        "control",
-                        new FeatureValue(false, FeatureValueType.BOOL),
-                        0,
-                        BigDecimal.ONE)));
+                List.of(controlVariant(
+                        UUID.randomUUID(), new FeatureValue(false, FeatureValueType.BOOL), 0, BigDecimal.ONE)));
         ExperimentRepository.ReplaceVariantsResult missingResult = experimentRepository.replaceVariants(
                 UUID.randomUUID(),
                 0L,
-                List.of(new ExperimentVariant(
-                        UUID.randomUUID(),
-                        "control",
-                        new FeatureValue(false, FeatureValueType.BOOL),
-                        0,
-                        BigDecimal.ONE)));
+                List.of(controlVariant(
+                        UUID.randomUUID(), new FeatureValue(false, FeatureValueType.BOOL), 0, BigDecimal.ONE)));
 
         assertThat(staleResult).isEqualTo(ExperimentRepository.ReplaceVariantsResult.VERSION_CONFLICT);
         assertThat(missingResult).isEqualTo(ExperimentRepository.ReplaceVariantsResult.NOT_FOUND);
@@ -350,12 +329,8 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         Experiment experiment = new Experiment(
                 UUID.randomUUID(),
                 flagKey,
-                List.of(new ExperimentVariant(
-                        UUID.randomUUID(),
-                        "control",
-                        new FeatureValue(true, FeatureValueType.BOOL),
-                        0,
-                        BigDecimal.ONE)),
+                List.of(controlVariant(
+                        UUID.randomUUID(), new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE)),
                 ExperimentState.APPROVED,
                 0L,
                 null,
@@ -391,5 +366,13 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                 .param("defaultValueType", "BOOL")
                 .param("version", 0L)
                 .update();
+    }
+
+    private ExperimentVariant controlVariant(UUID id, FeatureValue value, int position, BigDecimal weight) {
+        return new ExperimentVariant(id, "control", value, position, weight, ExperimentVariantType.CONTROL);
+    }
+
+    private ExperimentVariant regularVariant(UUID id, String key, FeatureValue value, int position, BigDecimal weight) {
+        return new ExperimentVariant(id, key, value, position, weight, ExperimentVariantType.REGULAR);
     }
 }

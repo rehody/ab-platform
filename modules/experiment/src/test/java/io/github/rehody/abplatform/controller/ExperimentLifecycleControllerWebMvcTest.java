@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.github.rehody.abplatform.config.AbstractWebMvcTest;
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.exception.ExperimentExceptionHandler;
 import io.github.rehody.abplatform.exception.ExperimentStateTransitionException;
 import io.github.rehody.abplatform.model.Experiment;
@@ -123,7 +124,8 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
                         "control",
                         new FeatureValue(true, FeatureValueType.BOOL),
                         0,
-                        BigDecimal.ONE)),
+                        BigDecimal.ONE,
+                        ExperimentVariantType.CONTROL)),
                 state,
                 version,
                 null,

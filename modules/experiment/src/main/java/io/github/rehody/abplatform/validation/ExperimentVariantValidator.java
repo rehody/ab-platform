@@ -13,10 +13,14 @@ public class ExperimentVariantValidator implements ConstraintValidator<ValidExpe
             return true;
         }
 
-        if (variant.key() == null || variant.key().isBlank()) {
+        String normalizedKey = normalizeKey(variant.key());
+        if (normalizedKey == null || normalizedKey.isBlank()) {
             return false;
         }
         if (variant.weight() == null || variant.weight().signum() <= 0) {
+            return false;
+        }
+        if (variant.variantType() == null) {
             return false;
         }
 
@@ -24,17 +28,14 @@ public class ExperimentVariantValidator implements ConstraintValidator<ValidExpe
     }
 
     private boolean isValidFeatureValue(FeatureValue featureValue) {
-        if (featureValue == null) {
-            return false;
-        }
-        if (featureValue.type() == null || featureValue.value() == null) {
-            return false;
+        return featureValue != null && featureValue.hasMatchingType();
+    }
+
+    private String normalizeKey(String key) {
+        if (key == null) {
+            return null;
         }
 
-        return switch (featureValue.type()) {
-            case BOOL -> featureValue.value() instanceof Boolean;
-            case STRING -> featureValue.value() instanceof String;
-            case NUMBER -> featureValue.value() instanceof Number;
-        };
+        return key.trim();
     }
 }

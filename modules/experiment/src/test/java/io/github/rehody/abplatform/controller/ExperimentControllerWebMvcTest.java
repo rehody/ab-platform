@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.github.rehody.abplatform.config.AbstractWebMvcTest;
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.exception.ExperimentAlreadyExistsException;
 import io.github.rehody.abplatform.exception.ExperimentExceptionHandler;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
@@ -54,7 +55,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
         mockMvc.perform(post("/api/v1/experiments")
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"flagKey":"flag-a","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"weight":1}],"state":"DRAFT"}
+                                {"flagKey":"flag-a","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"weight":1,"variantType":"CONTROL"}],"state":"DRAFT"}
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.flagKey").value("flag-a"))
@@ -68,7 +69,8 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                 "control",
                 new FeatureValue(true, FeatureValueType.BOOL),
                 0,
-                BigDecimal.ONE));
+                BigDecimal.ONE,
+                ExperimentVariantType.CONTROL));
         verify(experimentService).create("flag-a", expectedVariants, ExperimentState.DRAFT);
     }
 
@@ -84,13 +86,14 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                         "variant-a",
                         new FeatureValue("blue", FeatureValueType.STRING),
                         0,
-                        BigDecimal.ONE));
+                        BigDecimal.ONE,
+                        ExperimentVariantType.REGULAR));
         when(experimentService.update(eq(id), any(), eq(2L))).thenReturn(response);
 
         mockMvc.perform(patch("/api/v1/experiments/{id}", id)
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":"blue","type":"STRING"},"position":0,"weight":1}],"version":2}
+                                {"variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":"blue","type":"STRING"},"position":0,"weight":1,"variantType":"REGULAR"}],"version":2}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.flagKey").value("flag-b"))
@@ -103,7 +106,8 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                 "variant-a",
                 new FeatureValue("blue", FeatureValueType.STRING),
                 0,
-                BigDecimal.ONE));
+                BigDecimal.ONE,
+                ExperimentVariantType.REGULAR));
         verify(experimentService).update(id, expectedVariants, 2L);
     }
 
@@ -171,7 +175,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
         mockMvc.perform(post("/api/v1/experiments")
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"flagKey":"flag-a","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"weight":1}],"state":"DRAFT"}
+                                {"flagKey":"flag-a","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"weight":1,"variantType":"CONTROL"}],"state":"DRAFT"}
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
@@ -204,7 +208,8 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                         "control",
                         new FeatureValue(true, FeatureValueType.BOOL),
                         0,
-                        BigDecimal.ONE));
+                        BigDecimal.ONE,
+                        ExperimentVariantType.CONTROL));
     }
 
     private Experiment experiment(String flagKey, long version, ExperimentState state, ExperimentVariant variant) {

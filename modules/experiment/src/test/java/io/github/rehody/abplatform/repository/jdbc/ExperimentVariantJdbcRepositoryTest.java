@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
@@ -67,7 +68,8 @@ class ExperimentVariantJdbcRepositoryTest {
         List<ExperimentVariant> result = experimentVariantJdbcRepository.findByExperimentId(experimentId);
 
         assertThat(result).isEqualTo(variants);
-        verify(jdbcClient).sql(contains("SELECT id, experiment_id, key, value, value_type, position"));
+        verify(jdbcClient)
+                .sql(contains("SELECT id, experiment_id, key, value, value_type, position, weight, variant_type"));
     }
 
     @Test
@@ -234,7 +236,12 @@ class ExperimentVariantJdbcRepositoryTest {
 
     private ExperimentVariant variant(String key) {
         return new ExperimentVariant(
-                UUID.randomUUID(), key, new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE);
+                UUID.randomUUID(),
+                key,
+                new FeatureValue(true, FeatureValueType.BOOL),
+                0,
+                BigDecimal.ONE,
+                "control".equals(key) ? ExperimentVariantType.CONTROL : ExperimentVariantType.REGULAR);
     }
 
     private ResultSet resultSetWithExperimentId(UUID experimentId) throws Exception {
