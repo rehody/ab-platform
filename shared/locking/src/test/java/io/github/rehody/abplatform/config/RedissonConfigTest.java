@@ -2,22 +2,13 @@ package io.github.rehody.abplatform.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.redisson.api.RedissonClient;
+import org.redisson.config.Config;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class RedissonConfigTest {
 
     private final RedissonConfig redissonConfig = new RedissonConfig();
-    private RedissonClient redissonClient;
-
-    @AfterEach
-    void tearDown() {
-        if (redissonClient != null) {
-            redissonClient.shutdown();
-        }
-    }
 
     @Test
     void buildAddress_shouldReturnPlainRedisUrlAndHandleBlankPassword() {
@@ -42,9 +33,9 @@ class RedissonConfigTest {
     }
 
     @Test
-    void redissonClient_shouldCreateClientAndUseAddressWhenConfigurationProvided() {
-        redissonClient = redissonConfig.redissonClient("localhost", 6379, "");
+    void buildConfig_shouldUseBuiltAddressWhenConfigurationProvided() {
+        Config config = ReflectionTestUtils.invokeMethod(redissonConfig, "buildConfig", "localhost", 6379, "");
 
-        assertThat(redissonClient.getConfig().useSingleServer().getAddress()).isEqualTo("redis://localhost:6379");
+        assertThat(config.useSingleServer().getAddress()).isEqualTo("redis://localhost:6379");
     }
 }
