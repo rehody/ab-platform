@@ -108,7 +108,7 @@ class ExperimentVariantValidatorTest {
     void isValid_shouldReturnFalseAndRejectNullWeight() {
         ExperimentVariant variant = controlVariant("variant-a", validValue());
         ExperimentVariant invalidVariant = new ExperimentVariant(
-                variant.id(), variant.key(), variant.value(), variant.position(), null, variant.variantType());
+                variant.id(), variant.key(), variant.value(), variant.position(), null, variant.type());
 
         assertThat(validator.isValid(invalidVariant, null)).isFalse();
     }

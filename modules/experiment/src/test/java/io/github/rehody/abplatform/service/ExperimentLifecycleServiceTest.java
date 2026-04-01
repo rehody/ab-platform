@@ -55,12 +55,11 @@ class ExperimentLifecycleServiceTest {
     @Mock
     private ExperimentTimestampPolicy experimentTimestampPolicy;
 
-    private ExperimentCommandSupport experimentCommandSupport;
     private ExperimentLifecycleService experimentLifecycleService;
 
     @BeforeEach
     void setUp() {
-        experimentCommandSupport = new ExperimentCommandSupport(
+        ExperimentCommandSupport experimentCommandSupport = new ExperimentCommandSupport(
                 experimentRepository, lockExecutor, new ServiceActionExecutor(), experimentCache);
         experimentLifecycleService = new ExperimentLifecycleService(
                 experimentRepository, experimentCommandSupport, experimentAssignmentPolicy, experimentTimestampPolicy);

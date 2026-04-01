@@ -1,5 +1,6 @@
 package io.github.rehody.abplatform.service.snapshot;
 
+import static io.github.rehody.abplatform.support.AssignmentFixtures.variant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -13,10 +14,8 @@ class VariantAllocationSnapshotTest {
 
     @Test
     void selectVariant_shouldReturnVariantForMatchingBucketRange() {
-        ExperimentVariant control =
-                io.github.rehody.abplatform.support.AssignmentFixtures.variant(0, "control", "blue", 1);
-        ExperimentVariant treatment =
-                io.github.rehody.abplatform.support.AssignmentFixtures.variant(1, "treatment", "red", 1);
+        ExperimentVariant control = variant(0, "control", "blue", 1);
+        ExperimentVariant treatment = variant(1, "treatment", "red", 1);
         VariantAllocationSnapshot snapshot = new VariantAllocationSnapshot(
                 List.of(new BucketRange(0, 4000, control), new BucketRange(4000, 10000, treatment)));
 
@@ -27,8 +26,7 @@ class VariantAllocationSnapshotTest {
 
     @Test
     void constructor_shouldDefensivelyCopyBucketRanges() {
-        ExperimentVariant control =
-                io.github.rehody.abplatform.support.AssignmentFixtures.variant(0, "control", "blue", 1);
+        ExperimentVariant control = variant(0, "control", "blue", 1);
         List<BucketRange> ranges = new ArrayList<>();
         ranges.add(new BucketRange(0, 10000, control));
 
@@ -40,8 +38,8 @@ class VariantAllocationSnapshotTest {
 
     @Test
     void selectVariant_shouldThrowWhenBucketIsNotCovered() {
-        VariantAllocationSnapshot snapshot = new VariantAllocationSnapshot(List.of(new BucketRange(
-                0, 100, io.github.rehody.abplatform.support.AssignmentFixtures.variant(0, "control", "blue", 1))));
+        VariantAllocationSnapshot snapshot =
+                new VariantAllocationSnapshot(List.of(new BucketRange(0, 100, variant(0, "control", "blue", 1))));
         UUID experimentId = UUID.randomUUID();
 
         assertThatThrownBy(() -> snapshot.selectVariant(experimentId, 100))

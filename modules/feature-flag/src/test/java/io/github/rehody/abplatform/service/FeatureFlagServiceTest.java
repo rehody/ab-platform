@@ -49,12 +49,11 @@ class FeatureFlagServiceTest {
     @Mock
     private FeatureFlagUpdatePolicy featureFlagUpdatePolicy;
 
-    private ServiceActionExecutor serviceActionExecutor;
     private FeatureFlagService featureFlagService;
 
     @BeforeEach
     void setUp() {
-        serviceActionExecutor = new ServiceActionExecutor();
+        ServiceActionExecutor serviceActionExecutor = new ServiceActionExecutor();
         featureFlagService = new FeatureFlagService(
                 featureFlagRepository, featureFlagUpdatePolicy, lockExecutor, serviceActionExecutor, featureFlagCache);
         lenient()

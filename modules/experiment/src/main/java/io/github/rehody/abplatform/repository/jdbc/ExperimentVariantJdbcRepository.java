@@ -171,7 +171,7 @@ public class ExperimentVariantJdbcRepository {
                         .addValue("valueType", variant.value().type().name())
                         .addValue("position", variant.position())
                         .addValue("weight", variant.weight())
-                        .addValue("variantType", variant.variantType().name()))
+                        .addValue("type", variant.type().name()))
                 .toArray(SqlParameterSource[]::new);
     }
 

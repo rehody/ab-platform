@@ -8,6 +8,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import jakarta.validation.constraints.NotBlank;
 import java.util.HashSet;
 import java.util.Set;
@@ -167,12 +168,10 @@ class ExperimentExceptionHandlerTest {
     }
 
     private Set<ConstraintViolation<?>> constraintViolationsForBlankKey() {
-        try (var validatorFactory = Validation.buildDefaultValidatorFactory()) {
+        try (ValidatorFactory validatorFactory = Validation.buildDefaultValidatorFactory()) {
             Validator validator = validatorFactory.getValidator();
             Set<ConstraintViolation<ValidationPayload>> violations = validator.validate(new ValidationPayload(""));
-            Set<ConstraintViolation<?>> genericViolations = new HashSet<>();
-            genericViolations.addAll(violations);
-            return genericViolations;
+            return new HashSet<>(violations);
         }
     }
 

@@ -1,5 +1,7 @@
 package io.github.rehody.abplatform.service;
 
+import static io.github.rehody.abplatform.support.AssignmentFixtures.runningExperiment;
+import static io.github.rehody.abplatform.support.AssignmentFixtures.variant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
@@ -38,8 +40,7 @@ class ExperimentVariantResolverTest {
 
     @Test
     void resolve_shouldThrowWhenResolvableExperimentHasNoVariants() {
-        Experiment experiment =
-                io.github.rehody.abplatform.support.AssignmentFixtures.runningExperiment("flag-a", List.of(), 1L);
+        Experiment experiment = runningExperiment("flag-a", List.of(), 1L);
 
         assertThatThrownBy(() -> experimentVariantResolver.resolve(experiment, UUID.randomUUID()))
                 .isInstanceOf(IllegalStateException.class)
@@ -49,12 +50,9 @@ class ExperimentVariantResolverTest {
     @Test
     void resolve_shouldReturnVariantSelectedFromSnapshotForResolvedBucket() {
         UUID userId = UUID.randomUUID();
-        ExperimentVariant control =
-                io.github.rehody.abplatform.support.AssignmentFixtures.variant(0, "control", "blue", 1);
-        ExperimentVariant treatment =
-                io.github.rehody.abplatform.support.AssignmentFixtures.variant(1, "treatment", "red", 1);
-        Experiment experiment = io.github.rehody.abplatform.support.AssignmentFixtures.runningExperiment(
-                "flag-b", List.of(control, treatment), 4L);
+        ExperimentVariant control = variant(0, "control", "blue", 1);
+        ExperimentVariant treatment = variant(1, "treatment", "red", 1);
+        Experiment experiment = runningExperiment("flag-b", List.of(control, treatment), 4L);
         VariantAllocationSnapshot snapshot = new VariantAllocationSnapshot(
                 List.of(new BucketRange(0, 5000, control), new BucketRange(5000, 10000, treatment)));
         when(variantAllocationSnapshotReader.get(experiment)).thenReturn(snapshot);

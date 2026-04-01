@@ -66,14 +66,12 @@ class ExperimentServiceTest {
     @Mock
     private ExperimentVariantPolicy experimentVariantPolicy;
 
-    private ServiceActionExecutor serviceActionExecutor;
-    private ExperimentCommandSupport experimentCommandSupport;
     private ExperimentService experimentService;
 
     @BeforeEach
     void setUp() {
-        serviceActionExecutor = new ServiceActionExecutor();
-        experimentCommandSupport = new ExperimentCommandSupport(
+        ServiceActionExecutor serviceActionExecutor = new ServiceActionExecutor();
+        ExperimentCommandSupport experimentCommandSupport = new ExperimentCommandSupport(
                 experimentRepository, lockExecutor, serviceActionExecutor, experimentCache);
         experimentService = new ExperimentService(
                 experimentRepository,

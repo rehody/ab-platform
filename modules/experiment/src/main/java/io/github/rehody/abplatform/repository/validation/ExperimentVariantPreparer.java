@@ -31,7 +31,7 @@ public class ExperimentVariantPreparer {
                     variant.value(),
                     position,
                     variant.weight(),
-                    variant.variantType()));
+                    variant.type()));
         }
 
         return result;

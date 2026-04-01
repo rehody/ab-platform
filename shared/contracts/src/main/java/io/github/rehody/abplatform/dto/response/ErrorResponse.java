@@ -18,7 +18,6 @@ public record ErrorResponse(
         INTERNAL_ERROR,
         VALIDATION_ERROR,
         NOT_FOUND,
-        FORBIDDEN,
         BAD_REQUEST,
         CONFLICT
     }

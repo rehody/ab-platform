@@ -20,7 +20,7 @@ public class ExperimentVariantValidator implements ConstraintValidator<ValidExpe
         if (variant.weight() == null || variant.weight().signum() <= 0) {
             return false;
         }
-        if (variant.variantType() == null) {
+        if (variant.type() == null) {
             return false;
         }
 

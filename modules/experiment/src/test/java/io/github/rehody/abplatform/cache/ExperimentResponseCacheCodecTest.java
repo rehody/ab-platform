@@ -58,11 +58,11 @@ class ExperimentCacheCodecTest {
         assertThat(cachedExperiment.id()).isEqualTo(UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertThat(cachedExperiment.flagKey()).isEqualTo("flag-b");
         assertThat(cachedExperiment.variants()).hasSize(1);
-        assertThat(cachedExperiment.variants().get(0).key()).isEqualTo("variant-a");
-        assertThat(cachedExperiment.variants().get(0).value().value()).isEqualTo(123);
-        assertThat(cachedExperiment.variants().get(0).value().type()).isEqualTo(FeatureValueType.NUMBER);
-        assertThat(cachedExperiment.variants().get(0).weight()).isEqualByComparingTo("2");
-        assertThat(cachedExperiment.variants().get(0).variantType()).isEqualTo(ExperimentVariantType.REGULAR);
+        assertThat(cachedExperiment.variants().getFirst().key()).isEqualTo("variant-a");
+        assertThat(cachedExperiment.variants().getFirst().value().value()).isEqualTo(123);
+        assertThat(cachedExperiment.variants().getFirst().value().type()).isEqualTo(FeatureValueType.NUMBER);
+        assertThat(cachedExperiment.variants().getFirst().weight()).isEqualByComparingTo("2");
+        assertThat(cachedExperiment.variants().getFirst().type()).isEqualTo(ExperimentVariantType.REGULAR);
         assertThat(cachedExperiment.state()).isEqualTo(ExperimentState.APPROVED);
         assertThat(cachedExperiment.version()).isEqualTo(4L);
     }

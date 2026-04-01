@@ -88,6 +88,7 @@ class RedissonLockExecutorTest {
                 .hasMessage("Lock interrupted for key 'ab-platform:lock:feature:flag-d'")
                 .hasCauseInstanceOf(InterruptedException.class);
         assertThat(Thread.currentThread().isInterrupted()).isTrue();
+        //noinspection ResultOfMethodCallIgnored
         Thread.interrupted();
     }
 

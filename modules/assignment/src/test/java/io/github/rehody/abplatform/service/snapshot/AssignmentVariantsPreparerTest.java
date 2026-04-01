@@ -1,5 +1,7 @@
 package io.github.rehody.abplatform.service.snapshot;
 
+import static io.github.rehody.abplatform.support.AssignmentFixtures.runningExperiment;
+import static io.github.rehody.abplatform.support.AssignmentFixtures.variant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -14,12 +16,10 @@ class AssignmentVariantsPreparerTest {
 
     @Test
     void prepare_shouldReturnVariantsSortedByPosition() {
-        ExperimentVariant last = io.github.rehody.abplatform.support.AssignmentFixtures.variant(2, "last", "red", 1);
-        ExperimentVariant first = io.github.rehody.abplatform.support.AssignmentFixtures.variant(0, "first", "blue", 1);
-        ExperimentVariant middle =
-                io.github.rehody.abplatform.support.AssignmentFixtures.variant(1, "middle", "green", 1);
-        Experiment experiment = io.github.rehody.abplatform.support.AssignmentFixtures.runningExperiment(
-                "flag-a", List.of(last, first, middle), 1L);
+        ExperimentVariant last = variant(2, "last", "red", 1);
+        ExperimentVariant first = variant(0, "first", "blue", 1);
+        ExperimentVariant middle = variant(1, "middle", "green", 1);
+        Experiment experiment = runningExperiment("flag-a", List.of(last, first, middle), 1L);
 
         List<ExperimentVariant> prepared = assignmentVariantsPreparer.prepare(experiment);
 
@@ -28,8 +28,7 @@ class AssignmentVariantsPreparerTest {
 
     @Test
     void prepare_shouldRejectExperimentWithoutVariants() {
-        Experiment experiment =
-                io.github.rehody.abplatform.support.AssignmentFixtures.runningExperiment("flag-b", List.of(), 2L);
+        Experiment experiment = runningExperiment("flag-b", List.of(), 2L);
 
         assertThatThrownBy(() -> assignmentVariantsPreparer.prepare(experiment))
                 .isInstanceOf(IllegalArgumentException.class)

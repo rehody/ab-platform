@@ -60,7 +60,6 @@ class CachedVariantAllocationSnapshotReaderTest {
         VariantAllocationSnapshot snapshot =
                 new VariantAllocationSnapshot(List.of(new BucketRange(0, 10000, variant(0, "control", "blue", 1))));
         when(assignmentPlanCache.getOrLoad(eq(experiment.id() + ":3"), any())).thenAnswer(invocation -> {
-            @SuppressWarnings("unchecked")
             Supplier<Optional<VariantAllocationSnapshot>> loader = invocation.getArgument(1);
             return loader.get();
         });

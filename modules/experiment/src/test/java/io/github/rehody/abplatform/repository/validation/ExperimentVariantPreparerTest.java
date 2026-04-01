@@ -38,8 +38,8 @@ class ExperimentVariantPreparerTest {
                                 ExperimentVariantType.REGULAR)));
 
         assertThat(prepared).hasSize(2);
-        assertThat(prepared.get(0).id()).isNotNull();
-        assertThat(prepared.get(0).key()).isEqualTo("control");
+        assertThat(prepared.getFirst().id()).isNotNull();
+        assertThat(prepared.getFirst().key()).isEqualTo("control");
         assertThat(prepared.get(0).position()).isZero();
         assertThat(prepared.get(0).weight()).isEqualByComparingTo(BigDecimal.ONE);
         assertThat(prepared.get(1).id()).isEqualTo(existingId);

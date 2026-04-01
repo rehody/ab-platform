@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,7 +39,7 @@ class ExperimentRowMapperTest {
 
         Experiment experiment = rowMapper.mapRow(resultSet, 0);
 
-        assertThat(experiment.id()).isEqualTo(id);
+        assertThat(Objects.requireNonNull(experiment).id()).isEqualTo(id);
         assertThat(experiment.flagKey()).isEqualTo("checkout-redesign");
         assertThat(experiment.variants()).isEmpty();
         assertThat(experiment.state()).isEqualTo(ExperimentState.RUNNING);

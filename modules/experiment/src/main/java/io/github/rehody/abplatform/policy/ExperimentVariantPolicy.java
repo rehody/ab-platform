@@ -88,9 +88,9 @@ public class ExperimentVariantPolicy {
                     "REGULAR variant key must not be 'control' for experiment %s".formatted(experimentId));
         }
 
-        if (variant.variantType() != ExperimentVariantType.REGULAR) {
+        if (variant.type() != ExperimentVariantType.REGULAR) {
             throw new IllegalArgumentException(
-                    "Unexpected variant type %s for experiment %s".formatted(variant.variantType(), experimentId));
+                    "Unexpected variant type %s for experiment %s".formatted(variant.type(), experimentId));
         }
     }
 

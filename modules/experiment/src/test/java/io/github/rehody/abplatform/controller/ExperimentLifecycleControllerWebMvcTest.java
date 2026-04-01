@@ -115,6 +115,7 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.version").value(version));
     }
 
+    @SuppressWarnings("SameParameterValue")
     private Experiment experiment(String flagKey, long version, ExperimentState state) {
         return new Experiment(
                 UUID.randomUUID(),

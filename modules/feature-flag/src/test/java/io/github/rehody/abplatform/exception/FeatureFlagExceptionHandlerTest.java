@@ -35,7 +35,7 @@ class FeatureFlagExceptionHandlerTest {
         assertThat(response.getBody().message()).isEqualTo("Validation error");
         assertThat(response.getBody().path()).isEqualTo("/api/v1/flags/flag-z");
         assertThat(response.getBody().violations()).hasSize(1);
-        assertThat(response.getBody().violations().get(0).field()).isEqualTo("key");
+        assertThat(response.getBody().violations().getFirst().field()).isEqualTo("key");
     }
 
     @Test
