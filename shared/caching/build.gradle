@@ -1,0 +1,13 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    api libs.caffeine
+    api libs.redisson
+    api libs.jackson.databind
+
+    testImplementation libs.spring.boot.starter.test
+
+    integrationTestImplementation project(':shared:testing')
+}

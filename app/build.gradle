@@ -1,15 +1,20 @@
 plugins {
-    alias libs.plugins.springBoot
-    alias libs.plugins.springDependencyManagement
+    alias libs.plugins.spring.boot
+    alias libs.plugins.spring.dependency.management
 }
 
 dependencies {
-    implementation project(':shared')
     implementation project(':modules:feature-flag')
     implementation project(':modules:experiment')
+    implementation project(':shared:locking')
 
-    implementation libs.springBootStarter
-    testImplementation libs.springBootStarterTest
+    implementation libs.spring.boot.starter
+    implementation libs.spring.boot.starter.web
+    implementation libs.spring.boot.starter.flyway
+    runtimeOnly libs.flyway.database.postgresql
+    runtimeOnly libs.postgresql
+
+    testImplementation libs.spring.boot.starter.test
 }
 
 springBoot {

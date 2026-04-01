@@ -1,7 +1,7 @@
 plugins {
     id 'java'
-    alias libs.plugins.springBoot apply false
-    alias libs.plugins.springDependencyManagement apply false
+    alias libs.plugins.spring.boot apply false
+    alias libs.plugins.spring.dependency.management apply false
     alias libs.plugins.spotless apply false
 }
 
@@ -21,11 +21,16 @@ configure(projects) {
     apply plugin: 'java'
     apply plugin: 'jacoco'
     apply plugin: 'com.diffplug.spotless'
+    apply plugin: 'io.github.rehody.abplatform.integration-test-convention'
 
     java {
         toolchain {
             languageVersion = JavaLanguageVersion.of(25)
         }
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.compilerArgs.add('-parameters')
     }
 
     tasks.withType(Test).configureEach {
@@ -63,6 +68,7 @@ configure(projects) {
         annotationProcessor libs.lombok
         testCompileOnly libs.lombok
         testAnnotationProcessor libs.lombok
+        testRuntimeOnly libs.junit.platform.launcher
     }
 }
 

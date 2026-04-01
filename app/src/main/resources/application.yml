@@ -1,0 +1,58 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/abplatform}
+    username: ${DB_USER:usr}
+    password: ${DB_PASSWORD:pass}
+    driver-class-name: org.postgresql.Driver
+
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: ${FLYWAY_LOCATIONS:classpath:db/migration}
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
+    validate-on-migrate: ${FLYWAY_VALIDATE_ON_MIGRATE:true}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+ab:
+  lock:
+    key-prefix: ${AB_LOCK_KEY_PREFIX:ab-platform:lock:}
+    wait-time: ${AB_LOCK_WAIT_TIME:3s}
+    lease-time: ${AB_LOCK_LEASE_TIME:10s}
+
+  cache:
+    feature-flag:
+      l1-value-ttl: ${AB_CACHE_FEATURE_FLAG_L1_VALUE_TTL:60s}
+      l1-miss-ttl: ${AB_CACHE_FEATURE_FLAG_L1_MISS_TTL:10s}
+      l1-value-size: ${AB_CACHE_FEATURE_FLAG_L1_VALUE_SIZE:10000}
+      l1-miss-size: ${AB_CACHE_FEATURE_FLAG_L1_MISS_SIZE:5000}
+      l2-value-ttl: ${AB_CACHE_FEATURE_FLAG_L2_VALUE_TTL:10m}
+      l2-miss-ttl: ${AB_CACHE_FEATURE_FLAG_L2_MISS_TTL:15s}
+      ttl-spread: ${AB_CACHE_FEATURE_FLAG_TTL_SPREAD:0.1}
+      redis-key-prefix: ${AB_CACHE_FEATURE_FLAG_REDIS_KEY_PREFIX:ab-platform:cache:feature-flag:v1:}
+      invalidation-topic: ${AB_CACHE_FEATURE_FLAG_INVALIDATION_TOPIC:ab-platform:cache:feature-flag:v1:invalidation}
+
+    experiment:
+      l1-value-ttl: ${AB_CACHE_EXPERIMENT_L1_VALUE_TTL:60s}
+      l1-miss-ttl: ${AB_CACHE_EXPERIMENT_L1_MISS_TTL:10s}
+      l1-value-size: ${AB_CACHE_EXPERIMENT_L1_VALUE_SIZE:10000}
+      l1-miss-size: ${AB_CACHE_EXPERIMENT_L1_MISS_SIZE:5000}
+      l2-value-ttl: ${AB_CACHE_EXPERIMENT_L2_VALUE_TTL:10m}
+      l2-miss-ttl: ${AB_CACHE_EXPERIMENT_L2_MISS_TTL:15s}
+      ttl-spread: ${AB_CACHE_EXPERIMENT_TTL_SPREAD:0.1}
+      redis-key-prefix: ${AB_CACHE_EXPERIMENT_REDIS_KEY_PREFIX:ab-platform:cache:experiment:v1:}
+      invalidation-topic: ${AB_CACHE_EXPERIMENT_INVALIDATION_TOPIC:ab-platform:cache:experiment:v1:invalidation}
+
+    assignment-plan:
+      l1-value-ttl: ${AB_CACHE_ASSIGNMENT_PLAN_L1_VALUE_TTL:60s}
+      l1-miss-ttl: ${AB_CACHE_ASSIGNMENT_PLAN_L1_MISS_TTL:10s}
+      l1-value-size: ${AB_CACHE_ASSIGNMENT_PLAN_L1_VALUE_SIZE:10000}
+      l1-miss-size: ${AB_CACHE_ASSIGNMENT_PLAN_L1_MISS_SIZE:5000}
+      l2-value-ttl: ${AB_CACHE_ASSIGNMENT_PLAN_L2_VALUE_TTL:10m}
+      l2-miss-ttl: ${AB_CACHE_ASSIGNMENT_PLAN_L2_MISS_TTL:15s}
+      ttl-spread: ${AB_CACHE_ASSIGNMENT_PLAN_TTL_SPREAD:0.1}
+      redis-key-prefix: ${AB_CACHE_ASSIGNMENT_PLAN_REDIS_KEY_PREFIX:ab-platform:cache:assignment-plan:v2:}
+      invalidation-topic: ${AB_CACHE_ASSIGNMENT_PLAN_INVALIDATION_TOPIC:ab-platform:cache:assignment-plan:v2:invalidation}

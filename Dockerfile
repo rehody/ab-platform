@@ -8,6 +8,8 @@ RUN chmod +x gradlew
 
 COPY build.gradle settings.gradle ./
 
+COPY buildSrc ./buildSrc
+
 COPY app ./app
 COPY modules ./modules
 COPY shared ./shared
@@ -25,4 +27,3 @@ USER appuser
 
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/./urandom"
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
-

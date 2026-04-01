@@ -1,1 +1,14 @@
+dependencies {
+    implementation libs.spring.boot.starter.web
+    implementation libs.spring.boot.starter.data.jdbc
+    implementation libs.spring.boot.starter.validation
 
+    implementation project(':shared:caching')
+    implementation project(':shared:common')
+    implementation project(':shared:contracts')
+
+    testImplementation libs.spring.boot.starter.test
+    testImplementation project(':shared:testing')
+
+    integrationTestImplementation project(':shared:testing')
+}

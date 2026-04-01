@@ -1,15 +1,58 @@
 [versions]
-springBoot = "4.0.4"
-springDependencyManagement = "1.1.7"
+# Spring
+spring-boot = "4.0.4"
+spring-dependency-management = "1.1.7"
+spring-framework = "7.0.6"
+
+# Runtime and infrastructure
 lombok = "1.18.44"
+redisson = "4.3.0"
+caffeine = "3.2.2"
+guava = "33.5.0-jre"
+jackson = "3.0.0"
+testcontainers = "1.21.3"
+redis-testcontainers = "2.2.4"
+junit-platform = "6.0.3"
+
+# Build tooling
 spotless = "8.3.0"
 
 [libraries]
-springBootStarter = { module = "org.springframework.boot:spring-boot-starter" }
-springBootStarterTest = { module = "org.springframework.boot:spring-boot-starter-test" }
+# Spring Boot starters
+spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
+spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "spring-boot" }
+spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation", version.ref = "spring-boot" }
+spring-boot-starter-data-jdbc = { module = "org.springframework.boot:spring-boot-starter-data-jdbc", version.ref = "spring-boot" }
+spring-boot-starter-data-jdbc-test = { module = "org.springframework.boot:spring-boot-starter-data-jdbc-test", version.ref = "spring-boot" }
+spring-boot-starter-data-redis-test = { module = "org.springframework.boot:spring-boot-starter-data-redis-test", version.ref = "spring-boot" }
+spring-boot-starter-flyway = { module = "org.springframework.boot:spring-boot-starter-flyway", version.ref = "spring-boot" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
+spring-context = { module = "org.springframework:spring-context", version.ref = "spring-framework" }
+spring-tx = { module = "org.springframework:spring-tx", version.ref = "spring-framework" }
+
+# Database and migrations
+flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
+postgresql = { module = "org.postgresql:postgresql" }
+
+# Utilities
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
+jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson" }
+
+# Distributed locking
+redisson = { module = "org.redisson:redisson", version.ref = "redisson" }
+
+# Testing infrastructure
+testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
+testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
+testcontainers-redis = { module = "com.redis:testcontainers-redis", version.ref = "redis-testcontainers" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform" }
 
 [plugins]
-springBoot = { id = "org.springframework.boot", version.ref = "springBoot" }
-springDependencyManagement = { id = "io.spring.dependency-management", version.ref = "springDependencyManagement" }
+# Spring plugins
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+
+# Formatting plugins
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
