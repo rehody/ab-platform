@@ -1,6 +1,7 @@
 package io.github.rehody.abplatform.report.service;
 
 import io.github.rehody.abplatform.cache.ExperimentMetricReportCache;
+import io.github.rehody.abplatform.cache.ExperimentMetricReportCacheKeyFactory;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.metric.service.MetricDefinitionService;
 import io.github.rehody.abplatform.model.Experiment;
@@ -34,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ExperimentReportService {
 
     private final ExperimentMetricReportCache experimentMetricReportCache;
+    private final ExperimentMetricReportCacheKeyFactory experimentMetricReportCacheKeyFactory;
     private final ExperimentService experimentService;
     private final MetricDefinitionService metricDefinitionService;
     private final AssignmentEventReportRepository assignmentEventReportRepository;
@@ -46,7 +48,9 @@ public class ExperimentReportService {
     @Transactional(readOnly = true)
     public ExperimentMetricReport getExperimentReport(UUID experimentId, String metricKey) {
         return experimentMetricReportCache
-                .getOrLoad(cacheKey(experimentId, metricKey), () -> Optional.of(loadReport(experimentId, metricKey)))
+                .getOrLoad(
+                        experimentMetricReportCacheKeyFactory.forExperimentMetric(experimentId, metricKey),
+                        () -> Optional.of(loadReport(experimentId, metricKey)))
                 .orElseThrow(() -> new IllegalStateException("Experiment metric report cache loader returned empty"));
     }
 
@@ -85,10 +89,6 @@ public class ExperimentReportService {
                                         experiment.id(), metricDefinition.key(), reportWindow)),
                         reportWindow);
         };
-    }
-
-    private String cacheKey(UUID experimentId, String metricKey) {
-        return "%s:metric:%s".formatted(experimentId, metricKey);
     }
 
     private List<ExperimentVariant> sortVariantsByPosition(List<ExperimentVariant> variants) {
