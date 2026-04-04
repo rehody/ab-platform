@@ -54,8 +54,8 @@ class ExperimentJdbcRepositoryTest {
 
     @Test
     void insert_shouldWriteAllParametersAndExecuteInsertUpdate() {
-        Experiment experiment =
-                new Experiment(UUID.randomUUID(), "flag-a", List.of(), ExperimentState.DRAFT, 0L, null, null);
+        Experiment experiment = new Experiment(
+                UUID.randomUUID(), "flag-a", "CHECKOUT", List.of(), ExperimentState.DRAFT, 0L, null, null);
         when(jdbcClient.sql(anyString())).thenReturn(statementSpec);
         when(statementSpec.param(anyString(), any())).thenReturn(statementSpec);
         when(statementSpec.update()).thenReturn(1);
@@ -65,6 +65,7 @@ class ExperimentJdbcRepositoryTest {
         verify(jdbcClient).sql(contains("INSERT INTO experiments"));
         verify(statementSpec).param("id", experiment.id());
         verify(statementSpec).param("flagKey", "flag-a");
+        verify(statementSpec).param("domain", "CHECKOUT");
         verify(statementSpec).param("state", "DRAFT");
         verify(statementSpec).param("version", 0L);
         verify(statementSpec).param("startedAt", null);
@@ -77,6 +78,7 @@ class ExperimentJdbcRepositoryTest {
         Experiment experiment = new Experiment(
                 UUID.randomUUID(),
                 "flag-b",
+                "CHECKOUT",
                 List.of(),
                 ExperimentState.RUNNING,
                 3L,
@@ -90,13 +92,13 @@ class ExperimentJdbcRepositoryTest {
         Optional<Experiment> response = experimentJdbcRepository.findById(experiment.id());
 
         assertThat(response).contains(experiment);
-        verify(jdbcClient).sql(contains("SELECT id, flag_key, state, version, started_at, completed_at"));
+        verify(jdbcClient).sql(contains("SELECT id, flag_key, domain_key, state, version, started_at, completed_at"));
     }
 
     @Test
     void findByFlagKey_shouldReturnMappedExperimentWhenRepositoryContainsRecord() {
-        Experiment experiment =
-                new Experiment(UUID.randomUUID(), "flag-c", List.of(), ExperimentState.APPROVED, 4L, null, null);
+        Experiment experiment = new Experiment(
+                UUID.randomUUID(), "flag-c", "CHECKOUT", List.of(), ExperimentState.APPROVED, 4L, null, null);
         when(jdbcClient.sql(anyString())).thenReturn(statementSpec);
         when(statementSpec.param("flagKey", "flag-c")).thenReturn(statementSpec);
         when(statementSpec.query(experimentRowMapper)).thenReturn(mappedQuerySpec);
@@ -109,8 +111,8 @@ class ExperimentJdbcRepositoryTest {
 
     @Test
     void findAll_shouldReturnMappedExperiments() {
-        List<Experiment> experiments =
-                List.of(new Experiment(UUID.randomUUID(), "flag-d", List.of(), ExperimentState.PAUSED, 5L, null, null));
+        List<Experiment> experiments = List.of(new Experiment(
+                UUID.randomUUID(), "flag-d", "CHECKOUT", List.of(), ExperimentState.PAUSED, 5L, null, null));
         when(jdbcClient.sql(anyString())).thenReturn(statementSpec);
         when(statementSpec.query(experimentRowMapper)).thenReturn(mappedQuerySpec);
         when(mappedQuerySpec.list()).thenReturn(experiments);
@@ -144,6 +146,7 @@ class ExperimentJdbcRepositoryTest {
         Experiment experiment = new Experiment(
                 UUID.randomUUID(),
                 "flag-f",
+                "CHECKOUT",
                 List.of(),
                 ExperimentState.ARCHIVED,
                 7L,
@@ -159,6 +162,7 @@ class ExperimentJdbcRepositoryTest {
         verify(jdbcClient).sql(contains("UPDATE experiments"));
         verify(statementSpec).param("id", experiment.id());
         verify(statementSpec).param("flagKey", "flag-f");
+        verify(statementSpec).param("domain", "CHECKOUT");
         verify(statementSpec).param("state", "ARCHIVED");
         verify(statementSpec).param("startedAt", experiment.startedAt());
         verify(statementSpec).param("completedAt", experiment.completedAt());

@@ -34,14 +34,18 @@ public class ExperimentService {
     private final ExperimentVariantPolicy experimentVariantPolicy;
 
     @Transactional
-    public Experiment create(String flagKey, List<ExperimentVariant> variants, ExperimentState state) {
+    public Experiment create(
+            String flagKey, String domainKey, List<ExperimentVariant> variants, ExperimentState state) {
         return experimentCommandSupport.withExperimentLock(flagKey, () -> {
             ensureExperimentNotExists(flagKey);
+
             FeatureFlag featureFlag = featureFlagService.getByKey(flagKey);
+
             UUID experimentId = UUID.randomUUID();
             validateVariantsForFlagDefault(experimentId, variants, featureFlag);
 
-            Experiment experiment = buildExperiment(experimentId, flagKey, variants, state);
+            Experiment experiment = buildExperiment(experimentId, flagKey, domainKey, variants, state);
+
             experimentAssignmentPolicy.validateAssignmentInvariants(experiment);
             experimentRepository.save(experiment);
             experimentCommandSupport.invalidateCacheAfterCommit(flagKey);
@@ -51,8 +55,12 @@ public class ExperimentService {
     }
 
     private Experiment buildExperiment(
-            UUID experimentId, String flagKey, List<ExperimentVariant> variants, ExperimentState state) {
-        Experiment experiment = new Experiment(experimentId, flagKey, variants, state, 0L, null, null);
+            UUID experimentId,
+            String flagKey,
+            String domainKey,
+            List<ExperimentVariant> variants,
+            ExperimentState state) {
+        Experiment experiment = new Experiment(experimentId, flagKey, domainKey, variants, state, 0L, null, null);
         return experimentTimestampPolicy.initializeTimestamps(experiment, Instant.now());
     }
 
@@ -64,12 +72,12 @@ public class ExperimentService {
     }
 
     @Transactional
-    public Experiment update(UUID id, List<ExperimentVariant> variants, long version) {
-        String flagKey = experimentCommandSupport.getFlagKeyById(id);
-
+    public Experiment update(
+            UUID id, String flagKey, String domainKey, List<ExperimentVariant> variants, long version) {
         return experimentCommandSupport.withExperimentLock(flagKey, () -> {
-            validateUpdatedVariantConfiguration(id, flagKey, variants);
+            validateUpdatedVariantConfiguration(id, flagKey, domainKey, variants);
             replaceVariantsAndCheckOptimisticLocking(id, variants, version);
+
             experimentCommandSupport.invalidateCacheAfterCommit(flagKey);
             return experimentCommandSupport.getById(id);
         });
@@ -121,11 +129,15 @@ public class ExperimentService {
     }
 
     private void validateUpdatedVariantConfiguration(
-            UUID experimentId, String flagKey, List<ExperimentVariant> variants) {
+            UUID experimentId, String flagKey, String domainKey, List<ExperimentVariant> variants) {
         Experiment currentExperiment = experimentCommandSupport.getById(experimentId);
         FeatureFlag featureFlag = featureFlagService.getByKey(flagKey);
+
         validateVariantsForFlagDefault(experimentId, variants, featureFlag);
-        Experiment updatedExperiment = currentExperiment.withVariants(variants);
+
+        Experiment updatedExperiment =
+                currentExperiment.withDomainKey(domainKey).withVariants(variants);
+
         experimentAssignmentPolicy.validateAssignmentInvariants(updatedExperiment);
     }
 

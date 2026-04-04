@@ -14,13 +14,14 @@ public final class AssignmentFixtures {
 
     private AssignmentFixtures() {}
 
-    public static Experiment runningExperiment(String flagKey, List<ExperimentVariant> variants, long version) {
-        return experiment(flagKey, variants, ExperimentState.RUNNING, version);
+    public static Experiment runningExperiment(
+            String flagKey, String domain, List<ExperimentVariant> variants, long version) {
+        return experiment(flagKey, domain, variants, ExperimentState.RUNNING, version);
     }
 
     public static Experiment experiment(
-            String flagKey, List<ExperimentVariant> variants, ExperimentState state, long version) {
-        return new Experiment(UUID.randomUUID(), flagKey, List.copyOf(variants), state, version, null, null);
+            String flagKey, String domain, List<ExperimentVariant> variants, ExperimentState state, long version) {
+        return new Experiment(UUID.randomUUID(), flagKey, domain, List.copyOf(variants), state, version, null, null);
     }
 
     public static ExperimentVariant variant(int position, String key, String value, BigDecimal weight) {

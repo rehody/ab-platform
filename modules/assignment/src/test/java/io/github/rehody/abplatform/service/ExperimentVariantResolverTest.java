@@ -40,7 +40,7 @@ class ExperimentVariantResolverTest {
 
     @Test
     void resolve_shouldThrowWhenResolvableExperimentHasNoVariants() {
-        Experiment experiment = runningExperiment("flag-a", List.of(), 1L);
+        Experiment experiment = runningExperiment("flag-a", "CHECKOUT", List.of(), 1L);
 
         assertThatThrownBy(() -> experimentVariantResolver.resolve(experiment, UUID.randomUUID()))
                 .isInstanceOf(IllegalStateException.class)
@@ -52,7 +52,7 @@ class ExperimentVariantResolverTest {
         UUID userId = UUID.randomUUID();
         ExperimentVariant control = variant(0, "control", "blue", 1);
         ExperimentVariant treatment = variant(1, "treatment", "red", 1);
-        Experiment experiment = runningExperiment("flag-b", List.of(control, treatment), 4L);
+        Experiment experiment = runningExperiment("flag-b", "CHECKOUT", List.of(control, treatment), 4L);
         VariantAllocationSnapshot snapshot = new VariantAllocationSnapshot(
                 List.of(new BucketRange(0, 5000, control), new BucketRange(5000, 10000, treatment)));
         when(variantAllocationSnapshotReader.get(experiment)).thenReturn(snapshot);

@@ -48,6 +48,13 @@ public class ExperimentRepository {
                         experiment, findVariantsByExperimentId(experiment.id())));
     }
 
+    public Optional<Experiment> findRunningByFlagKey(String flagKey) {
+        return experimentJdbcRepository
+                .findRunningByFlagKey(flagKey)
+                .map(experiment -> experimentAggregateMapper.withVariants(
+                        experiment, findVariantsByExperimentId(experiment.id())));
+    }
+
     public List<Experiment> findAll() {
         List<Experiment> experiments = experimentJdbcRepository.findAll();
         return attachVariants(experiments);

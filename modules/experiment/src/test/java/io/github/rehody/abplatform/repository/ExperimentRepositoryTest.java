@@ -74,8 +74,8 @@ class ExperimentRepositoryTest {
 
     @Test
     void findById_shouldReturnMappedAggregateWhenExperimentExists() {
-        Experiment experiment = experiment("flag-b", 2L);
-        Experiment mapped = experiment("flag-b", 2L);
+        Experiment experiment = experiment("flag-b", "CHECKOUT", 2L);
+        Experiment mapped = experiment("flag-b", "CHECKOUT", 2L);
         List<ExperimentVariant> variants = variants();
         when(experimentJdbcRepository.findById(experiment.id())).thenReturn(Optional.of(experiment));
         when(experimentVariantJdbcRepository.findByExperimentId(experiment.id()))
@@ -100,8 +100,8 @@ class ExperimentRepositoryTest {
 
     @Test
     void findByFlagKey_shouldReturnMappedAggregateWhenExperimentExists() {
-        Experiment experiment = experiment("flag-c", 3L);
-        Experiment mapped = experiment("flag-c", 3L);
+        Experiment experiment = experiment("flag-c", "CHECKOUT", 3L);
+        Experiment mapped = experiment("flag-c", "CHECKOUT", 3L);
         List<ExperimentVariant> variants = variants();
         when(experimentJdbcRepository.findByFlagKey("flag-c")).thenReturn(Optional.of(experiment));
         when(experimentVariantJdbcRepository.findByExperimentId(experiment.id()))
@@ -125,10 +125,10 @@ class ExperimentRepositoryTest {
 
     @Test
     void findAll_shouldMapVariantsForEachExperimentAndDefaultToEmptyVariants() {
-        Experiment first = experiment("flag-d", 1L);
-        Experiment second = experiment("flag-e", 2L);
-        Experiment mappedFirst = experiment("flag-d", 1L);
-        Experiment mappedSecond = experiment("flag-e", 2L);
+        Experiment first = experiment("flag-d", "CHECKOUT", 1L);
+        Experiment second = experiment("flag-e", "PRICING", 2L);
+        Experiment mappedFirst = experiment("flag-d", "CHECKOUT", 1L);
+        Experiment mappedSecond = experiment("flag-e", "PRICING", 2L);
         List<ExperimentVariant> firstVariants = variants();
         when(experimentJdbcRepository.findAll()).thenReturn(List.of(first, second));
         when(experimentVariantJdbcRepository.findByExperimentIds(List.of(first.id(), second.id())))
@@ -151,7 +151,7 @@ class ExperimentRepositoryTest {
 
     @Test
     void update_shouldReturnUpdatedOutcomeWithNewVersionWhenJdbcUpdateSucceeds() {
-        Experiment experiment = experiment("flag-f", 5L);
+        Experiment experiment = experiment("flag-f", "CHECKOUT", 5L);
         when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.of(6L));
 
         ExperimentRepository.UpdateOutcome result = experimentRepository.update(experiment);
@@ -162,7 +162,7 @@ class ExperimentRepositoryTest {
 
     @Test
     void update_shouldReturnVersionConflictWhenExperimentExistsButVersionDiffers() {
-        Experiment experiment = experiment("flag-g", 6L);
+        Experiment experiment = experiment("flag-g", "CHECKOUT", 6L);
         when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.empty());
         when(experimentJdbcRepository.findVersionById(experiment.id())).thenReturn(Optional.of(7L));
 
@@ -174,7 +174,7 @@ class ExperimentRepositoryTest {
 
     @Test
     void update_shouldReturnNotFoundWhenExperimentMissing() {
-        Experiment experiment = experiment("flag-h", 6L);
+        Experiment experiment = experiment("flag-h", "CHECKOUT", 6L);
         when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.empty());
         when(experimentJdbcRepository.findVersionById(experiment.id())).thenReturn(Optional.empty());
 
@@ -276,7 +276,12 @@ class ExperimentRepositoryTest {
     }
 
     private Experiment experiment(String flagKey, long version) {
-        return new Experiment(UUID.randomUUID(), flagKey, variants(), ExperimentState.RUNNING, version, null, null);
+        return experiment(flagKey, "CHECKOUT", version);
+    }
+
+    private Experiment experiment(String flagKey, String domain, long version) {
+        return new Experiment(
+                UUID.randomUUID(), flagKey, domain, variants(), ExperimentState.RUNNING, version, null, null);
     }
 
     private List<ExperimentVariant> variants() {

@@ -8,6 +8,7 @@ import io.github.rehody.abplatform.policy.ExperimentTimestampPolicy;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
 import io.github.rehody.abplatform.repository.ExperimentRepository.UpdateOutcome;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,7 @@ public class ExperimentLifecycleService {
 
     private final ExperimentRepository experimentRepository;
     private final ExperimentCommandSupport experimentCommandSupport;
-    private final ExperimentActivationPolicy experimentActivationPolicy;
+    private final List<ExperimentActivationPolicy> experimentActivationPolicies;
     private final ExperimentAssignmentPolicy experimentAssignmentPolicy;
     private final ExperimentTimestampPolicy experimentTimestampPolicy;
 
@@ -32,7 +33,7 @@ public class ExperimentLifecycleService {
 
     @Transactional
     public Experiment approve(UUID id, long version) {
-        return transition(id, version, Experiment::approve);
+        return transition(id, version, Experiment::approve, true);
     }
 
     @Transactional
@@ -42,7 +43,7 @@ public class ExperimentLifecycleService {
 
     @Transactional
     public Experiment start(UUID id, long version) {
-        return transition(id, version, Experiment::start);
+        return transition(id, version, Experiment::start, true);
     }
 
     @Transactional
@@ -52,7 +53,7 @@ public class ExperimentLifecycleService {
 
     @Transactional
     public Experiment resume(UUID id, long version) {
-        return transition(id, version, Experiment::resume);
+        return transition(id, version, Experiment::resume, true);
     }
 
     @Transactional
@@ -66,6 +67,14 @@ public class ExperimentLifecycleService {
     }
 
     private Experiment transition(UUID id, long expectedVersion, UnaryOperator<Experiment> stateTransition) {
+        return transition(id, expectedVersion, stateTransition, false);
+    }
+
+    private Experiment transition(
+            UUID id,
+            long expectedVersion,
+            UnaryOperator<Experiment> stateTransition,
+            boolean validateBlockingConflicts) {
         String flagKey = experimentCommandSupport.getFlagKeyById(id);
 
         return experimentCommandSupport.withExperimentLock(flagKey, () -> {
@@ -74,7 +83,7 @@ public class ExperimentLifecycleService {
             Experiment timestampedExperiment =
                     experimentTimestampPolicy.applyTransitionTimestamps(experiment, transitedExperiment, Instant.now());
 
-            validateActivationIfRunning(timestampedExperiment);
+            validateActivationIfNeeded(timestampedExperiment, validateBlockingConflicts);
             experimentAssignmentPolicy.validateAssignmentInvariants(timestampedExperiment);
             Experiment experimentToUpdate = timestampedExperiment.withVersion(expectedVersion);
 
@@ -85,8 +94,12 @@ public class ExperimentLifecycleService {
         });
     }
 
-    private void validateActivationIfRunning(Experiment experiment) {
-        if (experiment.isRunning()) {
+    private void validateActivationIfNeeded(Experiment experiment, boolean shouldValidateBlockingConflicts) {
+        if (!shouldValidateBlockingConflicts) {
+            return;
+        }
+
+        for (ExperimentActivationPolicy experimentActivationPolicy : experimentActivationPolicies) {
             experimentActivationPolicy.validateActivation(experiment);
         }
     }

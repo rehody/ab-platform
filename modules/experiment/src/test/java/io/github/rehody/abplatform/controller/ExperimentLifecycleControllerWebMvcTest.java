@@ -46,21 +46,21 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
     void transitions_shouldReturnOkAndBodyForAllLifecycleEndpoints() throws Exception {
         UUID id = UUID.randomUUID();
         when(experimentLifecycleService.submitForReview(eq(id), eq(3L)))
-                .thenReturn(experiment("flag-a", 4L, ExperimentState.IN_REVIEW));
+                .thenReturn(experiment("flag-a", "CHECKOUT", 4L, ExperimentState.IN_REVIEW));
         when(experimentLifecycleService.approve(eq(id), eq(3L)))
-                .thenReturn(experiment("flag-a", 5L, ExperimentState.APPROVED));
+                .thenReturn(experiment("flag-a", "CHECKOUT", 5L, ExperimentState.APPROVED));
         when(experimentLifecycleService.reject(eq(id), eq(3L)))
-                .thenReturn(experiment("flag-a", 5L, ExperimentState.REJECTED));
+                .thenReturn(experiment("flag-a", "CHECKOUT", 5L, ExperimentState.REJECTED));
         when(experimentLifecycleService.start(eq(id), eq(3L)))
-                .thenReturn(experiment("flag-a", 6L, ExperimentState.RUNNING));
+                .thenReturn(experiment("flag-a", "CHECKOUT", 6L, ExperimentState.RUNNING));
         when(experimentLifecycleService.pause(eq(id), eq(3L)))
-                .thenReturn(experiment("flag-a", 7L, ExperimentState.PAUSED));
+                .thenReturn(experiment("flag-a", "CHECKOUT", 7L, ExperimentState.PAUSED));
         when(experimentLifecycleService.resume(eq(id), eq(3L)))
-                .thenReturn(experiment("flag-a", 8L, ExperimentState.RUNNING));
+                .thenReturn(experiment("flag-a", "CHECKOUT", 8L, ExperimentState.RUNNING));
         when(experimentLifecycleService.complete(eq(id), eq(3L)))
-                .thenReturn(experiment("flag-a", 9L, ExperimentState.COMPLETED));
+                .thenReturn(experiment("flag-a", "CHECKOUT", 9L, ExperimentState.COMPLETED));
         when(experimentLifecycleService.archive(eq(id), eq(3L)))
-                .thenReturn(experiment("flag-a", 10L, ExperimentState.ARCHIVED));
+                .thenReturn(experiment("flag-a", "CHECKOUT", 10L, ExperimentState.ARCHIVED));
 
         assertLifecycleResponse("/api/v1/experiments/{id}/submit-for-review", id, "IN_REVIEW", 4);
         assertLifecycleResponse("/api/v1/experiments/{id}/approve", id, "APPROVED", 5);
@@ -138,16 +138,18 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
                         """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.flagKey").value("flag-a"))
+                .andExpect(jsonPath("$.domain").value("CHECKOUT"))
                 .andExpect(jsonPath("$.variants[0].key").value("control"))
                 .andExpect(jsonPath("$.state").value(state))
                 .andExpect(jsonPath("$.version").value(version));
     }
 
     @SuppressWarnings("SameParameterValue")
-    private Experiment experiment(String flagKey, long version, ExperimentState state) {
+    private Experiment experiment(String flagKey, String domain, long version, ExperimentState state) {
         return new Experiment(
                 UUID.randomUUID(),
                 flagKey,
+                domain,
                 List.of(new ExperimentVariant(
                         UUID.randomUUID(),
                         "control",

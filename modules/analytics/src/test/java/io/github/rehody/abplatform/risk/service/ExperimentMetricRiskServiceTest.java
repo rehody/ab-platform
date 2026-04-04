@@ -242,7 +242,7 @@ class ExperimentMetricRiskServiceTest {
 
     private Experiment runningExperiment() {
         return new Experiment(
-                UUID.randomUUID(), "checkout-redesign", List.of(), ExperimentState.RUNNING, 7L, null, null);
+                UUID.randomUUID(), "checkout-redesign", "CHECKOUT", List.of(), ExperimentState.RUNNING, 7L, null, null);
     }
 
     private MetricDefinition metricDefinition() {

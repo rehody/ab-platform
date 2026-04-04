@@ -93,6 +93,7 @@ class ExperimentTest {
         return new Experiment(
                 UUID.randomUUID(),
                 "flag-a",
+                "CHECKOUT",
                 List.of(new ExperimentVariant(
                         UUID.randomUUID(),
                         "control",

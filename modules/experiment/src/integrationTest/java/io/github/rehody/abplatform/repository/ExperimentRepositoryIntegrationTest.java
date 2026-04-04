@@ -59,9 +59,17 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                         """).update();
 
         jdbcClient.sql("""
+                        CREATE TABLE IF NOT EXISTS experiment_domains (
+                            code VARCHAR(64) PRIMARY KEY,
+                            name VARCHAR(255) NOT NULL
+                        )
+                        """).update();
+
+        jdbcClient.sql("""
                         CREATE TABLE IF NOT EXISTS experiments (
                             id UUID PRIMARY KEY,
                             flag_key VARCHAR(255) NOT NULL REFERENCES feature_flags (feature_key),
+                            domain_key VARCHAR(64) NOT NULL REFERENCES experiment_domains (code),
                             state VARCHAR(16) NOT NULL,
                             version BIGINT NOT NULL DEFAULT 0,
                             started_at TIMESTAMPTZ NULL,
@@ -100,7 +108,10 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
 
         jdbcClient.sql("DELETE FROM experiment_variants").update();
         jdbcClient.sql("DELETE FROM experiments").update();
+        jdbcClient.sql("DELETE FROM experiment_domains").update();
         jdbcClient.sql("DELETE FROM feature_flags").update();
+
+        insertDomain("CORE", "Core");
     }
 
     @Test
@@ -112,6 +123,7 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         Experiment experiment = new Experiment(
                 experimentId,
                 flagKey,
+                "CORE",
                 List.of(
                         controlVariant(null, new FeatureValue(true, FeatureValueType.BOOL), 10, BigDecimal.ONE),
                         regularVariant(
@@ -130,6 +142,7 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
 
         assertThat(loaded.id()).isEqualTo(experimentId);
         assertThat(loaded.flagKey()).isEqualTo(flagKey);
+        assertThat(loaded.domain()).isEqualTo("CORE");
         assertThat(loaded.state()).isEqualTo(ExperimentState.DRAFT);
         assertThat(loaded.version()).isZero();
         assertThat(loaded.variants()).hasSize(2);
@@ -150,6 +163,7 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         Experiment first = new Experiment(
                 UUID.randomUUID(),
                 firstFlagKey,
+                "CORE",
                 List.of(controlVariant(
                         UUID.randomUUID(), new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE)),
                 ExperimentState.RUNNING,
@@ -159,6 +173,7 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         Experiment second = new Experiment(
                 UUID.randomUUID(),
                 secondFlagKey,
+                "CORE",
                 List.of(regularVariant(
                         UUID.randomUUID(),
                         "variant-b",
@@ -179,6 +194,7 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                 .toList();
 
         assertThat(byFlagKey.id()).isEqualTo(second.id());
+        assertThat(byFlagKey.domain()).isEqualTo("CORE");
         assertThat(byFlagKey.variants()).hasSize(1);
         assertThat(byFlagKey.variants().getFirst().key()).isEqualTo("variant-b");
 
@@ -196,6 +212,7 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         Experiment initial = new Experiment(
                 UUID.randomUUID(),
                 flagKey,
+                "CORE",
                 List.of(controlVariant(
                         UUID.randomUUID(), new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE)),
                 ExperimentState.DRAFT,
@@ -204,8 +221,8 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                 null);
         experimentRepository.save(initial);
 
-        ExperimentRepository.UpdateOutcome result = experimentRepository.update(
-                new Experiment(initial.id(), flagKey, initial.variants(), ExperimentState.RUNNING, 0L, null, null));
+        ExperimentRepository.UpdateOutcome result = experimentRepository.update(new Experiment(
+                initial.id(), flagKey, "CORE", initial.variants(), ExperimentState.RUNNING, 0L, null, null));
         Experiment updated = experimentRepository.findById(initial.id()).orElseThrow();
 
         assertThat(result.status()).isEqualTo(ExperimentRepository.UpdateStatus.UPDATED);
@@ -222,6 +239,7 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         Experiment persisted = new Experiment(
                 UUID.randomUUID(),
                 flagKey,
+                "CORE",
                 List.of(controlVariant(
                         UUID.randomUUID(), new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE)),
                 ExperimentState.DRAFT,
@@ -231,9 +249,9 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         experimentRepository.save(persisted);
 
         ExperimentRepository.UpdateOutcome staleResult = experimentRepository.update(new Experiment(
-                persisted.id(), flagKey, persisted.variants(), ExperimentState.APPROVED, 9L, null, null));
-        ExperimentRepository.UpdateOutcome missingResult = experimentRepository.update(
-                new Experiment(UUID.randomUUID(), flagKey, List.of(), ExperimentState.APPROVED, 0L, null, null));
+                persisted.id(), flagKey, "CORE", persisted.variants(), ExperimentState.APPROVED, 9L, null, null));
+        ExperimentRepository.UpdateOutcome missingResult = experimentRepository.update(new Experiment(
+                UUID.randomUUID(), flagKey, "CORE", List.of(), ExperimentState.APPROVED, 0L, null, null));
 
         assertThat(staleResult.status()).isEqualTo(ExperimentRepository.UpdateStatus.VERSION_CONFLICT);
         assertThat(staleResult.version()).isNull();
@@ -251,6 +269,7 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         Experiment experiment = new Experiment(
                 UUID.randomUUID(),
                 flagKey,
+                "CORE",
                 List.of(
                         controlVariant(keptVariantId, new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE),
                         regularVariant(
@@ -299,6 +318,7 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         Experiment experiment = new Experiment(
                 UUID.randomUUID(),
                 flagKey,
+                "CORE",
                 List.of(controlVariant(
                         UUID.randomUUID(), new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE)),
                 ExperimentState.RUNNING,
@@ -330,6 +350,7 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         Experiment experiment = new Experiment(
                 UUID.randomUUID(),
                 flagKey,
+                "CORE",
                 List.of(controlVariant(
                         UUID.randomUUID(), new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE)),
                 ExperimentState.APPROVED,
@@ -367,6 +388,13 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                 .param("defaultValueType", "BOOL")
                 .param("version", 0L)
                 .update();
+    }
+
+    private void insertDomain(String code, String name) {
+        jdbcClient.sql("""
+                        INSERT INTO experiment_domains (code, name)
+                        VALUES (:code, :name)
+                        """).param("code", code).param("name", name).update();
     }
 
     private ExperimentVariant controlVariant(UUID id, FeatureValue value, int position, BigDecimal weight) {

@@ -19,14 +19,15 @@ public class ExperimentRowMapper implements RowMapper<Experiment> {
         return new Experiment(
                 rs.getObject("id", UUID.class),
                 rs.getString("flag_key"),
+                rs.getString("domain_key"),
                 List.of(),
                 ExperimentState.valueOf(rs.getString("state")),
                 rs.getLong("version"),
-                toInstant(rs.getTimestamp("started_at")),
-                toInstant(rs.getTimestamp("completed_at")));
+                asInstant(rs.getTimestamp("started_at")),
+                asInstant(rs.getTimestamp("completed_at")));
     }
 
-    private Instant toInstant(Timestamp timestamp) {
+    private Instant asInstant(Timestamp timestamp) {
         if (timestamp == null) {
             return null;
         }

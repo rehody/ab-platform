@@ -68,7 +68,7 @@ class ExperimentLifecycleServiceTest {
         experimentLifecycleService = new ExperimentLifecycleService(
                 experimentRepository,
                 experimentCommandSupport,
-                experimentActivationPolicy,
+                List.of(experimentActivationPolicy),
                 experimentAssignmentPolicy,
                 experimentTimestampPolicy);
         lenient()
@@ -90,6 +90,7 @@ class ExperimentLifecycleServiceTest {
     void approve_shouldUpdateStateIncrementVersionAndInvalidateCache() {
         assertSuccessfulTransition(
                 experimentLifecycleService::approve, ExperimentState.IN_REVIEW, ExperimentState.APPROVED);
+        verify(experimentActivationPolicy).validateActivation(any(Experiment.class));
     }
 
     @Test
@@ -102,6 +103,7 @@ class ExperimentLifecycleServiceTest {
     void start_shouldUpdateStateIncrementVersionAndInvalidateCache() {
         assertSuccessfulTransition(
                 experimentLifecycleService::start, ExperimentState.APPROVED, ExperimentState.RUNNING);
+        verify(experimentActivationPolicy).validateActivation(any(Experiment.class));
     }
 
     @Test
@@ -112,6 +114,7 @@ class ExperimentLifecycleServiceTest {
     @Test
     void resume_shouldUpdateStateIncrementVersionAndInvalidateCache() {
         assertSuccessfulTransition(experimentLifecycleService::resume, ExperimentState.PAUSED, ExperimentState.RUNNING);
+        verify(experimentActivationPolicy).validateActivation(any(Experiment.class));
     }
 
     @Test
@@ -124,6 +127,7 @@ class ExperimentLifecycleServiceTest {
     void archive_shouldUpdateStateIncrementVersionAndInvalidateCache() {
         assertSuccessfulTransition(
                 experimentLifecycleService::archive, ExperimentState.COMPLETED, ExperimentState.ARCHIVED);
+        verify(experimentActivationPolicy, never()).validateActivation(any(Experiment.class));
     }
 
     @Test
@@ -256,11 +260,12 @@ class ExperimentLifecycleServiceTest {
         assertThat(namespaceCaptor.getValue().value()).isEqualTo("experiment");
 
         assertThat(response)
-                .isEqualTo(new Experiment(id, flagKey, current.variants(), targetState, persistedVersion, null, null));
+                .isEqualTo(new Experiment(
+                        id, flagKey, current.domain(), current.variants(), targetState, persistedVersion, null, null));
     }
 
     private Experiment experiment(UUID id, String flagKey, ExperimentState state, long version) {
-        return new Experiment(id, flagKey, variants(), state, version, null, null);
+        return new Experiment(id, flagKey, "CHECKOUT", variants(), state, version, null, null);
     }
 
     private List<ExperimentVariant> variants() {

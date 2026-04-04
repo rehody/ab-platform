@@ -32,6 +32,7 @@ class ExperimentRowMapperTest {
 
         when(resultSet.getObject("id", UUID.class)).thenReturn(id);
         when(resultSet.getString("flag_key")).thenReturn("checkout-redesign");
+        when(resultSet.getString("domain_key")).thenReturn("CHECKOUT");
         when(resultSet.getString("state")).thenReturn("RUNNING");
         when(resultSet.getLong("version")).thenReturn(5L);
         when(resultSet.getTimestamp("started_at")).thenReturn(Timestamp.from(startedAt));
@@ -41,6 +42,7 @@ class ExperimentRowMapperTest {
 
         assertThat(Objects.requireNonNull(experiment).id()).isEqualTo(id);
         assertThat(experiment.flagKey()).isEqualTo("checkout-redesign");
+        assertThat(experiment.domain()).isEqualTo("CHECKOUT");
         assertThat(experiment.variants()).isEmpty();
         assertThat(experiment.state()).isEqualTo(ExperimentState.RUNNING);
         assertThat(experiment.version()).isEqualTo(5L);

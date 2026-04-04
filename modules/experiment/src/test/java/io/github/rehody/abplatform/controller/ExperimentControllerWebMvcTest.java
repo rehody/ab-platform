@@ -15,7 +15,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.github.rehody.abplatform.config.AbstractWebMvcTest;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.enums.ExperimentVariantType;
-import io.github.rehody.abplatform.exception.ExperimentAlreadyExistsException;
 import io.github.rehody.abplatform.exception.ExperimentExceptionHandler;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
 import io.github.rehody.abplatform.model.Experiment;
@@ -48,17 +47,18 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
 
     @Test
     void create_shouldReturnCreatedAndBodyWhenRequestIsValid() throws Exception {
-        Experiment response = experiment("flag-a", 0L, ExperimentState.DRAFT);
-        when(experimentService.create(anyString(), any(), any(ExperimentState.class)))
+        Experiment response = experiment("flag-a", "CHECKOUT", 0L, ExperimentState.DRAFT);
+        when(experimentService.create(anyString(), anyString(), any(), any(ExperimentState.class)))
                 .thenReturn(response);
 
         mockMvc.perform(post("/api/v1/experiments")
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"flagKey":"flag-a","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"weight":1,"type":"CONTROL"}],"state":"DRAFT"}
+                                {"flagKey":"flag-a","domainKey":"CHECKOUT","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"weight":1,"type":"CONTROL"}],"state":"DRAFT"}
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.flagKey").value("flag-a"))
+                .andExpect(jsonPath("$.domain").value("CHECKOUT"))
                 .andExpect(jsonPath("$.variants[0].key").value("control"))
                 .andExpect(jsonPath("$.variants[0].value.value").value(true))
                 .andExpect(jsonPath("$.state").value("DRAFT"))
@@ -71,7 +71,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                 0,
                 BigDecimal.ONE,
                 ExperimentVariantType.CONTROL));
-        verify(experimentService).create("flag-a", expectedVariants, ExperimentState.DRAFT);
+        verify(experimentService).create("flag-a", "CHECKOUT", expectedVariants, ExperimentState.DRAFT);
     }
 
     @Test
@@ -79,6 +79,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
         UUID id = UUID.randomUUID();
         Experiment response = experiment(
                 "flag-b",
+                "PRICING",
                 3L,
                 ExperimentState.RUNNING,
                 new ExperimentVariant(
@@ -88,15 +89,16 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                         0,
                         BigDecimal.ONE,
                         ExperimentVariantType.REGULAR));
-        when(experimentService.update(eq(id), any(), eq(2L))).thenReturn(response);
+        when(experimentService.update(eq(id), any(), any(), any(), eq(2L))).thenReturn(response);
 
         mockMvc.perform(patch("/api/v1/experiments/{id}", id)
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":"blue","type":"STRING"},"position":0,"weight":1,"type":"REGULAR"}],"version":2}
+                                {"domainKey":"PRICING","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":"blue","type":"STRING"},"position":0,"weight":1,"type":"REGULAR"}],"version":2}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.flagKey").value("flag-b"))
+                .andExpect(jsonPath("$.domain").value("PRICING"))
                 .andExpect(jsonPath("$.variants[0].value.value").value("blue"))
                 .andExpect(jsonPath("$.state").value("RUNNING"))
                 .andExpect(jsonPath("$.version").value(3));
@@ -108,18 +110,19 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                 0,
                 BigDecimal.ONE,
                 ExperimentVariantType.REGULAR));
-        verify(experimentService).update(id, expectedVariants, 2L);
+        verify(experimentService).update(id, null, "PRICING", expectedVariants, 2L);
     }
 
     @Test
     void get_shouldReturnOkAndBodyWhenExperimentExists() throws Exception {
         UUID id = UUID.randomUUID();
-        Experiment response = experiment("flag-c", 4L, ExperimentState.APPROVED);
+        Experiment response = experiment("flag-c", "CHECKOUT", 4L, ExperimentState.APPROVED);
         when(experimentService.getById(id)).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/experiments/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.flagKey").value("flag-c"))
+                .andExpect(jsonPath("$.domain").value("CHECKOUT"))
                 .andExpect(jsonPath("$.variants[0].key").value("control"))
                 .andExpect(jsonPath("$.state").value("APPROVED"))
                 .andExpect(jsonPath("$.version").value(4));
@@ -129,13 +132,15 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
     void getAll_shouldReturnOkAndBodyWhenExperimentsExist() throws Exception {
         when(experimentService.getAll())
                 .thenReturn(List.of(
-                        experiment("flag-d", 1L, ExperimentState.DRAFT),
-                        experiment("flag-e", 2L, ExperimentState.ARCHIVED)));
+                        experiment("flag-d", "CHECKOUT", 1L, ExperimentState.DRAFT),
+                        experiment("flag-e", "PRICING", 2L, ExperimentState.ARCHIVED)));
 
         mockMvc.perform(get("/api/v1/experiments"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].flagKey").value("flag-d"))
+                .andExpect(jsonPath("$[0].domain").value("CHECKOUT"))
                 .andExpect(jsonPath("$[1].flagKey").value("flag-e"))
+                .andExpect(jsonPath("$[1].domain").value("PRICING"))
                 .andExpect(jsonPath("$[1].state").value("ARCHIVED"));
     }
 
@@ -144,7 +149,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
         mockMvc.perform(post("/api/v1/experiments")
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"flagKey":" ","variants":null,"state":null}
+                                {"flagKey":" ","domainKey":" ","variants":null,"state":null}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
@@ -168,19 +173,19 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
     }
 
     @Test
-    void create_shouldReturnConflictWhenExperimentAlreadyExists() throws Exception {
-        when(experimentService.create(anyString(), any(), any(ExperimentState.class)))
-                .thenThrow(new ExperimentAlreadyExistsException("Experiment with flag key 'flag-a' already exists"));
+    void create_shouldReturnBadRequestWhenDomainIsUnknown() throws Exception {
+        when(experimentService.create(anyString(), anyString(), any(), any(ExperimentState.class)))
+                .thenThrow(new IllegalArgumentException("Unknown experiment domainKey 'UNKNOWN'"));
 
         mockMvc.perform(post("/api/v1/experiments")
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"flagKey":"flag-a","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"weight":1,"type":"CONTROL"}],"state":"DRAFT"}
+                                {"flagKey":"flag-a","domainKey":"UNKNOWN","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"weight":1,"type":"CONTROL"}],"state":"DRAFT"}
                                 """))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.status").value(409))
-                .andExpect(jsonPath("$.errorCode").value("CONFLICT"))
-                .andExpect(jsonPath("$.message").value("Experiment with flag key 'flag-a' already exists"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.message").value("Unknown experiment domainKey 'UNKNOWN'"))
                 .andExpect(jsonPath("$.path").value("/api/v1/experiments"));
     }
 
@@ -198,9 +203,10 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.path").value("/api/v1/experiments/%s".formatted(id)));
     }
 
-    private Experiment experiment(String flagKey, long version, ExperimentState state) {
+    private Experiment experiment(String flagKey, String domain, long version, ExperimentState state) {
         return experiment(
                 flagKey,
+                domain,
                 version,
                 state,
                 new ExperimentVariant(
@@ -212,7 +218,8 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                         ExperimentVariantType.CONTROL));
     }
 
-    private Experiment experiment(String flagKey, long version, ExperimentState state, ExperimentVariant variant) {
-        return new Experiment(UUID.randomUUID(), flagKey, List.of(variant), state, version, null, null);
+    private Experiment experiment(
+            String flagKey, String domain, long version, ExperimentState state, ExperimentVariant variant) {
+        return new Experiment(UUID.randomUUID(), flagKey, domain, List.of(variant), state, version, null, null);
     }
 }

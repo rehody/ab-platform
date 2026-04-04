@@ -220,6 +220,7 @@ class ExperimentMetricEvaluationServiceTest {
         return new Experiment(
                 experimentId,
                 "flag-orders",
+                "CHECKOUT",
                 List.of(
                         new ExperimentVariant(
                                 UUID.randomUUID(),

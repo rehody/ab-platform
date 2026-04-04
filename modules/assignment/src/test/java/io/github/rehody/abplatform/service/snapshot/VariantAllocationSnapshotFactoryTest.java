@@ -45,7 +45,7 @@ class VariantAllocationSnapshotFactoryTest {
     void create_shouldBuildBucketRangesFromAllocationsAndPreserveSortedVariantMapping() {
         ExperimentVariant control = variant(0, "control", "blue", 1);
         ExperimentVariant treatment = variant(1, "treatment", "red", 1);
-        Experiment experiment = runningExperiment("flag-a", List.of(treatment, control), 2L);
+        Experiment experiment = runningExperiment("flag-a", "CHECKOUT", List.of(treatment, control), 2L);
         when(assignmentVariantsPreparer.prepare(experiment)).thenReturn(List.of(control, treatment));
         when(variantBucketAllocator.allocate(experiment.id(), List.of(control, treatment)))
                 .thenReturn(List.of(
@@ -62,7 +62,7 @@ class VariantAllocationSnapshotFactoryTest {
     void create_shouldRejectVariantWithNullWeight() {
         ExperimentVariant invalid = new ExperimentVariant(
                 UUID.randomUUID(), "broken", stringValue("red"), 0, null, ExperimentVariantType.REGULAR);
-        Experiment experiment = runningExperiment("flag-b", List.of(invalid), 1L);
+        Experiment experiment = runningExperiment("flag-b", "CHECKOUT", List.of(invalid), 1L);
         when(assignmentVariantsPreparer.prepare(experiment)).thenReturn(List.of(invalid));
 
         assertThatThrownBy(() -> variantAllocationSnapshotFactory.create(experiment))
@@ -76,7 +76,7 @@ class VariantAllocationSnapshotFactoryTest {
     @Test
     void create_shouldRejectVariantWithNonPositiveWeight() {
         ExperimentVariant invalid = variant(0, "broken", "red", BigDecimal.ZERO);
-        Experiment experiment = runningExperiment("flag-c", List.of(invalid), 1L);
+        Experiment experiment = runningExperiment("flag-c", "CHECKOUT", List.of(invalid), 1L);
         when(assignmentVariantsPreparer.prepare(experiment)).thenReturn(List.of(invalid));
 
         assertThatThrownBy(() -> variantAllocationSnapshotFactory.create(experiment))
@@ -89,7 +89,7 @@ class VariantAllocationSnapshotFactoryTest {
 
     @Test
     void create_shouldRejectPreparedVariantsWhenTotalWeightIsNotPositive() {
-        Experiment experiment = runningExperiment("flag-d", List.of(variant(0, "control", "blue", 1)), 3L);
+        Experiment experiment = runningExperiment("flag-d", "CHECKOUT", List.of(variant(0, "control", "blue", 1)), 3L);
         when(assignmentVariantsPreparer.prepare(experiment)).thenReturn(List.of());
 
         assertThatThrownBy(() -> variantAllocationSnapshotFactory.create(experiment))
@@ -103,7 +103,7 @@ class VariantAllocationSnapshotFactoryTest {
     void create_shouldThrowWhenAllocationsDoNotCoverFullBucketPool() {
         ExperimentVariant control = variant(0, "control", "blue", 1);
         ExperimentVariant treatment = variant(1, "treatment", "red", 1);
-        Experiment experiment = runningExperiment("flag-e", List.of(control, treatment), 4L);
+        Experiment experiment = runningExperiment("flag-e", "CHECKOUT", List.of(control, treatment), 4L);
         when(assignmentVariantsPreparer.prepare(experiment)).thenReturn(List.of(control, treatment));
         when(variantBucketAllocator.allocate(experiment.id(), List.of(control, treatment)))
                 .thenReturn(List.of(

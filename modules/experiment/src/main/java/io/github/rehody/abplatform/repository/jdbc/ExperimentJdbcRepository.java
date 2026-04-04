@@ -15,13 +15,14 @@ import org.springframework.stereotype.Repository;
 public class ExperimentJdbcRepository {
 
     private static final String INSERT_EXPERIMENT_SQL = """
-        INSERT INTO experiments (id, flag_key, state, version, started_at, completed_at)
-        VALUES (:id, :flagKey, :state, :version, :startedAt, :completedAt)
+        INSERT INTO experiments (id, flag_key, domain_key, state, version, started_at, completed_at)
+        VALUES (:id, :flagKey, :domain, :state, :version, :startedAt, :completedAt)
         """;
 
     private static final String UPDATE_EXPERIMENT_SQL = """
         UPDATE experiments
         SET flag_key = :flagKey,
+            domain_key = :domain,
             state = :state,
             started_at = :startedAt,
             completed_at = :completedAt,
@@ -51,25 +52,34 @@ public class ExperimentJdbcRepository {
         """;
 
     private static final String SELECT_EXPERIMENT_BY_ID_SQL = """
-        SELECT id, flag_key, state, version, started_at, completed_at
+        SELECT id, flag_key, domain_key, state, version, started_at, completed_at
         FROM experiments
         WHERE id = :id
         """;
 
     private static final String SELECT_EXPERIMENT_BY_FLAG_KEY_SQL = """
-        SELECT id, flag_key, state, version, started_at, completed_at
+        SELECT id, flag_key, domain_key, state, version, started_at, completed_at
         FROM experiments
         WHERE flag_key = :flagKey
         """;
 
+    private static final String SELECT_RUNNING_EXPERIMENT_BY_FLAG_KEY_SQL = """
+        SELECT id, flag_key, domain_key, state, version, started_at, completed_at
+        FROM experiments
+        WHERE flag_key = :flagKey
+          AND state = :runningState
+        ORDER BY started_at DESC NULLS LAST, created_at DESC, id
+        LIMIT 1
+        """;
+
     private static final String SELECT_ALL_EXPERIMENTS_SQL = """
-        SELECT id, flag_key, state, version, started_at, completed_at
+        SELECT id, flag_key, domain_key, state, version, started_at, completed_at
         FROM experiments
         ORDER BY created_at DESC, id
         """;
 
     private static final String SELECT_EXPERIMENTS_BY_STATE_SQL = """
-        SELECT id, flag_key, state, version, started_at, completed_at
+        SELECT id, flag_key, domain_key, state, version, started_at, completed_at
         FROM experiments
         WHERE state = :state
         ORDER BY created_at DESC, id
@@ -104,6 +114,7 @@ public class ExperimentJdbcRepository {
                 .sql(INSERT_EXPERIMENT_SQL)
                 .param("id", experiment.id())
                 .param("flagKey", experiment.flagKey())
+                .param("domain", experiment.domain())
                 .param("state", experiment.state().name())
                 .param("version", experiment.version())
                 .param("startedAt", experiment.startedAt())
@@ -123,6 +134,15 @@ public class ExperimentJdbcRepository {
         return jdbcClient
                 .sql(SELECT_EXPERIMENT_BY_FLAG_KEY_SQL)
                 .param("flagKey", flagKey)
+                .query(experimentRowMapper)
+                .optional();
+    }
+
+    public Optional<Experiment> findRunningByFlagKey(String flagKey) {
+        return jdbcClient
+                .sql(SELECT_RUNNING_EXPERIMENT_BY_FLAG_KEY_SQL)
+                .param("flagKey", flagKey)
+                .param("runningState", ExperimentState.RUNNING.name())
                 .query(experimentRowMapper)
                 .optional();
     }
@@ -163,6 +183,7 @@ public class ExperimentJdbcRepository {
                 .sql(UPDATE_EXPERIMENT_SQL)
                 .param("id", experiment.id())
                 .param("flagKey", experiment.flagKey())
+                .param("domain", experiment.domain())
                 .param("state", experiment.state().name())
                 .param("startedAt", experiment.startedAt())
                 .param("completedAt", experiment.completedAt())

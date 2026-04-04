@@ -66,6 +66,19 @@ public class ExperimentExceptionHandler {
                         .toList());
     }
 
+    @ExceptionHandler(ExperimentBlockingConflictException.class)
+    public ResponseEntity<ErrorResponse> handleBlockingConflict(
+            ExperimentBlockingConflictException ex, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                ErrorCode.CONFLICT,
+                ex.getMessage(),
+                request.getRequestURI(),
+                ex.conflictingExperimentIds().stream()
+                        .map(experimentId -> new Violation("conflictingExperimentIds", experimentId))
+                        .toList());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(
             IllegalArgumentException ex, HttpServletRequest request) {

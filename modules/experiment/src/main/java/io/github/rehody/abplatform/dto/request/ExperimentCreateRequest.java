@@ -10,6 +10,8 @@ import java.util.List;
 public record ExperimentCreateRequest(
         @NotBlank(message = "flagKey is required") String flagKey,
 
+        @NotBlank(message = "domainKey is required") String domainKey,
+
         @NotNull(message = "variants is required") List<@NotNull(message = "variant is required") @ValidExperimentVariant ExperimentVariant> variants,
 
         @NotNull(message = "state is required") ExperimentState state) {}

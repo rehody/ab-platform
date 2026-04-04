@@ -7,6 +7,10 @@ import jakarta.validation.constraints.PositiveOrZero;
 import java.util.List;
 
 public record ExperimentUpdateRequest(
+        String flagKey,
+
+        String domainKey,
+
         @NotNull(message = "variants is required") List<@NotNull(message = "variant is required") @ValidExperimentVariant ExperimentVariant> variants,
 
         @NotNull(message = "version is required") @PositiveOrZero(message = "version must be >= 0") Long version) {}

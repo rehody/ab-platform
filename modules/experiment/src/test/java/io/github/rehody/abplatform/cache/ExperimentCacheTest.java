@@ -132,6 +132,7 @@ class ExperimentCacheTest {
         return new Experiment(
                 UUID.randomUUID(),
                 flagKey,
+                "CHECKOUT",
                 List.of(new ExperimentVariant(
                         UUID.randomUUID(),
                         "control",

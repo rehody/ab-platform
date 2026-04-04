@@ -11,14 +11,23 @@ import java.util.UUID;
 public record Experiment(
         UUID id,
         String flagKey,
+        String domain,
         List<ExperimentVariant> variants,
         ExperimentState state,
         long version,
         Instant startedAt,
         Instant completedAt) {
 
+    public Experiment {
+        variants = List.copyOf(variants);
+    }
+
     public boolean isRunning() {
         return state == ExperimentState.RUNNING;
+    }
+
+    public boolean isDraft() {
+        return state == ExperimentState.DRAFT;
     }
 
     public boolean isApproved() {
@@ -29,20 +38,36 @@ public record Experiment(
         return state == ExperimentState.COMPLETED;
     }
 
+    public boolean isArchived() {
+        return state == ExperimentState.ARCHIVED;
+    }
+
+    public boolean isTerminal() {
+        return isCompleted() || isArchived();
+    }
+
+    public Experiment withFlagKey(String flagKey) {
+        return new Experiment(id, flagKey, domain, variants, state, version, startedAt, completedAt);
+    }
+
+    public Experiment withDomainKey(String domain) {
+        return new Experiment(id, flagKey, domain, variants, state, version, startedAt, completedAt);
+    }
+
     public Experiment withVariants(List<ExperimentVariant> variants) {
-        return new Experiment(id, flagKey, List.copyOf(variants), state, version, startedAt, completedAt);
+        return new Experiment(id, flagKey, domain, variants, state, version, startedAt, completedAt);
     }
 
     public Experiment withVersion(long version) {
-        return new Experiment(id, flagKey, List.copyOf(variants), state, version, startedAt, completedAt);
+        return new Experiment(id, flagKey, domain, variants, state, version, startedAt, completedAt);
     }
 
     public Experiment withStartedAt(Instant startedAt) {
-        return new Experiment(id, flagKey, List.copyOf(variants), state, version, startedAt, completedAt);
+        return new Experiment(id, flagKey, domain, variants, state, version, startedAt, completedAt);
     }
 
     public Experiment withCompletedAt(Instant completedAt) {
-        return new Experiment(id, flagKey, List.copyOf(variants), state, version, startedAt, completedAt);
+        return new Experiment(id, flagKey, domain, variants, state, version, startedAt, completedAt);
     }
 
     public Experiment submitForReview() {
@@ -90,6 +115,6 @@ public record Experiment(
                     .formatted(action, state, allowedStates));
         }
 
-        return new Experiment(id, flagKey, List.copyOf(variants), targetState, version, startedAt, completedAt);
+        return new Experiment(id, flagKey, domain, variants, targetState, version, startedAt, completedAt);
     }
 }

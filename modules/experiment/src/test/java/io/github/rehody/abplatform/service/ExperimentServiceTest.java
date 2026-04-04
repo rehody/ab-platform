@@ -108,7 +108,7 @@ class ExperimentServiceTest {
         List<ExperimentVariant> variants = variants();
         when(experimentRepository.existsByFlagKey("flag-a")).thenReturn(true);
 
-        assertThatThrownBy(() -> experimentService.create("flag-a", variants, ExperimentState.DRAFT))
+        assertThatThrownBy(() -> experimentService.create("flag-a", "CHECKOUT", variants, ExperimentState.DRAFT))
                 .isInstanceOf(ExperimentAlreadyExistsException.class)
                 .hasMessage("Experiment with flag key 'flag-a' already exists");
 
@@ -121,7 +121,7 @@ class ExperimentServiceTest {
         List<ExperimentVariant> variants = variants();
         when(experimentRepository.existsByFlagKey("flag-b")).thenReturn(false);
 
-        Experiment response = experimentService.create("flag-b", variants, ExperimentState.APPROVED);
+        Experiment response = experimentService.create("flag-b", "CHECKOUT", variants, ExperimentState.APPROVED);
 
         ArgumentCaptor<Experiment> experimentCaptor = ArgumentCaptor.forClass(Experiment.class);
         ArgumentCaptor<LockNamespace> namespaceCaptor = ArgumentCaptor.forClass(LockNamespace.class);
@@ -133,12 +133,14 @@ class ExperimentServiceTest {
         Experiment savedExperiment = experimentCaptor.getValue();
         assertThat(savedExperiment.id()).isNotNull();
         assertThat(savedExperiment.flagKey()).isEqualTo("flag-b");
+        assertThat(savedExperiment.domain()).isEqualTo("CHECKOUT");
         assertThat(savedExperiment.variants()).isEqualTo(variants);
         assertThat(savedExperiment.state()).isEqualTo(ExperimentState.APPROVED);
         assertThat(savedExperiment.version()).isZero();
         assertThat(namespaceCaptor.getValue().value()).isEqualTo("experiment");
 
         assertThat(response.flagKey()).isEqualTo("flag-b");
+        assertThat(response.domain()).isEqualTo("CHECKOUT");
         assertThat(response.variants()).isEqualTo(variants);
         assertThat(response.state()).isEqualTo(ExperimentState.APPROVED);
         assertThat(response.version()).isZero();
@@ -150,10 +152,11 @@ class ExperimentServiceTest {
         when(experimentRepository.existsByFlagKey("flag-c")).thenReturn(false);
         TransactionSynchronizationManager.initSynchronization();
 
-        Experiment response = experimentService.create("flag-c", variants, ExperimentState.RUNNING);
+        Experiment response = experimentService.create("flag-c", "PRICING", variants, ExperimentState.RUNNING);
 
         verify(experimentCache, never()).invalidate("flag-c");
         assertThat(response.flagKey()).isEqualTo("flag-c");
+        assertThat(response.domain()).isEqualTo("PRICING");
 
         for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
             synchronization.afterCommit();
@@ -166,18 +169,21 @@ class ExperimentServiceTest {
     void update_shouldReplaceVariantsInvalidateCacheAndReturnUpdatedResponse() {
         UUID id = UUID.randomUUID();
         List<ExperimentVariant> variants = variants();
-        Experiment updated = new Experiment(id, "flag-d", variants, ExperimentState.RUNNING, 4L, null, null);
+        Experiment current =
+                new Experiment(id, "flag-d", "CHECKOUT", variants, ExperimentState.RUNNING, 3L, null, null);
+        Experiment updated =
+                new Experiment(id, "flag-d", "CHECKOUT", variants, ExperimentState.RUNNING, 4L, null, null);
 
-        when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-d"));
+        when(experimentRepository.findById(id)).thenReturn(Optional.of(current), Optional.of(updated));
         when(experimentRepository.replaceVariants(id, 3L, variants)).thenReturn(ReplaceVariantsResult.UPDATED);
-        when(experimentRepository.findById(id)).thenReturn(Optional.of(updated));
 
-        Experiment response = experimentService.update(id, variants, 3L);
+        Experiment response = experimentService.update(id, "flag-d", "CHECKOUT", variants, 3L);
 
         verify(experimentRepository).replaceVariants(id, 3L, variants);
         verify(experimentCache).invalidate("flag-d");
         assertThat(response.flagKey()).isEqualTo("flag-d");
-        assertThat(response.variants()).isEqualTo(updated.variants());
+        assertThat(response.domain()).isEqualTo("CHECKOUT");
+        assertThat(response.variants()).isEqualTo(variants);
         assertThat(response.state()).isEqualTo(ExperimentState.RUNNING);
         assertThat(response.version()).isEqualTo(4L);
     }
@@ -186,9 +192,9 @@ class ExperimentServiceTest {
     void update_shouldThrowExperimentNotFoundExceptionWhenExperimentMissingBeforeLock() {
         UUID id = UUID.randomUUID();
         List<ExperimentVariant> variants = variants();
-        when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.empty());
+        when(experimentRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> experimentService.update(id, variants, 2L))
+        assertThatThrownBy(() -> experimentService.update(id, "flag-d", "CHECKOUT", variants, 2L))
                 .isInstanceOf(ExperimentNotFoundException.class)
                 .hasMessage("Experiment '%s' not found".formatted(id));
 
@@ -200,12 +206,12 @@ class ExperimentServiceTest {
     void update_shouldThrowExperimentNotFoundExceptionWhenRepositoryReturnsNotFound() {
         UUID id = UUID.randomUUID();
         List<ExperimentVariant> variants = variants();
-        Experiment current = new Experiment(id, "flag-e", variants, ExperimentState.RUNNING, 2L, null, null);
-        when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-e"));
+        Experiment current =
+                new Experiment(id, "flag-e", "CHECKOUT", variants, ExperimentState.RUNNING, 2L, null, null);
         when(experimentRepository.findById(id)).thenReturn(Optional.of(current));
         when(experimentRepository.replaceVariants(id, 2L, variants)).thenReturn(ReplaceVariantsResult.NOT_FOUND);
 
-        assertThatThrownBy(() -> experimentService.update(id, variants, 2L))
+        assertThatThrownBy(() -> experimentService.update(id, "flag-e", "CHECKOUT", variants, 2L))
                 .isInstanceOf(ExperimentNotFoundException.class)
                 .hasMessage("Experiment '%s' not found".formatted(id));
 
@@ -216,12 +222,12 @@ class ExperimentServiceTest {
     void update_shouldThrowOptimisticLockingFailureExceptionWhenVersionMismatch() {
         UUID id = UUID.randomUUID();
         List<ExperimentVariant> variants = variants();
-        Experiment current = new Experiment(id, "flag-f", variants, ExperimentState.RUNNING, 2L, null, null);
-        when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-f"));
+        Experiment current =
+                new Experiment(id, "flag-f", "CHECKOUT", variants, ExperimentState.RUNNING, 2L, null, null);
         when(experimentRepository.findById(id)).thenReturn(Optional.of(current));
         when(experimentRepository.replaceVariants(id, 2L, variants)).thenReturn(ReplaceVariantsResult.VERSION_CONFLICT);
 
-        assertThatThrownBy(() -> experimentService.update(id, variants, 2L))
+        assertThatThrownBy(() -> experimentService.update(id, "flag-f", "CHECKOUT", variants, 2L))
                 .isInstanceOf(OptimisticLockingFailureException.class)
                 .hasMessage("Experiment '%s' version mismatch. Expected version %d".formatted(id, 2L));
 
@@ -232,12 +238,12 @@ class ExperimentServiceTest {
     void update_shouldThrowExperimentNotFoundExceptionWhenUpdatedExperimentCannotBeReadBack() {
         UUID id = UUID.randomUUID();
         List<ExperimentVariant> variants = variants();
-        Experiment current = new Experiment(id, "flag-g", variants, ExperimentState.RUNNING, 2L, null, null);
-        when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-g"));
-        when(experimentRepository.replaceVariants(id, 2L, variants)).thenReturn(ReplaceVariantsResult.UPDATED);
+        Experiment current =
+                new Experiment(id, "flag-g", "CHECKOUT", variants, ExperimentState.RUNNING, 2L, null, null);
         when(experimentRepository.findById(id)).thenReturn(Optional.of(current), Optional.empty());
+        when(experimentRepository.replaceVariants(id, 2L, variants)).thenReturn(ReplaceVariantsResult.UPDATED);
 
-        assertThatThrownBy(() -> experimentService.update(id, variants, 2L))
+        assertThatThrownBy(() -> experimentService.update(id, "flag-g", "CHECKOUT", variants, 2L))
                 .isInstanceOf(ExperimentNotFoundException.class)
                 .hasMessage("Experiment '%s' not found".formatted(id));
 
@@ -247,7 +253,8 @@ class ExperimentServiceTest {
     @Test
     void getById_shouldLoadFromRepositoryAndReturnResponseWhenCacheNeedsLoader() {
         UUID id = UUID.randomUUID();
-        Experiment persisted = new Experiment(id, "flag-g", variants(), ExperimentState.PAUSED, 8L, null, null);
+        Experiment persisted =
+                new Experiment(id, "flag-g", "CHECKOUT", variants(), ExperimentState.PAUSED, 8L, null, null);
 
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-g"));
         when(experimentRepository.findByFlagKey("flag-g")).thenReturn(Optional.of(persisted));
@@ -259,6 +266,7 @@ class ExperimentServiceTest {
         Experiment response = experimentService.getById(id);
 
         assertThat(response.flagKey()).isEqualTo("flag-g");
+        assertThat(response.domain()).isEqualTo("CHECKOUT");
         assertThat(response.variants()).isEqualTo(persisted.variants());
         assertThat(response.state()).isEqualTo(ExperimentState.PAUSED);
         assertThat(response.version()).isEqualTo(8L);
@@ -268,7 +276,8 @@ class ExperimentServiceTest {
     @Test
     void getById_shouldReturnCachedResponseAndSkipRepositoryLookupByFlagKeyWhenCacheHit() {
         UUID id = UUID.randomUUID();
-        Experiment experiment = new Experiment(id, "flag-h", variants(), ExperimentState.DRAFT, 12L, null, null);
+        Experiment experiment =
+                new Experiment(id, "flag-h", "CHECKOUT", variants(), ExperimentState.DRAFT, 12L, null, null);
 
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of("flag-h"));
         when(experimentCache.getOrLoad(eq("flag-h"), any(Supplier.class))).thenReturn(Optional.of(experiment));
@@ -292,10 +301,10 @@ class ExperimentServiceTest {
 
     @Test
     void getAll_shouldReturnMappedResponses() {
-        Experiment first =
-                new Experiment(UUID.randomUUID(), "flag-j", variants(), ExperimentState.DRAFT, 1L, null, null);
-        Experiment second =
-                new Experiment(UUID.randomUUID(), "flag-k", variants(), ExperimentState.ARCHIVED, 2L, null, null);
+        Experiment first = new Experiment(
+                UUID.randomUUID(), "flag-j", "CHECKOUT", variants(), ExperimentState.DRAFT, 1L, null, null);
+        Experiment second = new Experiment(
+                UUID.randomUUID(), "flag-k", "PRICING", variants(), ExperimentState.ARCHIVED, 2L, null, null);
         when(experimentRepository.findAll()).thenReturn(List.of(first, second));
 
         List<Experiment> responses = experimentService.getAll();
@@ -306,9 +315,9 @@ class ExperimentServiceTest {
     @Test
     void getRunning_shouldReturnOnlyRunningExperimentsFromRepository() {
         Experiment first = new Experiment(
-                UUID.randomUUID(), "flag-running-a", variants(), ExperimentState.RUNNING, 3L, null, null);
+                UUID.randomUUID(), "flag-running-a", "CHECKOUT", variants(), ExperimentState.RUNNING, 3L, null, null);
         Experiment second = new Experiment(
-                UUID.randomUUID(), "flag-running-b", variants(), ExperimentState.RUNNING, 4L, null, null);
+                UUID.randomUUID(), "flag-running-b", "PRICING", variants(), ExperimentState.RUNNING, 4L, null, null);
         when(experimentRepository.findRunning()).thenReturn(List.of(first, second));
 
         List<Experiment> responses = experimentService.getRunning();

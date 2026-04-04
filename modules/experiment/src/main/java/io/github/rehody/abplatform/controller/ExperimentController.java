@@ -29,13 +29,15 @@ public class ExperimentController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ExperimentResponse create(@Valid @RequestBody ExperimentCreateRequest request) {
-        Experiment experiment = experimentService.create(request.flagKey(), request.variants(), request.state());
+        Experiment experiment =
+                experimentService.create(request.flagKey(), request.domainKey(), request.variants(), request.state());
         return ExperimentResponse.from(experiment);
     }
 
     @PatchMapping("/{id}")
     public ExperimentResponse update(@PathVariable UUID id, @Valid @RequestBody ExperimentUpdateRequest request) {
-        Experiment experiment = experimentService.update(id, request.variants(), request.version());
+        Experiment experiment = experimentService.update(
+                id, request.flagKey(), request.domainKey(), request.variants(), request.version());
         return ExperimentResponse.from(experiment);
     }
 

@@ -38,8 +38,8 @@ class ExperimentMetricEvaluationBatchServiceTest {
 
     @Test
     void evaluateRunningExperiments_shouldLoadOnlyRunningExperiments() {
-        Experiment experiment =
-                new Experiment(UUID.randomUUID(), "flag-a", List.of(), ExperimentState.RUNNING, 3L, null, null);
+        Experiment experiment = new Experiment(
+                UUID.randomUUID(), "flag-a", "CHECKOUT", List.of(), ExperimentState.RUNNING, 3L, null, null);
         when(experimentService.getRunning()).thenReturn(List.of(experiment));
         when(experimentMetricBindingService.getMetricKeys(experiment.id())).thenReturn(List.of("metric-a", "metric-b"));
 
@@ -52,8 +52,8 @@ class ExperimentMetricEvaluationBatchServiceTest {
 
     @Test
     void evaluateRunningExperiments_shouldContinueWhenMetricEvaluationFails() {
-        Experiment experiment =
-                new Experiment(UUID.randomUUID(), "flag-b", List.of(), ExperimentState.RUNNING, 5L, null, null);
+        Experiment experiment = new Experiment(
+                UUID.randomUUID(), "flag-b", "CHECKOUT", List.of(), ExperimentState.RUNNING, 5L, null, null);
         when(experimentService.getRunning()).thenReturn(List.of(experiment));
         when(experimentMetricBindingService.getMetricKeys(experiment.id())).thenReturn(List.of("metric-a", "metric-b"));
         doThrow(new IllegalStateException("boom"))

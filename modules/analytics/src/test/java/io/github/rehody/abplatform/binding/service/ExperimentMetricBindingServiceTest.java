@@ -83,8 +83,8 @@ class ExperimentMetricBindingServiceTest {
         UUID experimentId = UUID.randomUUID();
         List<String> requestedMetricKeys = List.of("metric-shared", "metric-new");
         List<String> normalizedMetricKeys = List.of("metric-shared", "metric-new");
-        Experiment experiment =
-                new Experiment(experimentId, "checkout-redesign", List.of(), ExperimentState.DRAFT, 2L, null, null);
+        Experiment experiment = new Experiment(
+                experimentId, "checkout-redesign", "CHECKOUT", List.of(), ExperimentState.DRAFT, 2L, null, null);
         when(experimentService.getById(experimentId)).thenReturn(experiment);
         when(experimentMetricBindingPolicy.prepareMetricKeys(requestedMetricKeys))
                 .thenReturn(normalizedMetricKeys);
@@ -105,8 +105,8 @@ class ExperimentMetricBindingServiceTest {
         UUID experimentId = UUID.randomUUID();
         List<String> requestedMetricKeys = List.of("metric-shared", "metric-new");
         List<String> normalizedMetricKeys = List.of("metric-shared", "metric-new");
-        Experiment experiment =
-                new Experiment(experimentId, "checkout-redesign", List.of(), ExperimentState.DRAFT, 2L, null, null);
+        Experiment experiment = new Experiment(
+                experimentId, "checkout-redesign", "CHECKOUT", List.of(), ExperimentState.DRAFT, 2L, null, null);
         when(experimentService.getById(experimentId)).thenReturn(experiment);
         when(experimentMetricBindingPolicy.prepareMetricKeys(requestedMetricKeys))
                 .thenReturn(normalizedMetricKeys);
@@ -131,8 +131,8 @@ class ExperimentMetricBindingServiceTest {
         UUID experimentId = UUID.randomUUID();
         List<String> requestedMetricKeys = List.of("metric-a");
         List<String> normalizedMetricKeys = List.of("metric-a");
-        Experiment experiment =
-                new Experiment(experimentId, "checkout-redesign", List.of(), ExperimentState.RUNNING, 4L, null, null);
+        Experiment experiment = new Experiment(
+                experimentId, "checkout-redesign", "CHECKOUT", List.of(), ExperimentState.RUNNING, 4L, null, null);
         AtomicBoolean lockHeld = new AtomicBoolean(false);
 
         when(experimentService.getById(experimentId)).thenReturn(experiment);

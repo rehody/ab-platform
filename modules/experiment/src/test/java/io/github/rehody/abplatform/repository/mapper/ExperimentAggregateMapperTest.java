@@ -20,8 +20,8 @@ class ExperimentAggregateMapperTest {
 
     @Test
     void withVariants_shouldCopyVariantsAndPreserveOtherExperimentFields() {
-        Experiment experiment =
-                new Experiment(UUID.randomUUID(), "flag-a", List.of(), ExperimentState.RUNNING, 5L, null, null);
+        Experiment experiment = new Experiment(
+                UUID.randomUUID(), "flag-a", "CHECKOUT", List.of(), ExperimentState.RUNNING, 5L, null, null);
         List<ExperimentVariant> variants = new ArrayList<>(List.of(new ExperimentVariant(
                 UUID.randomUUID(),
                 "control",
@@ -34,6 +34,7 @@ class ExperimentAggregateMapperTest {
 
         assertThat(result.id()).isEqualTo(experiment.id());
         assertThat(result.flagKey()).isEqualTo("flag-a");
+        assertThat(result.domain()).isEqualTo("CHECKOUT");
         assertThat(result.variants()).containsExactlyElementsOf(variants);
         assertThat(result.variants()).isNotSameAs(variants);
         assertThat(result.state()).isEqualTo(ExperimentState.RUNNING);
@@ -42,8 +43,8 @@ class ExperimentAggregateMapperTest {
 
     @Test
     void withVariants_shouldReturnEmptyVariantsWhenInputVariantsNull() {
-        Experiment experiment =
-                new Experiment(UUID.randomUUID(), "flag-b", List.of(), ExperimentState.DRAFT, 1L, null, null);
+        Experiment experiment = new Experiment(
+                UUID.randomUUID(), "flag-b", "CHECKOUT", List.of(), ExperimentState.DRAFT, 1L, null, null);
 
         Experiment result = experimentAggregateMapper.withVariants(experiment, null);
 
@@ -52,8 +53,8 @@ class ExperimentAggregateMapperTest {
 
     @Test
     void withVariants_shouldReturnEmptyVariantsWhenInputVariantsEmpty() {
-        Experiment experiment =
-                new Experiment(UUID.randomUUID(), "flag-c", List.of(), ExperimentState.APPROVED, 2L, null, null);
+        Experiment experiment = new Experiment(
+                UUID.randomUUID(), "flag-c", "CHECKOUT", List.of(), ExperimentState.APPROVED, 2L, null, null);
 
         Experiment result = experimentAggregateMapper.withVariants(experiment, List.of());
 

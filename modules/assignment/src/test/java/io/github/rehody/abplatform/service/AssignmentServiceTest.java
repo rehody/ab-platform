@@ -79,7 +79,7 @@ class AssignmentServiceTest {
     void resolve_shouldReturnDefaultFlagValueWhenExperimentCannotBeResolvedForAssignment() {
         UUID userId = UUID.randomUUID();
         Experiment experiment =
-                experiment("flag-b", List.of(variant(0, "control", "blue", 1)), ExperimentState.PAUSED, 2L);
+                experiment("flag-b", "CHECKOUT", List.of(variant(0, "control", "blue", 1)), ExperimentState.PAUSED, 2L);
         FeatureValue defaultValue = stringValue("gray");
         when(experimentService.findByFlagKey("flag-b")).thenReturn(Optional.of(experiment));
         when(experimentAssignmentPolicy.canResolveAssignment(experiment)).thenReturn(false);
@@ -98,7 +98,10 @@ class AssignmentServiceTest {
         UUID userId = UUID.randomUUID();
         FeatureValue defaultValue = stringValue("green");
         Experiment experiment = runningExperiment(
-                "flag-c", List.of(variant(0, "control", "green", 1), variant(1, "treatment", "red", 2)), 5L);
+                "flag-c",
+                "CHECKOUT",
+                List.of(variant(0, "control", "green", 1), variant(1, "treatment", "red", 2)),
+                5L);
         ExperimentVariant controlVariant = variant(0, "control", "green", 1);
         when(experimentService.findByFlagKey("flag-c")).thenReturn(Optional.of(experiment));
         when(experimentAssignmentPolicy.canResolveAssignment(experiment)).thenReturn(true);
@@ -118,7 +121,10 @@ class AssignmentServiceTest {
     void resolve_shouldReturnResolvedVariantValueWhenRegularVariantIsSelected() {
         UUID userId = UUID.randomUUID();
         Experiment experiment = runningExperiment(
-                "flag-d", List.of(variant(0, "control", "green", 1), variant(1, "treatment", "red", 2)), 5L);
+                "flag-d",
+                "CHECKOUT",
+                List.of(variant(0, "control", "green", 1), variant(1, "treatment", "red", 2)),
+                5L);
         ExperimentVariant variant = variant(1, "treatment", "red", 2);
         when(experimentService.findByFlagKey("flag-d")).thenReturn(Optional.of(experiment));
         when(experimentAssignmentPolicy.canResolveAssignment(experiment)).thenReturn(true);

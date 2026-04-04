@@ -42,7 +42,7 @@ class CachedVariantAllocationSnapshotReaderTest {
 
     @Test
     void get_shouldReturnCachedSnapshotWithoutCallingFactoryWhenCacheHits() {
-        Experiment experiment = runningExperiment("flag-a", List.of(variant(0, "control", "blue", 1)), 7L);
+        Experiment experiment = runningExperiment("flag-a", "CHECKOUT", List.of(variant(0, "control", "blue", 1)), 7L);
         VariantAllocationSnapshot snapshot =
                 new VariantAllocationSnapshot(List.of(new BucketRange(0, 10000, variant(0, "control", "blue", 1))));
         when(assignmentPlanCache.getOrLoad(eq(experiment.id() + ":7"), any())).thenReturn(Optional.of(snapshot));
@@ -56,7 +56,7 @@ class CachedVariantAllocationSnapshotReaderTest {
 
     @Test
     void get_shouldBuildSnapshotViaFactoryWhenCacheMisses() {
-        Experiment experiment = runningExperiment("flag-b", List.of(variant(0, "control", "blue", 1)), 3L);
+        Experiment experiment = runningExperiment("flag-b", "CHECKOUT", List.of(variant(0, "control", "blue", 1)), 3L);
         VariantAllocationSnapshot snapshot =
                 new VariantAllocationSnapshot(List.of(new BucketRange(0, 10000, variant(0, "control", "blue", 1))));
         when(assignmentPlanCache.getOrLoad(eq(experiment.id() + ":3"), any())).thenAnswer(invocation -> {
@@ -73,7 +73,7 @@ class CachedVariantAllocationSnapshotReaderTest {
 
     @Test
     void get_shouldThrowWhenCacheReturnsEmptySnapshot() {
-        Experiment experiment = runningExperiment("flag-c", List.of(variant(0, "control", "blue", 1)), 9L);
+        Experiment experiment = runningExperiment("flag-c", "CHECKOUT", List.of(variant(0, "control", "blue", 1)), 9L);
         when(assignmentPlanCache.getOrLoad(eq(experiment.id() + ":9"), any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> cachedVariantAllocationSnapshotReader.get(experiment))
