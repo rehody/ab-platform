@@ -31,7 +31,7 @@ public class ExperimentMetricBindingService {
         List<String> preparedMetricKeys = experimentMetricBindingPolicy.prepareMetricKeys(metricKeys);
 
         if (experiment.isRunning()) {
-            experimentMetricBindingConflictPolicy.ensureNoRunningMetricConflicts(experimentId, preparedMetricKeys);
+            experimentMetricBindingConflictPolicy.validateNoRunningMetricConflicts(experimentId, preparedMetricKeys);
         }
 
         List<String> previousMetricKeys = experimentMetricBindingRepository.findMetricKeysByExperimentId(experimentId);

@@ -101,7 +101,7 @@ public class ExperimentService {
 
     @Transactional(readOnly = true)
     public void ensureExistsById(UUID id) {
-        if (experimentRepository.existsById(id)) {
+        if (!experimentRepository.existsById(id)) {
             throw new ExperimentNotFoundException("Experiment '%s' not found".formatted(id));
         }
     }

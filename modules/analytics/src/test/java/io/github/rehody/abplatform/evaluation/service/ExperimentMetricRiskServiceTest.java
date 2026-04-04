@@ -89,21 +89,15 @@ class ExperimentMetricRiskServiceTest {
     }
 
     @Test
-    void applyEvaluation_shouldResolveOpenRiskWhenDeviationIsNoLongerNegative() {
+    void applyEvaluation_shouldKeepOpenRiskWhenDeviationIsNoLongerNegative() {
         ExperimentMetricRisk currentRisk = openRisk(null, new BigDecimal("0.10"));
         ExperimentMetricEvaluationReport report =
                 report(TrafficStatus.NORMAL, comparison(MetricComparisonStatus.NORMAL, currentRisk));
 
         experimentMetricRiskService.applyEvaluation(runningExperiment(), metricDefinition(), report);
 
-        ArgumentCaptor<ExperimentMetricRisk> riskCaptor = ArgumentCaptor.forClass(ExperimentMetricRisk.class);
-        verify(experimentMetricRiskRepository).update(riskCaptor.capture());
-        ExperimentMetricRisk resolvedRisk = riskCaptor.getValue();
-
-        assertThat(resolvedRisk.id()).isEqualTo(currentRisk.id());
-        assertThat(resolvedRisk.status()).isEqualTo(ExperimentMetricRiskStatus.RESOLVED);
-        assertThat(resolvedRisk.resolvedAt()).isNotNull();
-        assertThat(resolvedRisk.resolutionComment()).isNull();
+        verify(experimentMetricRiskRepository, never()).save(any());
+        verify(experimentMetricRiskRepository, never()).update(any());
         verify(experimentMetricAutoPauseService, never()).pause(any(), any());
     }
 

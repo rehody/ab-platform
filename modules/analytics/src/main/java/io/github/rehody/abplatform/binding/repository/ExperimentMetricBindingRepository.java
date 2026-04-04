@@ -32,19 +32,18 @@ public class ExperimentMetricBindingRepository {
         VALUES (:experimentId, :metricKey)
         """;
 
-    private static final String SELECT_EXISTS_CONFLICTING_METRIC_KEYS_SQL = """
-        SELECT EXISTS (
-          SELECT 1
-          FROM experiment_metrics em
-          WHERE em.metric_key IN (:metricKeys)
-            AND em.experiment_id <> :experimentId
-            AND EXISTS (
-                SELECT 1
-                FROM experiments e
-                WHERE e.id = em.experiment_id
-                  AND e.state = :runningState
-              )
-        )
+    private static final String SELECT_CONFLICTING_METRIC_KEYS_SQL = """
+        SELECT DISTINCT em.metric_key
+        FROM experiment_metrics em
+        WHERE em.metric_key IN (:metricKeys)
+          AND em.experiment_id <> :experimentId
+          AND EXISTS (
+              SELECT 1
+              FROM experiments e
+              WHERE e.id = em.experiment_id
+                AND e.state = :runningState
+            )
+        ORDER BY em.metric_key
         """;
 
     private final JdbcClient jdbcClient;
@@ -63,18 +62,18 @@ public class ExperimentMetricBindingRepository {
         batchInsert(experimentId, metricKeys);
     }
 
-    public boolean existsConflictingMetricKey(UUID experimentId, List<String> metricKeys) {
+    public List<String> findConflictingMetricKeys(UUID experimentId, List<String> metricKeys) {
         if (metricKeys.isEmpty()) {
-            return false;
+            return List.of();
         }
 
         return jdbcClient
-                .sql(SELECT_EXISTS_CONFLICTING_METRIC_KEYS_SQL)
+                .sql(SELECT_CONFLICTING_METRIC_KEYS_SQL)
                 .param("experimentId", experimentId)
                 .param("metricKeys", metricKeys)
                 .param("runningState", ExperimentState.RUNNING.toString())
-                .query(Boolean.class)
-                .single();
+                .query(String.class)
+                .list();
     }
 
     private void deleteByExperimentId(UUID experimentId) {

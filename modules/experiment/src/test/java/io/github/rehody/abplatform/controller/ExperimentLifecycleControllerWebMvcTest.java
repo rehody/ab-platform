@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.github.rehody.abplatform.config.AbstractWebMvcTest;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.enums.ExperimentVariantType;
+import io.github.rehody.abplatform.exception.ExperimentActivationConflictException;
 import io.github.rehody.abplatform.exception.ExperimentExceptionHandler;
 import io.github.rehody.abplatform.exception.ExperimentStateTransitionException;
 import io.github.rehody.abplatform.model.Experiment;
@@ -101,6 +102,33 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.errorCode").value("CONFLICT"))
                 .andExpect(jsonPath("$.message").value("Cannot approve experiment in state DRAFT"))
+                .andExpect(jsonPath("$.path").value("/api/v1/experiments/%s/approve".formatted(id)));
+    }
+
+    @Test
+    void approve_shouldReturnConflictWithConflictingMetricKeysWhenActivationConflicts() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(experimentLifecycleService.approve(eq(id), eq(3L)))
+                .thenThrow(new ExperimentActivationConflictException(
+                        "Experiment '%s' conflicts with running experiments on metric keys: orders, revenue"
+                                .formatted(id),
+                        List.of("orders", "revenue")));
+
+        mockMvc.perform(post("/api/v1/experiments/{id}/approve", id)
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {"version":3}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.errorCode").value("CONFLICT"))
+                .andExpect(jsonPath("$.message")
+                        .value("Experiment '%s' conflicts with running experiments on metric keys: orders, revenue"
+                                .formatted(id)))
+                .andExpect(jsonPath("$.violations[0].field").value("metricKeys"))
+                .andExpect(jsonPath("$.violations[0].message").value("orders"))
+                .andExpect(jsonPath("$.violations[1].field").value("metricKeys"))
+                .andExpect(jsonPath("$.violations[1].message").value("revenue"))
                 .andExpect(jsonPath("$.path").value("/api/v1/experiments/%s/approve".formatted(id)));
     }
 

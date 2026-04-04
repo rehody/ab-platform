@@ -57,7 +57,13 @@ public class ExperimentExceptionHandler {
     public ResponseEntity<ErrorResponse> handleActivationConflict(
             ExperimentActivationConflictException ex, HttpServletRequest request) {
         return buildResponse(
-                HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
+                HttpStatus.CONFLICT,
+                ErrorCode.CONFLICT,
+                ex.getMessage(),
+                request.getRequestURI(),
+                ex.conflictingMetricKeys().stream()
+                        .map(metricKey -> new Violation("metricKeys", metricKey))
+                        .toList());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -38,19 +38,11 @@ public class ExperimentMetricRiskService {
                 .orElseThrow(() -> new ExperimentMetricRiskNotFoundException(
                         "Experiment metric risk '%s' not found".formatted(riskId)));
 
-        String normalizedComment = normalizeComment(comment);
         ExperimentMetricRisk resolvedRisk =
-                experimentMetricRiskFactory.createResolved(currentRisk, normalizedComment, Instant.now());
+                experimentMetricRiskFactory.createResolved(currentRisk, comment, Instant.now());
 
         experimentMetricRiskRepository.update(resolvedRisk);
         return resolvedRisk;
-    }
-
-    private String normalizeComment(String comment) {
-        if (comment == null) {
-            return "";
-        }
-        return comment.trim();
     }
 
     @Transactional
@@ -63,7 +55,6 @@ public class ExperimentMetricRiskService {
         for (VariantComparison comparison : report.comparisons()) {
             ExperimentMetricRisk currentRisk = comparison.risk();
             if (!comparison.hasNegativeDeviation()) {
-                closeOpenRiskIfRecovered(currentRisk);
                 continue;
             }
 
@@ -116,17 +107,6 @@ public class ExperimentMetricRiskService {
                 currentRisk, badDeviation, worstBadDeviation, autoPausedAt, Instant.now());
 
         experimentMetricRiskRepository.update(updatedRisk);
-    }
-
-    private void closeOpenRiskIfRecovered(ExperimentMetricRisk currentRisk) {
-        if (currentRisk == null || !currentRisk.isOpen()) {
-            return;
-        }
-
-        ExperimentMetricRisk resolvedRisk =
-                experimentMetricRiskFactory.createResolved(currentRisk, null, Instant.now());
-
-        experimentMetricRiskRepository.update(resolvedRisk);
     }
 
     private boolean shouldAutoPause(Experiment experiment, ExperimentMetricRisk currentRisk) {

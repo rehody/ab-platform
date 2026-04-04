@@ -53,9 +53,6 @@ public class ExperimentMetricEvaluationService {
 
         ExperimentMetricEvaluationReport report = buildEvaluationReport(experiment, metricDefinition, Instant.now());
         experimentMetricRiskService.applyEvaluation(experiment, metricDefinition, report);
-
-        Experiment updatedExperiment = experimentService.getById(experiment.id());
-        buildEvaluationReport(updatedExperiment, metricDefinition, Instant.now());
     }
 
     private ExperimentMetricEvaluationReport buildEvaluationReport(

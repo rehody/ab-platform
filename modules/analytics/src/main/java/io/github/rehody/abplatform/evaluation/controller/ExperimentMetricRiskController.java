@@ -22,8 +22,10 @@ public class ExperimentMetricRiskController {
 
     @PostMapping("/{riskId}/resolve")
     public ExperimentMetricRiskResponse resolve(
-            @PathVariable UUID riskId, @Valid @RequestBody ExperimentMetricRiskResolutionRequest request) {
-        ExperimentMetricRisk risk = experimentMetricRiskService.resolve(riskId, request.comment());
+            @PathVariable UUID riskId,
+            @Valid @RequestBody(required = false) ExperimentMetricRiskResolutionRequest request) {
+        ExperimentMetricRisk risk =
+                experimentMetricRiskService.resolve(riskId, request == null ? null : request.comment());
         return ExperimentMetricRiskResponse.from(risk);
     }
 }

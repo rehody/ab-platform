@@ -18,16 +18,18 @@ public class ExperimentMetricBindingConflictPolicy implements ExperimentActivati
     @Override
     public void validateActivation(Experiment experiment) {
         List<String> metricKeys = experimentMetricBindingRepository.findMetricKeysByExperimentId(experiment.id());
-        ensureNoRunningMetricConflicts(experiment.id(), metricKeys);
+        validateNoRunningMetricConflicts(experiment.id(), metricKeys);
     }
 
-    public void ensureNoRunningMetricConflicts(UUID experimentId, List<String> metricKeys) {
-        boolean existsConflictingMetricKey =
-                experimentMetricBindingRepository.existsConflictingMetricKey(experimentId, metricKeys);
+    public void validateNoRunningMetricConflicts(UUID experimentId, List<String> metricKeys) {
+        List<String> conflictingMetricKeys =
+                experimentMetricBindingRepository.findConflictingMetricKeys(experimentId, metricKeys);
 
-        if (existsConflictingMetricKey) {
+        if (!conflictingMetricKeys.isEmpty()) {
             throw new ExperimentActivationConflictException(
-                    "Experiment with id %s already exists".formatted(experimentId));
+                    "Experiment '%s' conflicts with running experiments on metric keys: %s"
+                            .formatted(experimentId, String.join(", ", conflictingMetricKeys)),
+                    conflictingMetricKeys);
         }
     }
 }

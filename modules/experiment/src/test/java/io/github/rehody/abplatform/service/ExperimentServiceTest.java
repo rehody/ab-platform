@@ -316,6 +316,24 @@ class ExperimentServiceTest {
         assertThat(responses).containsExactly(first, second);
     }
 
+    @Test
+    void ensureExistsById_shouldDoNothingWhenExperimentExists() {
+        UUID id = UUID.randomUUID();
+        when(experimentRepository.existsById(id)).thenReturn(true);
+
+        experimentService.ensureExistsById(id);
+    }
+
+    @Test
+    void ensureExistsById_shouldThrowWhenExperimentDoesNotExist() {
+        UUID id = UUID.randomUUID();
+        when(experimentRepository.existsById(id)).thenReturn(false);
+
+        assertThatThrownBy(() -> experimentService.ensureExistsById(id))
+                .isInstanceOf(ExperimentNotFoundException.class)
+                .hasMessage("Experiment '%s' not found".formatted(id));
+    }
+
     private List<ExperimentVariant> variants() {
         return List.of(
                 new ExperimentVariant(
