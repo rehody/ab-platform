@@ -1,4 +1,4 @@
-package io.github.rehody.abplatform.evaluation.controller;
+package io.github.rehody.abplatform.risk.controller;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -10,10 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.rehody.abplatform.config.AbstractWebMvcTest;
-import io.github.rehody.abplatform.evaluation.enums.ExperimentMetricRiskStatus;
-import io.github.rehody.abplatform.evaluation.model.ExperimentMetricRisk;
-import io.github.rehody.abplatform.evaluation.service.ExperimentMetricRiskService;
 import io.github.rehody.abplatform.exception.AnalyticsExceptionHandler;
+import io.github.rehody.abplatform.risk.enums.ExperimentMetricRiskStatus;
+import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
+import io.github.rehody.abplatform.risk.service.ExperimentMetricRiskService;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;

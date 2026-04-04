@@ -1,4 +1,4 @@
-package io.github.rehody.abplatform.evaluation.factory;
+package io.github.rehody.abplatform.evaluation.builder;
 
 import io.github.rehody.abplatform.evaluation.model.ExperimentMetricEvaluationMeta;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;

@@ -1,9 +1,9 @@
-package io.github.rehody.abplatform.evaluation.controller;
+package io.github.rehody.abplatform.risk.controller;
 
-import io.github.rehody.abplatform.evaluation.dto.request.ExperimentMetricRiskResolutionRequest;
-import io.github.rehody.abplatform.evaluation.dto.response.ExperimentMetricRiskResponse;
-import io.github.rehody.abplatform.evaluation.model.ExperimentMetricRisk;
-import io.github.rehody.abplatform.evaluation.service.ExperimentMetricRiskService;
+import io.github.rehody.abplatform.risk.dto.request.ExperimentMetricRiskResolutionRequest;
+import io.github.rehody.abplatform.risk.dto.response.ExperimentMetricRiskResponse;
+import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
+import io.github.rehody.abplatform.risk.service.ExperimentMetricRiskService;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;

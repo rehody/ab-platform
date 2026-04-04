@@ -1,4 +1,4 @@
-package io.github.rehody.abplatform.evaluation.enums;
+package io.github.rehody.abplatform.risk.enums;
 
 public enum ExperimentMetricRiskStatus {
     OPEN,

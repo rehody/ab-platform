@@ -2,6 +2,7 @@ package io.github.rehody.abplatform.evaluation.model;
 
 import io.github.rehody.abplatform.evaluation.enums.MetricComparisonStatus;
 import io.github.rehody.abplatform.evaluation.enums.TrafficStatus;
+import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;

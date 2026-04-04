@@ -1,7 +1,7 @@
-package io.github.rehody.abplatform.evaluation.dto.response;
+package io.github.rehody.abplatform.risk.dto.response;
 
-import io.github.rehody.abplatform.evaluation.enums.ExperimentMetricRiskStatus;
-import io.github.rehody.abplatform.evaluation.model.ExperimentMetricRisk;
+import io.github.rehody.abplatform.risk.enums.ExperimentMetricRiskStatus;
+import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;

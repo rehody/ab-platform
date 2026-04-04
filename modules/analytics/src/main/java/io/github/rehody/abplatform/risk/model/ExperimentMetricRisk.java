@@ -1,6 +1,6 @@
-package io.github.rehody.abplatform.evaluation.model;
+package io.github.rehody.abplatform.risk.model;
 
-import io.github.rehody.abplatform.evaluation.enums.ExperimentMetricRiskStatus;
+import io.github.rehody.abplatform.risk.enums.ExperimentMetricRiskStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;

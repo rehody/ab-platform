@@ -1,8 +1,7 @@
 package io.github.rehody.abplatform.evaluation.service;
 
-import io.github.rehody.abplatform.evaluation.factory.ExperimentMetricEvaluationAssembler;
+import io.github.rehody.abplatform.evaluation.builder.ExperimentMetricEvaluationAssembler;
 import io.github.rehody.abplatform.evaluation.model.ExperimentMetricEvaluationReport;
-import io.github.rehody.abplatform.evaluation.model.ExperimentMetricRisk;
 import io.github.rehody.abplatform.evaluation.policy.ExperimentMetricEvaluationPolicy;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.model.Experiment;
@@ -13,6 +12,8 @@ import io.github.rehody.abplatform.report.repository.AssignmentEventReportReposi
 import io.github.rehody.abplatform.report.repository.CountableMetricEventReportRepository;
 import io.github.rehody.abplatform.report.repository.aggregate.AssignmentVariantAggregate;
 import io.github.rehody.abplatform.report.repository.aggregate.CountableMetricVariantAggregate;
+import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
+import io.github.rehody.abplatform.risk.service.ExperimentMetricRiskService;
 import io.github.rehody.abplatform.service.ExperimentService;
 import java.time.Instant;
 import java.util.Comparator;

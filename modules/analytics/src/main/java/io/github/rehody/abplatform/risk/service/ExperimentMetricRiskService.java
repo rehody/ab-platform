@@ -1,14 +1,14 @@
-package io.github.rehody.abplatform.evaluation.service;
+package io.github.rehody.abplatform.risk.service;
 
-import io.github.rehody.abplatform.evaluation.factory.ExperimentMetricRiskFactory;
 import io.github.rehody.abplatform.evaluation.model.ExperimentMetricEvaluationReport;
 import io.github.rehody.abplatform.evaluation.model.ExperimentMetricEvaluationReport.VariantComparison;
-import io.github.rehody.abplatform.evaluation.model.ExperimentMetricRisk;
-import io.github.rehody.abplatform.evaluation.policy.ExperimentMetricRiskPolicy;
-import io.github.rehody.abplatform.evaluation.repository.ExperimentMetricRiskRepository;
-import io.github.rehody.abplatform.exception.ExperimentMetricRiskNotFoundException;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.risk.exception.ExperimentMetricRiskNotFoundException;
+import io.github.rehody.abplatform.risk.factory.ExperimentMetricRiskFactory;
+import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
+import io.github.rehody.abplatform.risk.policy.ExperimentMetricRiskPolicy;
+import io.github.rehody.abplatform.risk.repository.ExperimentMetricRiskRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;

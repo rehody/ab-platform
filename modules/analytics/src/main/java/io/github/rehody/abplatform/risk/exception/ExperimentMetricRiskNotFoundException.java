@@ -1,4 +1,4 @@
-package io.github.rehody.abplatform.exception;
+package io.github.rehody.abplatform.risk.exception;
 
 public class ExperimentMetricRiskNotFoundException extends RuntimeException {
 

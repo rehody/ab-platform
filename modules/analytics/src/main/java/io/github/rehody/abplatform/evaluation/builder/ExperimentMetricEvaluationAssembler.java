@@ -1,4 +1,4 @@
-package io.github.rehody.abplatform.evaluation.factory;
+package io.github.rehody.abplatform.evaluation.builder;
 
 import io.github.rehody.abplatform.config.AnalyticsEvaluationProperties;
 import io.github.rehody.abplatform.evaluation.enums.MetricComparisonStatus;
@@ -8,13 +8,13 @@ import io.github.rehody.abplatform.evaluation.model.ExperimentMetricEvaluationRe
 import io.github.rehody.abplatform.evaluation.model.ExperimentMetricEvaluationReport.VariantComparison;
 import io.github.rehody.abplatform.evaluation.model.ExperimentMetricEvaluationReport.VariantMetricAggregate;
 import io.github.rehody.abplatform.evaluation.model.ExperimentMetricEvaluationReport.VariantTrafficShare;
-import io.github.rehody.abplatform.evaluation.model.ExperimentMetricRisk;
 import io.github.rehody.abplatform.metric.enums.MetricDirection;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.report.model.ExperimentReportWindow;
 import io.github.rehody.abplatform.report.repository.aggregate.CountableMetricVariantAggregate;
+import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;

@@ -3,6 +3,7 @@ package io.github.rehody.abplatform.exception;
 import io.github.rehody.abplatform.dto.response.ErrorResponse;
 import io.github.rehody.abplatform.dto.response.ErrorResponse.ErrorCode;
 import io.github.rehody.abplatform.dto.response.ErrorResponse.Violation;
+import io.github.rehody.abplatform.risk.exception.ExperimentMetricRiskNotFoundException;
 import io.github.rehody.abplatform.util.lock.LockObtainingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;

@@ -1,7 +1,7 @@
-package io.github.rehody.abplatform.evaluation.service;
+package io.github.rehody.abplatform.risk.service;
 
-import io.github.rehody.abplatform.evaluation.model.ExperimentMetricRisk;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
 import io.github.rehody.abplatform.service.ExperimentLifecycleService;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;

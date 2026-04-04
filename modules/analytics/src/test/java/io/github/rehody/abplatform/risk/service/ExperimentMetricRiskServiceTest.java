@@ -1,4 +1,4 @@
-package io.github.rehody.abplatform.evaluation.service;
+package io.github.rehody.abplatform.risk.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -6,21 +6,21 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
-import io.github.rehody.abplatform.evaluation.enums.ExperimentMetricRiskStatus;
 import io.github.rehody.abplatform.evaluation.enums.MetricComparisonStatus;
 import io.github.rehody.abplatform.evaluation.enums.TrafficStatus;
-import io.github.rehody.abplatform.evaluation.factory.ExperimentMetricRiskFactory;
 import io.github.rehody.abplatform.evaluation.model.ExperimentMetricEvaluationReport;
 import io.github.rehody.abplatform.evaluation.model.ExperimentMetricEvaluationReport.TrafficEvaluation;
 import io.github.rehody.abplatform.evaluation.model.ExperimentMetricEvaluationReport.VariantComparison;
-import io.github.rehody.abplatform.evaluation.model.ExperimentMetricRisk;
-import io.github.rehody.abplatform.evaluation.policy.ExperimentMetricRiskPolicy;
-import io.github.rehody.abplatform.evaluation.repository.ExperimentMetricRiskRepository;
 import io.github.rehody.abplatform.metric.enums.MetricDirection;
 import io.github.rehody.abplatform.metric.enums.MetricSeverity;
 import io.github.rehody.abplatform.metric.enums.MetricType;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.risk.enums.ExperimentMetricRiskStatus;
+import io.github.rehody.abplatform.risk.factory.ExperimentMetricRiskFactory;
+import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
+import io.github.rehody.abplatform.risk.policy.ExperimentMetricRiskPolicy;
+import io.github.rehody.abplatform.risk.repository.ExperimentMetricRiskRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;

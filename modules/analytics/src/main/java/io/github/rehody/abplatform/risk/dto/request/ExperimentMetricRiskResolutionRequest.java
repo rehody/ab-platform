@@ -1,3 +1,3 @@
-package io.github.rehody.abplatform.evaluation.dto.request;
+package io.github.rehody.abplatform.risk.dto.request;
 
 public record ExperimentMetricRiskResolutionRequest(String comment) {}

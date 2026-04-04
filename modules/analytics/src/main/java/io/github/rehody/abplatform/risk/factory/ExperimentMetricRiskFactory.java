@@ -1,10 +1,10 @@
-package io.github.rehody.abplatform.evaluation.factory;
+package io.github.rehody.abplatform.risk.factory;
 
-import io.github.rehody.abplatform.evaluation.enums.ExperimentMetricRiskStatus;
 import io.github.rehody.abplatform.evaluation.model.ExperimentMetricEvaluationReport.VariantComparison;
-import io.github.rehody.abplatform.evaluation.model.ExperimentMetricRisk;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.risk.enums.ExperimentMetricRiskStatus;
+import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;

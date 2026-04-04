@@ -1,7 +1,7 @@
-package io.github.rehody.abplatform.evaluation.policy;
+package io.github.rehody.abplatform.risk.policy;
 
-import io.github.rehody.abplatform.evaluation.model.ExperimentMetricRisk;
 import io.github.rehody.abplatform.metric.enums.MetricDirection;
+import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
 import java.math.BigDecimal;
 import org.springframework.stereotype.Component;
 
