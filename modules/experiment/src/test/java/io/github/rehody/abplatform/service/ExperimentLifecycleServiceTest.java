@@ -18,6 +18,7 @@ import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
+import io.github.rehody.abplatform.policy.ExperimentActivationPolicy;
 import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
 import io.github.rehody.abplatform.policy.ExperimentTimestampPolicy;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
@@ -53,6 +54,9 @@ class ExperimentLifecycleServiceTest {
     private ExperimentAssignmentPolicy experimentAssignmentPolicy;
 
     @Mock
+    private ExperimentActivationPolicy experimentActivationPolicy;
+
+    @Mock
     private ExperimentTimestampPolicy experimentTimestampPolicy;
 
     private ExperimentLifecycleService experimentLifecycleService;
@@ -62,7 +66,11 @@ class ExperimentLifecycleServiceTest {
         ExperimentCommandSupport experimentCommandSupport = new ExperimentCommandSupport(
                 experimentRepository, lockExecutor, new ServiceActionExecutor(), experimentCache);
         experimentLifecycleService = new ExperimentLifecycleService(
-                experimentRepository, experimentCommandSupport, experimentAssignmentPolicy, experimentTimestampPolicy);
+                experimentRepository,
+                experimentCommandSupport,
+                experimentActivationPolicy,
+                experimentAssignmentPolicy,
+                experimentTimestampPolicy);
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(2)).get());

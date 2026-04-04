@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -27,6 +28,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 @ExtendWith(MockitoExtension.class)
@@ -140,56 +142,47 @@ class ExperimentVariantJdbcRepositoryTest {
     void batchInsert_shouldSkipJdbcCallWhenVariantsEmpty() {
         experimentVariantJdbcRepository.batchInsert(UUID.randomUUID(), List.of());
 
-        verify(namedParameterJdbcTemplate, never())
-                .batchUpdate(anyString(), any(org.springframework.jdbc.core.namedparam.SqlParameterSource[].class));
+        verify(namedParameterJdbcTemplate, never()).batchUpdate(anyString(), any(SqlParameterSource[].class));
     }
 
     @Test
     void batchInsert_shouldExecuteBatchUpdateWhenVariantsPresent() {
         UUID experimentId = UUID.randomUUID();
         List<ExperimentVariant> variants = List.of(variant("control"));
-        when(namedParameterJdbcTemplate.batchUpdate(
-                        anyString(), any(org.springframework.jdbc.core.namedparam.SqlParameterSource[].class)))
+        when(namedParameterJdbcTemplate.batchUpdate(anyString(), any(SqlParameterSource[].class)))
                 .thenReturn(new int[] {1});
 
         experimentVariantJdbcRepository.batchInsert(experimentId, variants);
 
         verify(namedParameterJdbcTemplate)
-                .batchUpdate(
-                        contains("INSERT INTO experiment_variants"),
-                        any(org.springframework.jdbc.core.namedparam.SqlParameterSource[].class));
+                .batchUpdate(contains("INSERT INTO experiment_variants"), any(SqlParameterSource[].class));
     }
 
     @Test
     void batchUpdate_shouldSkipJdbcCallWhenVariantsEmpty() {
         experimentVariantJdbcRepository.batchUpdate(UUID.randomUUID(), List.of());
 
-        verify(namedParameterJdbcTemplate, never())
-                .batchUpdate(anyString(), any(org.springframework.jdbc.core.namedparam.SqlParameterSource[].class));
+        verify(namedParameterJdbcTemplate, never()).batchUpdate(anyString(), any(SqlParameterSource[].class));
     }
 
     @Test
     void batchUpdate_shouldExecuteBatchUpdateWhenVariantsPresent() {
         UUID experimentId = UUID.randomUUID();
         List<ExperimentVariant> variants = List.of(variant("control"));
-        when(namedParameterJdbcTemplate.batchUpdate(
-                        anyString(), any(org.springframework.jdbc.core.namedparam.SqlParameterSource[].class)))
+        when(namedParameterJdbcTemplate.batchUpdate(anyString(), any(SqlParameterSource[].class)))
                 .thenReturn(new int[] {1});
 
         experimentVariantJdbcRepository.batchUpdate(experimentId, variants);
 
         verify(namedParameterJdbcTemplate)
-                .batchUpdate(
-                        contains("UPDATE experiment_variants"),
-                        any(org.springframework.jdbc.core.namedparam.SqlParameterSource[].class));
+                .batchUpdate(contains("UPDATE experiment_variants"), any(SqlParameterSource[].class));
     }
 
     @Test
     void batchUpdate_shouldThrowIllegalStateExceptionWhenAffectedRowsAreUnexpected() {
         UUID experimentId = UUID.randomUUID();
         List<ExperimentVariant> variants = List.of(variant("control"));
-        when(namedParameterJdbcTemplate.batchUpdate(
-                        anyString(), any(org.springframework.jdbc.core.namedparam.SqlParameterSource[].class)))
+        when(namedParameterJdbcTemplate.batchUpdate(anyString(), any(SqlParameterSource[].class)))
                 .thenReturn(new int[] {0});
 
         assertThatThrownBy(() -> experimentVariantJdbcRepository.batchUpdate(experimentId, variants))
@@ -201,16 +194,14 @@ class ExperimentVariantJdbcRepositoryTest {
     void batchDelete_shouldSkipJdbcCallWhenVariantIdsEmpty() {
         experimentVariantJdbcRepository.batchDelete(UUID.randomUUID(), List.of());
 
-        verify(namedParameterJdbcTemplate, never())
-                .batchUpdate(anyString(), any(org.springframework.jdbc.core.namedparam.SqlParameterSource[].class));
+        verify(namedParameterJdbcTemplate, never()).batchUpdate(anyString(), any(SqlParameterSource[].class));
     }
 
     @Test
     void batchDelete_shouldThrowIllegalStateExceptionWhenAffectedRowsAreUnexpected() {
         UUID experimentId = UUID.randomUUID();
         UUID variantId = UUID.randomUUID();
-        when(namedParameterJdbcTemplate.batchUpdate(
-                        anyString(), any(org.springframework.jdbc.core.namedparam.SqlParameterSource[].class)))
+        when(namedParameterJdbcTemplate.batchUpdate(anyString(), any(SqlParameterSource[].class)))
                 .thenReturn(new int[] {0});
 
         assertThatThrownBy(() -> experimentVariantJdbcRepository.batchDelete(experimentId, List.of(variantId)))
@@ -222,16 +213,13 @@ class ExperimentVariantJdbcRepositoryTest {
     void batchDelete_shouldExecuteBatchUpdateWhenVariantIdsPresent() {
         UUID experimentId = UUID.randomUUID();
         UUID variantId = UUID.randomUUID();
-        when(namedParameterJdbcTemplate.batchUpdate(
-                        anyString(), any(org.springframework.jdbc.core.namedparam.SqlParameterSource[].class)))
+        when(namedParameterJdbcTemplate.batchUpdate(anyString(), any(SqlParameterSource[].class)))
                 .thenReturn(new int[] {1});
 
         experimentVariantJdbcRepository.batchDelete(experimentId, List.of(variantId));
 
         verify(namedParameterJdbcTemplate)
-                .batchUpdate(
-                        contains("DELETE FROM experiment_variants"),
-                        any(org.springframework.jdbc.core.namedparam.SqlParameterSource[].class));
+                .batchUpdate(contains("DELETE FROM experiment_variants"), any(SqlParameterSource[].class));
     }
 
     private ExperimentVariant variant(String key) {
@@ -245,13 +233,13 @@ class ExperimentVariantJdbcRepositoryTest {
     }
 
     private ResultSet resultSetWithExperimentId(UUID experimentId) throws Exception {
-        ResultSet resultSet = org.mockito.Mockito.mock(ResultSet.class);
+        ResultSet resultSet = mock(ResultSet.class);
         when(resultSet.getObject("experiment_id", UUID.class)).thenReturn(experimentId);
         return resultSet;
     }
 
     private ResultSet resultSetWithVariantId(UUID variantId) throws Exception {
-        ResultSet resultSet = org.mockito.Mockito.mock(ResultSet.class);
+        ResultSet resultSet = mock(ResultSet.class);
         when(resultSet.getObject("id", UUID.class)).thenReturn(variantId);
         return resultSet;
     }

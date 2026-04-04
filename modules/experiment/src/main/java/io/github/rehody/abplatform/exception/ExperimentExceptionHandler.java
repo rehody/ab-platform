@@ -53,6 +53,13 @@ public class ExperimentExceptionHandler {
                 HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
     }
 
+    @ExceptionHandler(ExperimentActivationConflictException.class)
+    public ResponseEntity<ErrorResponse> handleActivationConflict(
+            ExperimentActivationConflictException ex, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(
             IllegalArgumentException ex, HttpServletRequest request) {

@@ -2,6 +2,7 @@ package io.github.rehody.abplatform.service;
 
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.policy.ExperimentActivationPolicy;
 import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
 import io.github.rehody.abplatform.policy.ExperimentTimestampPolicy;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
@@ -20,6 +21,7 @@ public class ExperimentLifecycleService {
 
     private final ExperimentRepository experimentRepository;
     private final ExperimentCommandSupport experimentCommandSupport;
+    private final ExperimentActivationPolicy experimentActivationPolicy;
     private final ExperimentAssignmentPolicy experimentAssignmentPolicy;
     private final ExperimentTimestampPolicy experimentTimestampPolicy;
 
@@ -72,6 +74,7 @@ public class ExperimentLifecycleService {
             Experiment timestampedExperiment =
                     experimentTimestampPolicy.applyTransitionTimestamps(experiment, transitedExperiment, Instant.now());
 
+            validateActivationIfRunning(timestampedExperiment);
             experimentAssignmentPolicy.validateAssignmentInvariants(timestampedExperiment);
             Experiment experimentToUpdate = timestampedExperiment.withVersion(expectedVersion);
 
@@ -80,6 +83,12 @@ public class ExperimentLifecycleService {
 
             return timestampedExperiment.withVersion(newVersion);
         });
+    }
+
+    private void validateActivationIfRunning(Experiment experiment) {
+        if (experiment.isRunning()) {
+            experimentActivationPolicy.validateActivation(experiment);
+        }
     }
 
     private long updateAndCheckOptimisticLocking(Experiment experiment, long expectedVersion) {

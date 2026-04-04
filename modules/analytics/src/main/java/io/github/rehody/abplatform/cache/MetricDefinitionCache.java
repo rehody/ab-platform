@@ -36,4 +36,8 @@ public class MetricDefinitionCache {
         return cache.getOrLoad(key, () -> loader.get().map(CachedMetricDefinition::from))
                 .map(CachedMetricDefinition::toModel);
     }
+
+    public void invalidate(String key) {
+        cache.invalidate(key);
+    }
 }

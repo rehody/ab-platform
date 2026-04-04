@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import java.util.Objects;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -26,9 +27,23 @@ public class AnalyticsExceptionHandler {
                 HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND, ex.getMessage(), request.getRequestURI(), List.of());
     }
 
+    @ExceptionHandler(ExperimentMetricRiskNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleRiskNotFound(
+            ExperimentMetricRiskNotFoundException ex, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND, ex.getMessage(), request.getRequestURI(), List.of());
+    }
+
     @ExceptionHandler(MetricEventAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleAlreadyExists(
             MetricEventAlreadyExistsException ex, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
+    }
+
+    @ExceptionHandler(MetricDefinitionAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleMetricDefinitionAlreadyExists(
+            MetricDefinitionAlreadyExistsException ex, HttpServletRequest request) {
         return buildResponse(
                 HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
     }
@@ -44,6 +59,24 @@ public class AnalyticsExceptionHandler {
             ExperimentReportUnavailableException ex, HttpServletRequest request) {
         return buildResponse(
                 HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(
+            IllegalArgumentException ex, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.BAD_REQUEST, ErrorCode.BAD_REQUEST, ex.getMessage(), request.getRequestURI(), List.of());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(
+            DataIntegrityViolationException ex, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                ErrorCode.CONFLICT,
+                "Request conflicts with current data",
+                request.getRequestURI(),
+                List.of());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

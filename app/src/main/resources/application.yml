@@ -18,6 +18,13 @@ spring:
       password: ${REDIS_PASSWORD:}
 
 ab:
+  analytics:
+    evaluation:
+      evaluation-interval: ${AB_ANALYTICS_EVALUATION_INTERVAL:15m}
+      minimum-events-for-analysis: ${AB_ANALYTICS_MINIMUM_EVENTS_FOR_ANALYSIS:300}
+      minimum-participants-for-traffic-warning: ${AB_ANALYTICS_MINIMUM_PARTICIPANTS_FOR_TRAFFIC_WARNING:300}
+      traffic-share-warning-threshold: ${AB_ANALYTICS_TRAFFIC_SHARE_WARNING_THRESHOLD:0.10}
+
   lock:
     key-prefix: ${AB_LOCK_KEY_PREFIX:ab-platform:lock:}
     wait-time: ${AB_LOCK_WAIT_TIME:3s}

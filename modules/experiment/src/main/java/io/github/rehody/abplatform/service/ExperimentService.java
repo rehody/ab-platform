@@ -90,8 +90,20 @@ public class ExperimentService {
     }
 
     @Transactional(readOnly = true)
+    public List<Experiment> getRunning() {
+        return experimentRepository.findRunning();
+    }
+
+    @Transactional(readOnly = true)
     public Optional<Experiment> findByFlagKey(String flagKey) {
         return experimentCache.getOrLoad(flagKey, () -> experimentRepository.findByFlagKey(flagKey));
+    }
+
+    @Transactional(readOnly = true)
+    public void ensureExistsById(UUID id) {
+        if (experimentRepository.existsById(id)) {
+            throw new ExperimentNotFoundException("Experiment '%s' not found".formatted(id));
+        }
     }
 
     private void replaceVariantsAndCheckOptimisticLocking(

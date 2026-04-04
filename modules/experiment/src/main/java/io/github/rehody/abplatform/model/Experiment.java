@@ -21,6 +21,14 @@ public record Experiment(
         return state == ExperimentState.RUNNING;
     }
 
+    public boolean isApproved() {
+        return state == ExperimentState.APPROVED;
+    }
+
+    public boolean isCompleted() {
+        return state == ExperimentState.COMPLETED;
+    }
+
     public Experiment withVariants(List<ExperimentVariant> variants) {
         return new Experiment(id, flagKey, List.copyOf(variants), state, version, startedAt, completedAt);
     }

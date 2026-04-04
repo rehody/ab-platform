@@ -50,7 +50,7 @@ class ExperimentCacheCodecTest {
     @Test
     void read_shouldDeserializeResponseAndRestoreFields() {
         String json = """
-                {"id":"00000000-0000-0000-0000-000000000001","flagKey":"flag-b","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":123,"type":"NUMBER"},"position":1,"weight":2,"variantType":"REGULAR"}],"state":"APPROVED","version":4,"startedAt":null,"completedAt":null}
+                {"id":"00000000-0000-0000-0000-000000000001","flagKey":"flag-b","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":123,"type":"NUMBER"},"position":1,"weight":2,"type":"REGULAR"}],"state":"APPROVED","version":4,"startedAt":null,"completedAt":null}
                 """;
 
         CachedExperiment cachedExperiment = codec.read(json);

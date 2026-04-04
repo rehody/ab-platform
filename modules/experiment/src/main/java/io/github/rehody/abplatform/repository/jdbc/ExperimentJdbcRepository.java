@@ -1,5 +1,6 @@
 package io.github.rehody.abplatform.repository.jdbc;
 
+import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.repository.rowmapper.ExperimentRowMapper;
 import java.util.List;
@@ -67,6 +68,13 @@ public class ExperimentJdbcRepository {
         ORDER BY created_at DESC, id
         """;
 
+    private static final String SELECT_EXPERIMENTS_BY_STATE_SQL = """
+        SELECT id, flag_key, state, version, started_at, completed_at
+        FROM experiments
+        WHERE state = :state
+        ORDER BY created_at DESC, id
+        """;
+
     private static final String EXISTS_EXPERIMENT_BY_ID_SQL = """
         SELECT EXISTS(
             SELECT 1
@@ -122,6 +130,14 @@ public class ExperimentJdbcRepository {
     public List<Experiment> findAll() {
         return jdbcClient
                 .sql(SELECT_ALL_EXPERIMENTS_SQL)
+                .query(experimentRowMapper)
+                .list();
+    }
+
+    public List<Experiment> findByState(ExperimentState state) {
+        return jdbcClient
+                .sql(SELECT_EXPERIMENTS_BY_STATE_SQL)
+                .param("state", state.name())
                 .query(experimentRowMapper)
                 .list();
     }

@@ -5,7 +5,13 @@ dependencies {
 
     implementation project(':modules:experiment')
     implementation project(':shared:caching')
+    implementation project(':shared:common')
 
     implementation project(':shared:contracts')
     implementation project(':shared:locking')
+
+    testImplementation libs.spring.boot.starter.test
+    testImplementation project(':shared:testing')
+
+    integrationTestImplementation project(':shared:testing')
 }

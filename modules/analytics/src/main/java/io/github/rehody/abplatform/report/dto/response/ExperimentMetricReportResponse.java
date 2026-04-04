@@ -1,13 +1,13 @@
 package io.github.rehody.abplatform.report.dto.response;
 
 import io.github.rehody.abplatform.report.model.CountableMetricReport;
+import io.github.rehody.abplatform.report.model.ExperimentMetricReport;
 import io.github.rehody.abplatform.report.model.UniqueMetricReport;
 
 public sealed interface ExperimentMetricReportResponse
         permits CountableMetricReportResponse, UniqueMetricReportResponse {
 
-    static ExperimentMetricReportResponse from(
-            io.github.rehody.abplatform.report.model.ExperimentMetricReport experimentMetricReport) {
+    static ExperimentMetricReportResponse from(ExperimentMetricReport experimentMetricReport) {
         if (experimentMetricReport instanceof CountableMetricReport countableMetricReport) {
             return CountableMetricReportResponse.from(countableMetricReport);
         }

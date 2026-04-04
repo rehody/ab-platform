@@ -38,4 +38,8 @@ public class ExperimentMetricReportCache {
         return cache.getOrLoad(key, () -> loader.get().map(CachedExperimentMetricReport::from))
                 .map(CachedExperimentMetricReport::toModel);
     }
+
+    public void invalidate(String key) {
+        cache.invalidate(key);
+    }
 }

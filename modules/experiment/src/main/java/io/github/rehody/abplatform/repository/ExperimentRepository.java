@@ -1,5 +1,6 @@
 package io.github.rehody.abplatform.repository;
 
+import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.repository.jdbc.ExperimentJdbcRepository;
@@ -49,6 +50,15 @@ public class ExperimentRepository {
 
     public List<Experiment> findAll() {
         List<Experiment> experiments = experimentJdbcRepository.findAll();
+        return attachVariants(experiments);
+    }
+
+    public List<Experiment> findRunning() {
+        List<Experiment> experiments = experimentJdbcRepository.findByState(ExperimentState.RUNNING);
+        return attachVariants(experiments);
+    }
+
+    private List<Experiment> attachVariants(List<Experiment> experiments) {
         if (experiments.isEmpty()) {
             return List.of();
         }

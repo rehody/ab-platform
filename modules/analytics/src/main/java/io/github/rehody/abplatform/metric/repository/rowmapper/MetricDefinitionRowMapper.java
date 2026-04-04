@@ -1,7 +1,10 @@
 package io.github.rehody.abplatform.metric.repository.rowmapper;
 
+import io.github.rehody.abplatform.metric.enums.MetricDirection;
+import io.github.rehody.abplatform.metric.enums.MetricSeverity;
 import io.github.rehody.abplatform.metric.enums.MetricType;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
@@ -17,6 +20,9 @@ public class MetricDefinitionRowMapper implements RowMapper<MetricDefinition> {
                 rs.getObject("id", UUID.class),
                 rs.getString("key"),
                 rs.getString("name"),
-                MetricType.valueOf(rs.getString("type")));
+                MetricType.valueOf(rs.getString("type")),
+                MetricDirection.valueOf(rs.getString("direction")),
+                MetricSeverity.valueOf(rs.getString("severity")),
+                rs.getObject("deviation_threshold", BigDecimal.class));
     }
 }

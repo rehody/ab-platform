@@ -5,6 +5,7 @@ import io.github.rehody.abplatform.model.Experiment;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.jdbc.core.RowMapper;
@@ -25,7 +26,7 @@ public class ExperimentRowMapper implements RowMapper<Experiment> {
                 toInstant(rs.getTimestamp("completed_at")));
     }
 
-    private java.time.Instant toInstant(Timestamp timestamp) {
+    private Instant toInstant(Timestamp timestamp) {
         if (timestamp == null) {
             return null;
         }

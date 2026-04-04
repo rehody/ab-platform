@@ -303,6 +303,19 @@ class ExperimentServiceTest {
         assertThat(responses).containsExactly(first, second);
     }
 
+    @Test
+    void getRunning_shouldReturnOnlyRunningExperimentsFromRepository() {
+        Experiment first = new Experiment(
+                UUID.randomUUID(), "flag-running-a", variants(), ExperimentState.RUNNING, 3L, null, null);
+        Experiment second = new Experiment(
+                UUID.randomUUID(), "flag-running-b", variants(), ExperimentState.RUNNING, 4L, null, null);
+        when(experimentRepository.findRunning()).thenReturn(List.of(first, second));
+
+        List<Experiment> responses = experimentService.getRunning();
+
+        assertThat(responses).containsExactly(first, second);
+    }
+
     private List<ExperimentVariant> variants() {
         return List.of(
                 new ExperimentVariant(

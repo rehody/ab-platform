@@ -1,6 +1,5 @@
 package io.github.rehody.abplatform.policy;
 
-import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
 import java.time.Instant;
 import org.springframework.stereotype.Component;
@@ -20,11 +19,11 @@ public class ExperimentTimestampPolicy {
     public Experiment applyTransitionTimestamps(Experiment current, Experiment transitioned, Instant timestamp) {
         Experiment updated = transitioned;
 
-        if (current.state() == ExperimentState.APPROVED && transitioned.state() == ExperimentState.RUNNING) {
+        if (current.isApproved() && transitioned.isRunning()) {
             updated = setStartedAtIfMissing(updated, timestamp);
         }
 
-        if (transitioned.state() == ExperimentState.COMPLETED) {
+        if (transitioned.isCompleted()) {
             updated = setCompletedAtIfMissing(updated, timestamp);
         }
 

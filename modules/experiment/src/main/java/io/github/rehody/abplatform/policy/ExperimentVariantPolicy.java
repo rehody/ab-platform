@@ -1,6 +1,5 @@
 package io.github.rehody.abplatform.policy;
 
-import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import java.math.BigDecimal;
@@ -88,7 +87,7 @@ public class ExperimentVariantPolicy {
                     "REGULAR variant key must not be 'control' for experiment %s".formatted(experimentId));
         }
 
-        if (variant.type() != ExperimentVariantType.REGULAR) {
+        if (!variant.isRegular()) {
             throw new IllegalArgumentException(
                     "Unexpected variant type %s for experiment %s".formatted(variant.type(), experimentId));
         }

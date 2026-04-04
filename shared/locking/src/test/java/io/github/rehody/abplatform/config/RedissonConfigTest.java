@@ -1,23 +1,20 @@
 package io.github.rehody.abplatform.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
+import org.redisson.config.Config;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class RedissonConfigTest {
 
     private final RedissonConfig redissonConfig = new RedissonConfig();
-    private RedissonClient redissonClient;
-
-    @AfterEach
-    void tearDown() {
-        if (redissonClient != null) {
-            redissonClient.shutdown();
-        }
-    }
 
     @Test
     void buildAddress_shouldReturnPlainRedisUrlAndHandleBlankPassword() {
@@ -43,8 +40,20 @@ class RedissonConfigTest {
 
     @Test
     void redissonClient_shouldCreateClientAndUseAddressWhenConfigurationProvided() {
-        redissonClient = redissonConfig.redissonClient("localhost", 6379, "");
+        RedissonClient redissonClient = mock(RedissonClient.class);
+        Config[] capturedConfig = new Config[1];
 
-        assertThat(redissonClient.getConfig().useSingleServer().getAddress()).isEqualTo("redis://localhost:6379");
+        try (MockedStatic<Redisson> redisson = mockStatic(Redisson.class)) {
+            redisson.when(() -> Redisson.create(any(Config.class))).thenAnswer(invocation -> {
+                capturedConfig[0] = invocation.getArgument(0);
+                return redissonClient;
+            });
+
+            RedissonClient result = redissonConfig.redissonClient("localhost", 6379, "");
+
+            assertThat(result).isSameAs(redissonClient);
+            assertThat(capturedConfig[0]).isNotNull();
+            assertThat(capturedConfig[0].useSingleServer().getAddress()).isEqualTo("redis://localhost:6379");
+        }
     }
 }

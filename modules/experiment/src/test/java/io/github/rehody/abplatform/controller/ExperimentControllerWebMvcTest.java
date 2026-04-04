@@ -55,7 +55,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
         mockMvc.perform(post("/api/v1/experiments")
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"flagKey":"flag-a","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"weight":1,"variantType":"CONTROL"}],"state":"DRAFT"}
+                                {"flagKey":"flag-a","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"weight":1,"type":"CONTROL"}],"state":"DRAFT"}
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.flagKey").value("flag-a"))
@@ -93,7 +93,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
         mockMvc.perform(patch("/api/v1/experiments/{id}", id)
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":"blue","type":"STRING"},"position":0,"weight":1,"variantType":"REGULAR"}],"version":2}
+                                {"variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":"blue","type":"STRING"},"position":0,"weight":1,"type":"REGULAR"}],"version":2}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.flagKey").value("flag-b"))
@@ -175,7 +175,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
         mockMvc.perform(post("/api/v1/experiments")
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"flagKey":"flag-a","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"weight":1,"variantType":"CONTROL"}],"state":"DRAFT"}
+                                {"flagKey":"flag-a","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"weight":1,"type":"CONTROL"}],"state":"DRAFT"}
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
