@@ -8,12 +8,12 @@ import static io.github.rehody.abplatform.support.AssignmentFixtures.variant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.model.AssignmentEvent;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureFlag;
@@ -26,6 +26,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -114,7 +115,14 @@ class AssignmentServiceTest {
         assertThat(response).isEqualTo(defaultValue);
         verify(experimentVariantResolver).resolve(experiment, userId);
         verify(featureFlagService).getByKey("flag-c");
-        verify(assignmentEventRepository).saveIfAbsent(eq(experiment.id()), eq(controlVariant.id()), eq(userId), any());
+        ArgumentCaptor<AssignmentEvent> assignmentEventCaptor = ArgumentCaptor.forClass(AssignmentEvent.class);
+        verify(assignmentEventRepository).saveIfAbsent(assignmentEventCaptor.capture());
+        AssignmentEvent assignmentEvent = assignmentEventCaptor.getValue();
+        assertThat(assignmentEvent.id()).isNotNull();
+        assertThat(assignmentEvent.userId()).isEqualTo(userId);
+        assertThat(assignmentEvent.variantId()).isEqualTo(controlVariant.id());
+        assertThat(assignmentEvent.experimentId()).isEqualTo(experiment.id());
+        assertThat(assignmentEvent.timestamp()).isNotNull();
     }
 
     @Test
@@ -135,6 +143,13 @@ class AssignmentServiceTest {
         assertThat(response).isEqualTo(variant.value());
         verify(experimentVariantResolver).resolve(experiment, userId);
         verify(featureFlagService, never()).getByKey(anyString());
-        verify(assignmentEventRepository).saveIfAbsent(eq(experiment.id()), eq(variant.id()), eq(userId), any());
+        ArgumentCaptor<AssignmentEvent> assignmentEventCaptor = ArgumentCaptor.forClass(AssignmentEvent.class);
+        verify(assignmentEventRepository).saveIfAbsent(assignmentEventCaptor.capture());
+        AssignmentEvent assignmentEvent = assignmentEventCaptor.getValue();
+        assertThat(assignmentEvent.id()).isNotNull();
+        assertThat(assignmentEvent.userId()).isEqualTo(userId);
+        assertThat(assignmentEvent.variantId()).isEqualTo(variant.id());
+        assertThat(assignmentEvent.experimentId()).isEqualTo(experiment.id());
+        assertThat(assignmentEvent.timestamp()).isNotNull();
     }
 }

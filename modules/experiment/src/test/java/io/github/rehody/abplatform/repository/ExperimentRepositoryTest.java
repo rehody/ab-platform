@@ -16,7 +16,6 @@ import io.github.rehody.abplatform.repository.jdbc.ExperimentJdbcRepository;
 import io.github.rehody.abplatform.repository.jdbc.ExperimentVariantJdbcRepository;
 import io.github.rehody.abplatform.repository.mapper.ExperimentAggregateMapper;
 import io.github.rehody.abplatform.repository.sync.ExperimentVariantSynchronizer;
-import io.github.rehody.abplatform.repository.validation.ExperimentVariantPreparer;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -43,9 +42,6 @@ class ExperimentRepositoryTest {
     @Mock
     private ExperimentVariantSynchronizer experimentVariantSynchronizer;
 
-    @Mock
-    private ExperimentVariantPreparer experimentVariantPreparer;
-
     private ExperimentRepository experimentRepository;
 
     @BeforeEach
@@ -54,22 +50,17 @@ class ExperimentRepositoryTest {
                 experimentJdbcRepository,
                 experimentVariantJdbcRepository,
                 experimentAggregateMapper,
-                experimentVariantSynchronizer,
-                experimentVariantPreparer);
+                experimentVariantSynchronizer);
     }
 
     @Test
-    void save_shouldPrepareVariantsInsertExperimentAndBatchInsertVariants() {
+    void save_shouldInsertExperimentAndBatchInsertVariants() {
         Experiment experiment = experiment("flag-a", 0L);
-        List<ExperimentVariant> preparedVariants = variants();
-        when(experimentVariantPreparer.prepare(experiment.id(), experiment.variants()))
-                .thenReturn(preparedVariants);
 
         experimentRepository.save(experiment);
 
-        verify(experimentVariantPreparer).prepare(experiment.id(), experiment.variants());
         verify(experimentJdbcRepository).insert(experiment);
-        verify(experimentVariantJdbcRepository).batchInsert(experiment.id(), preparedVariants);
+        verify(experimentVariantJdbcRepository).batchInsert(experiment.id(), experiment.variants());
     }
 
     @Test
@@ -161,18 +152,15 @@ class ExperimentRepositoryTest {
     }
 
     @Test
-    void updateWithVariants_shouldPrepareSyncVariantsAndReturnUpdatedOutcomeWithNewVersionWhenJdbcUpdateSucceeds() {
+    void updateWithVariants_shouldSyncVariantsAndReturnUpdatedOutcomeWithNewVersionWhenJdbcUpdateSucceeds() {
         Experiment experiment = experiment("flag-f", "CHECKOUT", 5L);
-        List<ExperimentVariant> preparedVariants = variants();
-        when(experimentVariantPreparer.prepare(experiment.id(), experiment.variants()))
-                .thenReturn(preparedVariants);
         when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.of(6L));
 
         ExperimentRepository.UpdateOutcome result = experimentRepository.updateWithVariants(experiment);
 
         assertThat(result.status()).isEqualTo(ExperimentRepository.UpdateStatus.UPDATED);
         assertThat(result.version()).isEqualTo(6L);
-        verify(experimentVariantSynchronizer).sync(experiment.id(), preparedVariants);
+        verify(experimentVariantSynchronizer).sync(experiment.id(), experiment.variants());
     }
 
     @Test
@@ -234,22 +222,19 @@ class ExperimentRepositoryTest {
     void replaceVariants_shouldPrepareIncrementVersionSyncAndReturnUpdated() {
         UUID experimentId = UUID.randomUUID();
         List<ExperimentVariant> variants = variants();
-        List<ExperimentVariant> preparedVariants = variants();
-        when(experimentVariantPreparer.prepare(experimentId, variants)).thenReturn(preparedVariants);
         when(experimentJdbcRepository.incrementVersion(experimentId, 3L)).thenReturn(1);
 
         ExperimentRepository.ReplaceVariantsResult result =
                 experimentRepository.replaceVariants(experimentId, 3L, variants);
 
         assertThat(result).isEqualTo(ExperimentRepository.ReplaceVariantsResult.UPDATED);
-        verify(experimentVariantSynchronizer).sync(experimentId, preparedVariants);
+        verify(experimentVariantSynchronizer).sync(experimentId, variants);
     }
 
     @Test
     void replaceVariants_shouldReturnVersionConflictWhenExperimentExistsButVersionDiffers() {
         UUID experimentId = UUID.randomUUID();
         List<ExperimentVariant> variants = variants();
-        when(experimentVariantPreparer.prepare(experimentId, variants)).thenReturn(variants);
         when(experimentJdbcRepository.incrementVersion(experimentId, 4L)).thenReturn(0);
         when(experimentJdbcRepository.findVersionById(experimentId)).thenReturn(Optional.of(5L));
 
@@ -264,7 +249,6 @@ class ExperimentRepositoryTest {
     void replaceVariants_shouldReturnNotFoundWhenExperimentMissing() {
         UUID experimentId = UUID.randomUUID();
         List<ExperimentVariant> variants = variants();
-        when(experimentVariantPreparer.prepare(experimentId, variants)).thenReturn(variants);
         when(experimentJdbcRepository.incrementVersion(experimentId, 4L)).thenReturn(0);
         when(experimentJdbcRepository.findVersionById(experimentId)).thenReturn(Optional.empty());
 

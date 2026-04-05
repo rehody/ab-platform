@@ -1,4 +1,4 @@
-package io.github.rehody.abplatform.repository.validation;
+package io.github.rehody.abplatform.service;
 
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import java.util.ArrayList;
@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 public class ExperimentVariantPreparer {
 
     public List<ExperimentVariant> prepare(UUID experimentId, List<ExperimentVariant> variants) {
-        List<ExperimentVariant> result = new ArrayList<>(variants.size());
+        List<ExperimentVariant> preparedVariants = new ArrayList<>(variants.size());
         Set<String> keys = new HashSet<>();
 
         for (int position = 0; position < variants.size(); position++) {
@@ -25,7 +25,7 @@ public class ExperimentVariantPreparer {
                         "Duplicate variant key for experiment %s: %s".formatted(experimentId, normalizedKey));
             }
 
-            result.add(new ExperimentVariant(
+            preparedVariants.add(new ExperimentVariant(
                     resolveId(variant.id()),
                     normalizedKey,
                     variant.value(),
@@ -34,7 +34,7 @@ public class ExperimentVariantPreparer {
                     variant.type()));
         }
 
-        return result;
+        return preparedVariants;
     }
 
     private String normalizeKey(String key) {

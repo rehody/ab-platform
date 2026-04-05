@@ -1,7 +1,6 @@
 package io.github.rehody.abplatform.repository;
 
-import java.time.Instant;
-import java.util.UUID;
+import io.github.rehody.abplatform.model.AssignmentEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -18,14 +17,14 @@ public class AssignmentEventRepository {
 
     private final JdbcClient jdbcClient;
 
-    public void saveIfAbsent(UUID experimentId, UUID variantId, UUID userId, Instant timestamp) {
+    public void saveIfAbsent(AssignmentEvent assignmentEvent) {
         jdbcClient
                 .sql(INSERT_ASSIGNMENT_EVENT_SQL)
-                .param("id", UUID.randomUUID())
-                .param("userId", userId)
-                .param("variantId", variantId)
-                .param("experimentId", experimentId)
-                .param("timestamp", timestamp)
+                .param("id", assignmentEvent.id())
+                .param("userId", assignmentEvent.userId())
+                .param("variantId", assignmentEvent.variantId())
+                .param("experimentId", assignmentEvent.experimentId())
+                .param("timestamp", assignmentEvent.timestamp())
                 .update();
     }
 }

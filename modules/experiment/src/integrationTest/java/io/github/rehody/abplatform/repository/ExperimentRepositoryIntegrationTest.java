@@ -15,7 +15,6 @@ import io.github.rehody.abplatform.repository.mapper.ExperimentAggregateMapper;
 import io.github.rehody.abplatform.repository.rowmapper.ExperimentRowMapper;
 import io.github.rehody.abplatform.repository.rowmapper.ExperimentVariantRowMapper;
 import io.github.rehody.abplatform.repository.sync.ExperimentVariantSynchronizer;
-import io.github.rehody.abplatform.repository.validation.ExperimentVariantPreparer;
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
@@ -33,7 +32,6 @@ import org.springframework.jdbc.core.simple.JdbcClient;
     ExperimentVariantJdbcRepository.class,
     ExperimentAggregateMapper.class,
     ExperimentVariantSynchronizer.class,
-    ExperimentVariantPreparer.class,
     ExperimentRowMapper.class,
     ExperimentVariantRowMapper.class
 })
@@ -115,22 +113,25 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
     }
 
     @Test
-    void saveAndFindById_shouldPersistExperimentAndNormalizeVariants() {
+    void saveAndFindById_shouldPersistExperimentAndVariantsAsProvided() {
         String flagKey = "checkout-redesign";
         insertFeatureFlag(flagKey);
 
         UUID experimentId = UUID.randomUUID();
+        UUID controlVariantId = UUID.randomUUID();
+        UUID regularVariantId = UUID.randomUUID();
         Experiment experiment = new Experiment(
                 experimentId,
                 flagKey,
                 "CORE",
                 List.of(
-                        controlVariant(null, new FeatureValue(true, FeatureValueType.BOOL), 10, BigDecimal.ONE),
+                        controlVariant(
+                                controlVariantId, new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE),
                         regularVariant(
-                                UUID.randomUUID(),
+                                regularVariantId,
                                 "variant-a",
                                 new FeatureValue("blue", FeatureValueType.STRING),
-                                4,
+                                1,
                                 BigDecimal.ONE)),
                 ExperimentState.DRAFT,
                 0L,
@@ -146,9 +147,10 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
         assertThat(loaded.state()).isEqualTo(ExperimentState.DRAFT);
         assertThat(loaded.version()).isZero();
         assertThat(loaded.variants()).hasSize(2);
-        assertThat(loaded.variants().getFirst().id()).isNotNull();
+        assertThat(loaded.variants().getFirst().id()).isEqualTo(controlVariantId);
         assertThat(loaded.variants().getFirst().key()).isEqualTo("control");
         assertThat(loaded.variants().getFirst().position()).isZero();
+        assertThat(loaded.variants().get(1).id()).isEqualTo(regularVariantId);
         assertThat(loaded.variants().get(1).key()).isEqualTo("variant-a");
         assertThat(loaded.variants().get(1).position()).isEqualTo(1);
     }
@@ -289,12 +291,12 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                 0L,
                 List.of(
                         controlVariant(
-                                keptVariantId, new FeatureValue(false, FeatureValueType.BOOL), 8, BigDecimal.ONE),
+                                keptVariantId, new FeatureValue(false, FeatureValueType.BOOL), 0, BigDecimal.ONE),
                         regularVariant(
-                                null,
-                                " new-variant ",
+                                UUID.randomUUID(),
+                                "new-variant",
                                 new FeatureValue(42, FeatureValueType.NUMBER),
-                                3,
+                                1,
                                 BigDecimal.ONE)));
         Experiment updated = experimentRepository.findById(experiment.id()).orElseThrow();
 

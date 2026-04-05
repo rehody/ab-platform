@@ -68,6 +68,9 @@ class ExperimentServiceTest {
     private ExperimentVariantPolicy experimentVariantPolicy;
 
     @Mock
+    private ExperimentVariantPreparer experimentVariantPreparer;
+
+    @Mock
     private ExperimentDomainJdbcRepository experimentDomainJdbcRepository;
 
     private ExperimentService experimentService;
@@ -85,6 +88,7 @@ class ExperimentServiceTest {
                 experimentTimestampPolicy,
                 featureFlagService,
                 experimentVariantPolicy,
+                experimentVariantPreparer,
                 experimentDomainJdbcRepository);
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
@@ -99,6 +103,9 @@ class ExperimentServiceTest {
                         invocation.getArgument(0),
                         new FeatureValue(true, FeatureValueType.BOOL),
                         0L));
+        lenient()
+                .when(experimentVariantPreparer.prepare(any(), any()))
+                .thenAnswer(invocation -> invocation.getArgument(1));
         lenient().when(experimentDomainJdbcRepository.existsByKey(any())).thenReturn(true);
     }
 

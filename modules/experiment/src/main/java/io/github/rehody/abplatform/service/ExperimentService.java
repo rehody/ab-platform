@@ -33,6 +33,7 @@ public class ExperimentService {
     private final ExperimentTimestampPolicy experimentTimestampPolicy;
     private final FeatureFlagService featureFlagService;
     private final ExperimentVariantPolicy experimentVariantPolicy;
+    private final ExperimentVariantPreparer experimentVariantPreparer;
     private final ExperimentDomainJdbcRepository experimentDomainJdbcRepository;
 
     @Transactional
@@ -45,9 +46,10 @@ public class ExperimentService {
             FeatureFlag featureFlag = featureFlagService.getByKey(flagKey);
 
             UUID experimentId = UUID.randomUUID();
-            validateVariantsForFlagDefault(experimentId, variants, featureFlag);
+            List<ExperimentVariant> preparedVariants = prepareVariants(experimentId, variants);
+            validateVariantsForFlagDefault(experimentId, preparedVariants, featureFlag);
 
-            Experiment experiment = buildExperiment(experimentId, flagKey, domainKey, variants, state);
+            Experiment experiment = buildExperiment(experimentId, flagKey, domainKey, preparedVariants, state);
 
             experimentAssignmentPolicy.validateAssignmentInvariants(experiment);
             experimentRepository.save(experiment);
@@ -78,22 +80,11 @@ public class ExperimentService {
     public Experiment update(
             UUID id, String flagKey, String domainKey, List<ExperimentVariant> variants, long version) {
         Experiment currentExperiment = experimentCommandSupport.getById(id);
-        String resolvedFlagKey = resolveFlagKey(currentExperiment, flagKey);
-        String resolvedDomainKey = resolveDomainKey(currentExperiment, domainKey);
+        Experiment updatedExperiment = resolveUpdatedExperiment(currentExperiment, flagKey, domainKey, variants);
 
         return experimentCommandSupport.withExperimentLocks(
-                List.of(currentExperiment.flagKey(), resolvedFlagKey), () -> {
-                    Experiment updatedExperiment = buildUpdatedExperiment(
-                                    currentExperiment, resolvedFlagKey, resolvedDomainKey, variants)
-                            .withVersion(version);
-
-                    validateUpdatedExperiment(currentExperiment.id(), updatedExperiment);
-
-                    long updatedVersion = updateWithVariants(updatedExperiment, version);
-                    invalidateRelevantCaches(currentExperiment.flagKey(), resolvedFlagKey);
-
-                    return updatedExperiment.withVersion(updatedVersion);
-                });
+                List.of(currentExperiment.flagKey(), updatedExperiment.flagKey()),
+                () -> updateUnderLock(currentExperiment, updatedExperiment, version));
     }
 
     @Transactional(readOnly = true)
@@ -137,6 +128,24 @@ public class ExperimentService {
                         "Experiment '%s' version mismatch. Expected version %d".formatted(experiment.id(), version));
             case UPDATED -> outcome.version();
         };
+    }
+
+    private Experiment updateUnderLock(Experiment currentExperiment, Experiment updatedExperiment, long version) {
+        validateUpdatedExperiment(currentExperiment.id(), updatedExperiment);
+
+        Experiment experimentToUpdate = updatedExperiment.withVersion(version);
+        long updatedVersion = updateWithVariants(experimentToUpdate, version);
+
+        invalidateRelevantCaches(currentExperiment.flagKey(), updatedExperiment.flagKey());
+        return updatedExperiment.withVersion(updatedVersion);
+    }
+
+    private Experiment resolveUpdatedExperiment(
+            Experiment currentExperiment, String flagKey, String domainKey, List<ExperimentVariant> variants) {
+        String resolvedFlagKey = resolveFlagKey(currentExperiment, flagKey);
+        String resolvedDomainKey = resolveDomainKey(currentExperiment, domainKey);
+        List<ExperimentVariant> preparedVariants = prepareVariants(currentExperiment.id(), variants);
+        return buildUpdatedExperiment(currentExperiment, resolvedFlagKey, resolvedDomainKey, preparedVariants);
     }
 
     private void validateUpdatedExperiment(UUID experimentId, Experiment updatedExperiment) {
@@ -201,5 +210,9 @@ public class ExperimentService {
     private void validateVariantsForFlagDefault(
             UUID experimentId, List<ExperimentVariant> variants, FeatureFlag featureFlag) {
         experimentVariantPolicy.validateVariantConfiguration(experimentId, variants, featureFlag.defaultValue());
+    }
+
+    private List<ExperimentVariant> prepareVariants(UUID experimentId, List<ExperimentVariant> variants) {
+        return experimentVariantPreparer.prepare(experimentId, variants);
     }
 }

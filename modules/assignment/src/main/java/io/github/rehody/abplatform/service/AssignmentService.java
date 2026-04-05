@@ -1,5 +1,6 @@
 package io.github.rehody.abplatform.service;
 
+import io.github.rehody.abplatform.model.AssignmentEvent;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
@@ -46,6 +47,8 @@ public class AssignmentService {
     }
 
     private void recordAssignment(Experiment experiment, ExperimentVariant resolvedVariant, UUID userId) {
-        assignmentEventRepository.saveIfAbsent(experiment.id(), resolvedVariant.id(), userId, Instant.now());
+        AssignmentEvent assignmentEvent =
+                new AssignmentEvent(UUID.randomUUID(), userId, resolvedVariant.id(), experiment.id(), Instant.now());
+        assignmentEventRepository.saveIfAbsent(assignmentEvent);
     }
 }
