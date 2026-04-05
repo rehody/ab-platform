@@ -11,7 +11,7 @@ import java.util.UUID;
 public record Experiment(
         UUID id,
         String flagKey,
-        String domain,
+        String domainKey,
         List<ExperimentVariant> variants,
         ExperimentState state,
         long version,
@@ -24,10 +24,6 @@ public record Experiment(
 
     public boolean isRunning() {
         return state == ExperimentState.RUNNING;
-    }
-
-    public boolean isDraft() {
-        return state == ExperimentState.DRAFT;
     }
 
     public boolean isApproved() {
@@ -46,28 +42,16 @@ public record Experiment(
         return isCompleted() || isArchived();
     }
 
-    public Experiment withFlagKey(String flagKey) {
-        return new Experiment(id, flagKey, domain, variants, state, version, startedAt, completedAt);
-    }
-
-    public Experiment withDomainKey(String domain) {
-        return new Experiment(id, flagKey, domain, variants, state, version, startedAt, completedAt);
-    }
-
-    public Experiment withVariants(List<ExperimentVariant> variants) {
-        return new Experiment(id, flagKey, domain, variants, state, version, startedAt, completedAt);
-    }
-
     public Experiment withVersion(long version) {
-        return new Experiment(id, flagKey, domain, variants, state, version, startedAt, completedAt);
+        return new Experiment(id, flagKey, domainKey, variants, state, version, startedAt, completedAt);
     }
 
     public Experiment withStartedAt(Instant startedAt) {
-        return new Experiment(id, flagKey, domain, variants, state, version, startedAt, completedAt);
+        return new Experiment(id, flagKey, domainKey, variants, state, version, startedAt, completedAt);
     }
 
     public Experiment withCompletedAt(Instant completedAt) {
-        return new Experiment(id, flagKey, domain, variants, state, version, startedAt, completedAt);
+        return new Experiment(id, flagKey, domainKey, variants, state, version, startedAt, completedAt);
     }
 
     public Experiment submitForReview() {
@@ -115,6 +99,6 @@ public record Experiment(
                     .formatted(action, state, allowedStates));
         }
 
-        return new Experiment(id, flagKey, domain, variants, targetState, version, startedAt, completedAt);
+        return new Experiment(id, flagKey, domainKey, variants, targetState, version, startedAt, completedAt);
     }
 }

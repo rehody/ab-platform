@@ -10,7 +10,7 @@ public record ExperimentConflict(
         UUID experimentId,
         ExperimentState state,
         String flagKey,
-        String domain,
+        String domainKey,
         List<ExperimentConflictType> conflictTypes,
         ConflictSeverity severity) {
 

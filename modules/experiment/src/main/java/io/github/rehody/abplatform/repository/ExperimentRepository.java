@@ -93,6 +93,22 @@ public class ExperimentRepository {
     }
 
     @Transactional
+    public UpdateOutcome updateWithVariants(Experiment experiment) {
+        List<ExperimentVariant> preparedVariants =
+                experimentVariantPreparer.prepare(experiment.id(), experiment.variants());
+        Optional<Long> newVersion = experimentJdbcRepository.update(experiment);
+        if (newVersion.isEmpty()) {
+            return experimentJdbcRepository
+                    .findVersionById(experiment.id())
+                    .map(_ -> UpdateOutcome.versionConflict())
+                    .orElse(UpdateOutcome.notFound());
+        }
+
+        experimentVariantSynchronizer.sync(experiment.id(), preparedVariants);
+        return UpdateOutcome.updated(newVersion.get());
+    }
+
+    @Transactional
     public int deleteById(UUID id) {
         return experimentJdbcRepository.deleteById(id);
     }

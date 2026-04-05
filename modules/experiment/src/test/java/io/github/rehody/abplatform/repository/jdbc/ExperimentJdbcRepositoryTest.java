@@ -65,7 +65,7 @@ class ExperimentJdbcRepositoryTest {
         verify(jdbcClient).sql(contains("INSERT INTO experiments"));
         verify(statementSpec).param("id", experiment.id());
         verify(statementSpec).param("flagKey", "flag-a");
-        verify(statementSpec).param("domain", "CHECKOUT");
+        verify(statementSpec).param("domainKey", "CHECKOUT");
         verify(statementSpec).param("state", "DRAFT");
         verify(statementSpec).param("version", 0L);
         verify(statementSpec).param("startedAt", null);
@@ -162,7 +162,7 @@ class ExperimentJdbcRepositoryTest {
         verify(jdbcClient).sql(contains("UPDATE experiments"));
         verify(statementSpec).param("id", experiment.id());
         verify(statementSpec).param("flagKey", "flag-f");
-        verify(statementSpec).param("domain", "CHECKOUT");
+        verify(statementSpec).param("domainKey", "CHECKOUT");
         verify(statementSpec).param("state", "ARCHIVED");
         verify(statementSpec).param("startedAt", experiment.startedAt());
         verify(statementSpec).param("completedAt", experiment.completedAt());

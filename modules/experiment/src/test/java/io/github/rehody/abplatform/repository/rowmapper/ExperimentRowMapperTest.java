@@ -42,7 +42,7 @@ class ExperimentRowMapperTest {
 
         assertThat(Objects.requireNonNull(experiment).id()).isEqualTo(id);
         assertThat(experiment.flagKey()).isEqualTo("checkout-redesign");
-        assertThat(experiment.domain()).isEqualTo("CHECKOUT");
+        assertThat(experiment.domainKey()).isEqualTo("CHECKOUT");
         assertThat(experiment.variants()).isEmpty();
         assertThat(experiment.state()).isEqualTo(ExperimentState.RUNNING);
         assertThat(experiment.version()).isEqualTo(5L);

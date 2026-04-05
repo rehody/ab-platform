@@ -19,10 +19,6 @@ public record ExperimentMetricRisk(
         BigDecimal worstBadDeviation,
         Instant autoPausedAt) {
 
-    public boolean isOpen() {
-        return status == ExperimentMetricRiskStatus.OPEN;
-    }
-
     public boolean isResolved() {
         return status == ExperimentMetricRiskStatus.RESOLVED;
     }

@@ -16,13 +16,13 @@ public class ExperimentJdbcRepository {
 
     private static final String INSERT_EXPERIMENT_SQL = """
         INSERT INTO experiments (id, flag_key, domain_key, state, version, started_at, completed_at)
-        VALUES (:id, :flagKey, :domain, :state, :version, :startedAt, :completedAt)
+        VALUES (:id, :flagKey, :domainKey, :state, :version, :startedAt, :completedAt)
         """;
 
     private static final String UPDATE_EXPERIMENT_SQL = """
         UPDATE experiments
         SET flag_key = :flagKey,
-            domain_key = :domain,
+            domain_key = :domainKey,
             state = :state,
             started_at = :startedAt,
             completed_at = :completedAt,
@@ -114,7 +114,7 @@ public class ExperimentJdbcRepository {
                 .sql(INSERT_EXPERIMENT_SQL)
                 .param("id", experiment.id())
                 .param("flagKey", experiment.flagKey())
-                .param("domain", experiment.domain())
+                .param("domainKey", experiment.domainKey())
                 .param("state", experiment.state().name())
                 .param("version", experiment.version())
                 .param("startedAt", experiment.startedAt())
@@ -183,7 +183,7 @@ public class ExperimentJdbcRepository {
                 .sql(UPDATE_EXPERIMENT_SQL)
                 .param("id", experiment.id())
                 .param("flagKey", experiment.flagKey())
-                .param("domain", experiment.domain())
+                .param("domainKey", experiment.domainKey())
                 .param("state", experiment.state().name())
                 .param("startedAt", experiment.startedAt())
                 .param("completedAt", experiment.completedAt())

@@ -34,7 +34,7 @@ class ExperimentAggregateMapperTest {
 
         assertThat(result.id()).isEqualTo(experiment.id());
         assertThat(result.flagKey()).isEqualTo("flag-a");
-        assertThat(result.domain()).isEqualTo("CHECKOUT");
+        assertThat(result.domainKey()).isEqualTo("CHECKOUT");
         assertThat(result.variants()).containsExactlyElementsOf(variants);
         assertThat(result.variants()).isNotSameAs(variants);
         assertThat(result.state()).isEqualTo(ExperimentState.RUNNING);

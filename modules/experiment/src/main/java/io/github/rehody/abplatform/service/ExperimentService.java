@@ -11,7 +11,8 @@ import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
 import io.github.rehody.abplatform.policy.ExperimentTimestampPolicy;
 import io.github.rehody.abplatform.policy.ExperimentVariantPolicy;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
-import io.github.rehody.abplatform.repository.ExperimentRepository.ReplaceVariantsResult;
+import io.github.rehody.abplatform.repository.ExperimentRepository.UpdateOutcome;
+import io.github.rehody.abplatform.repository.jdbc.ExperimentDomainJdbcRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -32,12 +33,14 @@ public class ExperimentService {
     private final ExperimentTimestampPolicy experimentTimestampPolicy;
     private final FeatureFlagService featureFlagService;
     private final ExperimentVariantPolicy experimentVariantPolicy;
+    private final ExperimentDomainJdbcRepository experimentDomainJdbcRepository;
 
     @Transactional
     public Experiment create(
             String flagKey, String domainKey, List<ExperimentVariant> variants, ExperimentState state) {
         return experimentCommandSupport.withExperimentLock(flagKey, () -> {
             ensureExperimentNotExists(flagKey);
+            ensureDomainExists(domainKey);
 
             FeatureFlag featureFlag = featureFlagService.getByKey(flagKey);
 
@@ -74,13 +77,23 @@ public class ExperimentService {
     @Transactional
     public Experiment update(
             UUID id, String flagKey, String domainKey, List<ExperimentVariant> variants, long version) {
-        return experimentCommandSupport.withExperimentLock(flagKey, () -> {
-            validateUpdatedVariantConfiguration(id, flagKey, domainKey, variants);
-            replaceVariantsAndCheckOptimisticLocking(id, variants, version);
+        Experiment currentExperiment = experimentCommandSupport.getById(id);
+        String resolvedFlagKey = resolveFlagKey(currentExperiment, flagKey);
+        String resolvedDomainKey = resolveDomainKey(currentExperiment, domainKey);
 
-            experimentCommandSupport.invalidateCacheAfterCommit(flagKey);
-            return experimentCommandSupport.getById(id);
-        });
+        return experimentCommandSupport.withExperimentLocks(
+                List.of(currentExperiment.flagKey(), resolvedFlagKey), () -> {
+                    Experiment updatedExperiment = buildUpdatedExperiment(
+                                    currentExperiment, resolvedFlagKey, resolvedDomainKey, variants)
+                            .withVersion(version);
+
+                    validateUpdatedExperiment(currentExperiment.id(), updatedExperiment);
+
+                    long updatedVersion = updateWithVariants(updatedExperiment, version);
+                    invalidateRelevantCaches(currentExperiment.flagKey(), resolvedFlagKey);
+
+                    return updatedExperiment.withVersion(updatedVersion);
+                });
     }
 
     @Transactional(readOnly = true)
@@ -114,31 +127,75 @@ public class ExperimentService {
         }
     }
 
-    private void replaceVariantsAndCheckOptimisticLocking(
-            UUID experimentId, List<ExperimentVariant> variants, long version) {
-        ReplaceVariantsResult result = experimentRepository.replaceVariants(experimentId, version, variants);
-
-        switch (result) {
+    private long updateWithVariants(Experiment experiment, long version) {
+        UpdateOutcome outcome = experimentRepository.updateWithVariants(experiment);
+        return switch (outcome.status()) {
             case NOT_FOUND ->
-                throw new ExperimentNotFoundException("Experiment '%s' not found".formatted(experimentId));
-
+                throw new ExperimentNotFoundException("Experiment '%s' not found".formatted(experiment.id()));
             case VERSION_CONFLICT ->
                 throw new OptimisticLockingFailureException(
-                        "Experiment '%s' version mismatch. Expected version %d".formatted(experimentId, version));
+                        "Experiment '%s' version mismatch. Expected version %d".formatted(experiment.id(), version));
+            case UPDATED -> outcome.version();
+        };
+    }
+
+    private void validateUpdatedExperiment(UUID experimentId, Experiment updatedExperiment) {
+        ensureDomainExists(updatedExperiment.domainKey());
+        ensureFlagKeyAvailable(experimentId, updatedExperiment.flagKey());
+
+        FeatureFlag featureFlag = featureFlagService.getByKey(updatedExperiment.flagKey());
+        validateVariantsForFlagDefault(experimentId, updatedExperiment.variants(), featureFlag);
+        experimentAssignmentPolicy.validateAssignmentInvariants(updatedExperiment);
+    }
+
+    private Experiment buildUpdatedExperiment(
+            Experiment currentExperiment, String flagKey, String domainKey, List<ExperimentVariant> variants) {
+        return new Experiment(
+                currentExperiment.id(),
+                flagKey,
+                domainKey,
+                variants,
+                currentExperiment.state(),
+                currentExperiment.version(),
+                currentExperiment.startedAt(),
+                currentExperiment.completedAt());
+    }
+
+    private String resolveFlagKey(Experiment experiment, String flagKey) {
+        if (flagKey != null) {
+            return flagKey;
+        }
+        return experiment.flagKey();
+    }
+
+    private String resolveDomainKey(Experiment experiment, String domainKey) {
+        if (domainKey != null) {
+            return domainKey;
+        }
+        return experiment.domainKey();
+    }
+
+    private void ensureFlagKeyAvailable(UUID experimentId, String flagKey) {
+        experimentRepository
+                .findByFlagKey(flagKey)
+                .filter(existingExperiment -> !existingExperiment.id().equals(experimentId))
+                .ifPresent(_ -> {
+                    throw new ExperimentAlreadyExistsException(
+                            "Experiment with flag key '%s' already exists".formatted(flagKey));
+                });
+    }
+
+    private void ensureDomainExists(String domainKey) {
+        if (!experimentDomainJdbcRepository.existsByKey(domainKey)) {
+            throw new IllegalArgumentException("Unknown experiment domainKey '%s'".formatted(domainKey));
         }
     }
 
-    private void validateUpdatedVariantConfiguration(
-            UUID experimentId, String flagKey, String domainKey, List<ExperimentVariant> variants) {
-        Experiment currentExperiment = experimentCommandSupport.getById(experimentId);
-        FeatureFlag featureFlag = featureFlagService.getByKey(flagKey);
-
-        validateVariantsForFlagDefault(experimentId, variants, featureFlag);
-
-        Experiment updatedExperiment =
-                currentExperiment.withDomainKey(domainKey).withVariants(variants);
-
-        experimentAssignmentPolicy.validateAssignmentInvariants(updatedExperiment);
+    private void invalidateRelevantCaches(String currentFlagKey, String updatedFlagKey) {
+        experimentCommandSupport.invalidateCacheAfterCommit(currentFlagKey);
+        if (!currentFlagKey.equals(updatedFlagKey)) {
+            experimentCommandSupport.invalidateCacheAfterCommit(updatedFlagKey);
+        }
     }
 
     private void validateVariantsForFlagDefault(

@@ -10,7 +10,7 @@ import java.util.UUID;
 public record CachedExperiment(
         UUID id,
         String flagKey,
-        String domain,
+        String domainKey,
         List<ExperimentVariant> variants,
         ExperimentState state,
         long version,
@@ -25,7 +25,7 @@ public record CachedExperiment(
         return new CachedExperiment(
                 experiment.id(),
                 experiment.flagKey(),
-                experiment.domain(),
+                experiment.domainKey(),
                 experiment.variants(),
                 experiment.state(),
                 experiment.version(),
@@ -34,6 +34,6 @@ public record CachedExperiment(
     }
 
     public Experiment toModel() {
-        return new Experiment(id, flagKey, domain, variants, state, version, startedAt, completedAt);
+        return new Experiment(id, flagKey, domainKey, variants, state, version, startedAt, completedAt);
     }
 }

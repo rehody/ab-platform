@@ -87,7 +87,7 @@ public class ExperimentLifecycleService {
             experimentAssignmentPolicy.validateAssignmentInvariants(timestampedExperiment);
             Experiment experimentToUpdate = timestampedExperiment.withVersion(expectedVersion);
 
-            long newVersion = updateAndCheckOptimisticLocking(experimentToUpdate, expectedVersion);
+            long newVersion = updateExperiment(experimentToUpdate, expectedVersion);
             experimentCommandSupport.invalidateCacheAfterCommit(flagKey);
 
             return timestampedExperiment.withVersion(newVersion);
@@ -104,7 +104,7 @@ public class ExperimentLifecycleService {
         }
     }
 
-    private long updateAndCheckOptimisticLocking(Experiment experiment, long expectedVersion) {
+    private long updateExperiment(Experiment experiment, long expectedVersion) {
         UpdateOutcome outcome = experimentRepository.update(experiment);
         return switch (outcome.status()) {
             case NOT_FOUND ->

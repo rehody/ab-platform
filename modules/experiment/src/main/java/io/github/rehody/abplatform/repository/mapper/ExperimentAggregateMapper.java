@@ -12,7 +12,7 @@ public class ExperimentAggregateMapper {
         return new Experiment(
                 experiment.id(),
                 experiment.flagKey(),
-                experiment.domain(),
+                experiment.domainKey(),
                 copyVariants(variants),
                 experiment.state(),
                 experiment.version(),

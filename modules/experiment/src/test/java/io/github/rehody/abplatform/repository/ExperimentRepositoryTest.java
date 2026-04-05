@@ -161,6 +161,21 @@ class ExperimentRepositoryTest {
     }
 
     @Test
+    void updateWithVariants_shouldPrepareSyncVariantsAndReturnUpdatedOutcomeWithNewVersionWhenJdbcUpdateSucceeds() {
+        Experiment experiment = experiment("flag-f", "CHECKOUT", 5L);
+        List<ExperimentVariant> preparedVariants = variants();
+        when(experimentVariantPreparer.prepare(experiment.id(), experiment.variants()))
+                .thenReturn(preparedVariants);
+        when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.of(6L));
+
+        ExperimentRepository.UpdateOutcome result = experimentRepository.updateWithVariants(experiment);
+
+        assertThat(result.status()).isEqualTo(ExperimentRepository.UpdateStatus.UPDATED);
+        assertThat(result.version()).isEqualTo(6L);
+        verify(experimentVariantSynchronizer).sync(experiment.id(), preparedVariants);
+    }
+
+    @Test
     void update_shouldReturnVersionConflictWhenExperimentExistsButVersionDiffers() {
         Experiment experiment = experiment("flag-g", "CHECKOUT", 6L);
         when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.empty());
@@ -279,9 +294,9 @@ class ExperimentRepositoryTest {
         return experiment(flagKey, "CHECKOUT", version);
     }
 
-    private Experiment experiment(String flagKey, String domain, long version) {
+    private Experiment experiment(String flagKey, String domainKey, long version) {
         return new Experiment(
-                UUID.randomUUID(), flagKey, domain, variants(), ExperimentState.RUNNING, version, null, null);
+                UUID.randomUUID(), flagKey, domainKey, variants(), ExperimentState.RUNNING, version, null, null);
     }
 
     private List<ExperimentVariant> variants() {

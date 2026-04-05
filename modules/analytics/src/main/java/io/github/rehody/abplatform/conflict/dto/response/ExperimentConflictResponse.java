@@ -11,7 +11,7 @@ public record ExperimentConflictResponse(
         UUID experimentId,
         ExperimentState state,
         String flagKey,
-        String domain,
+        String domainKey,
         List<ExperimentConflictType> conflictTypes,
         ConflictSeverity severity) {
     public static ExperimentConflictResponse from(ExperimentConflict conflict) {
@@ -19,7 +19,7 @@ public record ExperimentConflictResponse(
                 conflict.experimentId(),
                 conflict.state(),
                 conflict.flagKey(),
-                conflict.domain(),
+                conflict.domainKey(),
                 conflict.conflictTypes(),
                 conflict.severity());
     }

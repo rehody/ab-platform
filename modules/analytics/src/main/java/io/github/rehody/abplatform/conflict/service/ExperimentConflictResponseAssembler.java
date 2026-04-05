@@ -20,16 +20,14 @@ public class ExperimentConflictResponseAssembler {
     }
 
     private ConflictSeverity resolveSeverity(List<ExperimentConflict> conflicts) {
-        ConflictSeverity severity = ConflictSeverity.NONE;
-
         if (conflicts.stream().anyMatch(conflict -> conflict.severity().isBlocking())) {
-            severity = ConflictSeverity.BLOCKING;
+            return ConflictSeverity.BLOCKING;
         }
 
         if (!conflicts.isEmpty()) {
-            severity = ConflictSeverity.WARNING;
+            return ConflictSeverity.WARNING;
         }
 
-        return severity;
+        return ConflictSeverity.NONE;
     }
 }

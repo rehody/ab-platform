@@ -35,7 +35,9 @@ public class ExperimentConflictsService {
             return List.of();
         }
 
-        return experimentConflictRepository.findAll(experiment.id(), experiment.flagKey(), experiment.domain()).stream()
+        return experimentConflictRepository
+                .findAll(experiment.id(), experiment.flagKey(), experiment.domainKey())
+                .stream()
                 .map(conflictingExperiment -> buildConflict(experiment, conflictingExperiment))
                 .filter(this::hasConflictTypes)
                 .toList();
@@ -46,7 +48,7 @@ public class ExperimentConflictsService {
                 conflictingExperiment.id(),
                 conflictingExperiment.state(),
                 conflictingExperiment.flagKey(),
-                conflictingExperiment.domain(),
+                conflictingExperiment.domainKey(),
                 resolveConflictTypes(experiment, conflictingExperiment),
                 resolveSeverity(conflictingExperiment));
     }
@@ -58,7 +60,7 @@ public class ExperimentConflictsService {
             conflictTypes.add(ExperimentConflictType.SAME_FLAG);
         }
 
-        if (experiment.domain().equals(conflictingExperiment.domain())) {
+        if (experiment.domainKey().equals(conflictingExperiment.domainKey())) {
             conflictTypes.add(ExperimentConflictType.DOMAIN_OVERLAP);
         }
 

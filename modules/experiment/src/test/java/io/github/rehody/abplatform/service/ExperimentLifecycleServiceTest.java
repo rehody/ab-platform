@@ -261,7 +261,14 @@ class ExperimentLifecycleServiceTest {
 
         assertThat(response)
                 .isEqualTo(new Experiment(
-                        id, flagKey, current.domain(), current.variants(), targetState, persistedVersion, null, null));
+                        id,
+                        flagKey,
+                        current.domainKey(),
+                        current.variants(),
+                        targetState,
+                        persistedVersion,
+                        null,
+                        null));
     }
 
     private Experiment experiment(UUID id, String flagKey, ExperimentState state, long version) {

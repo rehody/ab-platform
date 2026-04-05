@@ -52,14 +52,14 @@ public class FeatureFlagService {
     public FeatureFlag update(String key, FeatureValue defaultValue, long version) {
         return executeUnderLock(key, () -> {
             validateDefaultValueUpdateAllowed(key);
-            updateAndCheckOptimisticLocking(key, defaultValue, version);
+            updateFeatureFlag(key, defaultValue, version);
             invalidateCacheAfterCommit(key);
 
             return getByKey(key);
         });
     }
 
-    private void updateAndCheckOptimisticLocking(String key, FeatureValue defaultValue, long version) {
+    private void updateFeatureFlag(String key, FeatureValue defaultValue, long version) {
         int affectedRows = featureFlagRepository.update(key, defaultValue, version);
         if (affectedRows == 0) {
             if (!featureFlagRepository.existsByKey(key)) {

@@ -138,18 +138,18 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
                         """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.flagKey").value("flag-a"))
-                .andExpect(jsonPath("$.domain").value("CHECKOUT"))
+                .andExpect(jsonPath("$.domainKey").value("CHECKOUT"))
                 .andExpect(jsonPath("$.variants[0].key").value("control"))
                 .andExpect(jsonPath("$.state").value(state))
                 .andExpect(jsonPath("$.version").value(version));
     }
 
     @SuppressWarnings("SameParameterValue")
-    private Experiment experiment(String flagKey, String domain, long version, ExperimentState state) {
+    private Experiment experiment(String flagKey, String domainKey, long version, ExperimentState state) {
         return new Experiment(
                 UUID.randomUUID(),
                 flagKey,
-                domain,
+                domainKey,
                 List.of(new ExperimentVariant(
                         UUID.randomUUID(),
                         "control",

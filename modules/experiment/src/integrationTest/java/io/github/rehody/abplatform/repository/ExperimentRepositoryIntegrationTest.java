@@ -60,7 +60,7 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
 
         jdbcClient.sql("""
                         CREATE TABLE IF NOT EXISTS experiment_domains (
-                            code VARCHAR(64) PRIMARY KEY,
+                            key VARCHAR(64) PRIMARY KEY,
                             name VARCHAR(255) NOT NULL
                         )
                         """).update();
@@ -69,7 +69,7 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                         CREATE TABLE IF NOT EXISTS experiments (
                             id UUID PRIMARY KEY,
                             flag_key VARCHAR(255) NOT NULL REFERENCES feature_flags (feature_key),
-                            domain_key VARCHAR(64) NOT NULL REFERENCES experiment_domains (code),
+                            domain_key VARCHAR(64) NOT NULL REFERENCES experiment_domains (key),
                             state VARCHAR(16) NOT NULL,
                             version BIGINT NOT NULL DEFAULT 0,
                             started_at TIMESTAMPTZ NULL,
@@ -142,7 +142,7 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
 
         assertThat(loaded.id()).isEqualTo(experimentId);
         assertThat(loaded.flagKey()).isEqualTo(flagKey);
-        assertThat(loaded.domain()).isEqualTo("CORE");
+        assertThat(loaded.domainKey()).isEqualTo("CORE");
         assertThat(loaded.state()).isEqualTo(ExperimentState.DRAFT);
         assertThat(loaded.version()).isZero();
         assertThat(loaded.variants()).hasSize(2);
@@ -194,7 +194,7 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                 .toList();
 
         assertThat(byFlagKey.id()).isEqualTo(second.id());
-        assertThat(byFlagKey.domain()).isEqualTo("CORE");
+        assertThat(byFlagKey.domainKey()).isEqualTo("CORE");
         assertThat(byFlagKey.variants()).hasSize(1);
         assertThat(byFlagKey.variants().getFirst().key()).isEqualTo("variant-b");
 
@@ -390,11 +390,11 @@ class ExperimentRepositoryIntegrationTest extends AbstractIntegrationDatabaseTes
                 .update();
     }
 
-    private void insertDomain(String code, String name) {
+    private void insertDomain(String key, String name) {
         jdbcClient.sql("""
-                        INSERT INTO experiment_domains (code, name)
-                        VALUES (:code, :name)
-                        """).param("code", code).param("name", name).update();
+                        INSERT INTO experiment_domains (key, name)
+                        VALUES (:key, :name)
+                        """).param("key", key).param("name", name).update();
     }
 
     private ExperimentVariant controlVariant(UUID id, FeatureValue value, int position, BigDecimal weight) {

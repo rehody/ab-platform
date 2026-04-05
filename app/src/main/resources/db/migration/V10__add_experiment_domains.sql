@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS experiment_domains
 (
-    key       VARCHAR(64) PRIMARY KEY,
+    key        VARCHAR(64) PRIMARY KEY,
     name       VARCHAR(255) NOT NULL,
     created_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ  NOT NULL DEFAULT now()
@@ -54,3 +54,9 @@ CREATE INDEX IF NOT EXISTS experiments_domain_key_idx
 
 DROP TRIGGER IF EXISTS experiment_domains_set_updated_at
     ON experiment_domains;
+
+CREATE TRIGGER experiment_domains_set_updated_at
+    BEFORE UPDATE
+    ON experiment_domains
+    FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();

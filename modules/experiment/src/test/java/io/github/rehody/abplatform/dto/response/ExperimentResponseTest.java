@@ -38,7 +38,7 @@ class ExperimentResponseTest {
         ExperimentResponse response = ExperimentResponse.from(experiment);
 
         assertThat(response.flagKey()).isEqualTo("checkout-redesign");
-        assertThat(response.domain()).isEqualTo("CHECKOUT");
+        assertThat(response.domainKey()).isEqualTo("CHECKOUT");
         assertThat(response.variants()).containsExactly(variant);
         assertThat(response.state()).isEqualTo(ExperimentState.APPROVED);
         assertThat(response.version()).isEqualTo(7L);

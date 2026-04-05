@@ -43,7 +43,7 @@ class ExperimentCacheCodecTest {
 
         assertThat(json).contains("\"id\":\"00000000-0000-0000-0000-000000000001\"");
         assertThat(json).contains("\"flagKey\":\"flag-a\"");
-        assertThat(json).contains("\"domain\":\"CHECKOUT\"");
+        assertThat(json).contains("\"domainKey\":\"CHECKOUT\"");
         assertThat(json).contains("\"key\":\"control\"");
         assertThat(json).contains("\"type\":\"BOOL\"");
         assertThat(json).contains("\"version\":6");
@@ -52,14 +52,14 @@ class ExperimentCacheCodecTest {
     @Test
     void read_shouldDeserializeResponseAndRestoreFields() {
         String json = """
-                {"id":"00000000-0000-0000-0000-000000000001","flagKey":"flag-b","domain":"CHECKOUT","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":123,"type":"NUMBER"},"position":1,"weight":2,"type":"REGULAR"}],"state":"APPROVED","version":4,"startedAt":null,"completedAt":null}
+                {"id":"00000000-0000-0000-0000-000000000001","flagKey":"flag-b","domainKey":"CHECKOUT","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":123,"type":"NUMBER"},"position":1,"weight":2,"type":"REGULAR"}],"state":"APPROVED","version":4,"startedAt":null,"completedAt":null}
                 """;
 
         CachedExperiment cachedExperiment = codec.read(json);
 
         assertThat(cachedExperiment.id()).isEqualTo(UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertThat(cachedExperiment.flagKey()).isEqualTo("flag-b");
-        assertThat(cachedExperiment.domain()).isEqualTo("CHECKOUT");
+        assertThat(cachedExperiment.domainKey()).isEqualTo("CHECKOUT");
         assertThat(cachedExperiment.variants()).hasSize(1);
         assertThat(cachedExperiment.variants().getFirst().key()).isEqualTo("variant-a");
         assertThat(cachedExperiment.variants().getFirst().value().value()).isEqualTo(123);

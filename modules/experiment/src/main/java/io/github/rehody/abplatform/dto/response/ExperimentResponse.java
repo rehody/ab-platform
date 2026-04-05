@@ -6,11 +6,11 @@ import io.github.rehody.abplatform.model.ExperimentVariant;
 import java.util.List;
 
 public record ExperimentResponse(
-        String flagKey, String domain, List<ExperimentVariant> variants, ExperimentState state, long version) {
+        String flagKey, String domainKey, List<ExperimentVariant> variants, ExperimentState state, long version) {
     public static ExperimentResponse from(Experiment experiment) {
         return new ExperimentResponse(
                 experiment.flagKey(),
-                experiment.domain(),
+                experiment.domainKey(),
                 experiment.variants(),
                 experiment.state(),
                 experiment.version());

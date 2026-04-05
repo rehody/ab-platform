@@ -58,7 +58,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.flagKey").value("flag-a"))
-                .andExpect(jsonPath("$.domain").value("CHECKOUT"))
+                .andExpect(jsonPath("$.domainKey").value("CHECKOUT"))
                 .andExpect(jsonPath("$.variants[0].key").value("control"))
                 .andExpect(jsonPath("$.variants[0].value.value").value(true))
                 .andExpect(jsonPath("$.state").value("DRAFT"))
@@ -98,7 +98,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.flagKey").value("flag-b"))
-                .andExpect(jsonPath("$.domain").value("PRICING"))
+                .andExpect(jsonPath("$.domainKey").value("PRICING"))
                 .andExpect(jsonPath("$.variants[0].value.value").value("blue"))
                 .andExpect(jsonPath("$.state").value("RUNNING"))
                 .andExpect(jsonPath("$.version").value(3));
@@ -122,7 +122,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
         mockMvc.perform(get("/api/v1/experiments/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.flagKey").value("flag-c"))
-                .andExpect(jsonPath("$.domain").value("CHECKOUT"))
+                .andExpect(jsonPath("$.domainKey").value("CHECKOUT"))
                 .andExpect(jsonPath("$.variants[0].key").value("control"))
                 .andExpect(jsonPath("$.state").value("APPROVED"))
                 .andExpect(jsonPath("$.version").value(4));
@@ -138,9 +138,9 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
         mockMvc.perform(get("/api/v1/experiments"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].flagKey").value("flag-d"))
-                .andExpect(jsonPath("$[0].domain").value("CHECKOUT"))
+                .andExpect(jsonPath("$[0].domainKey").value("CHECKOUT"))
                 .andExpect(jsonPath("$[1].flagKey").value("flag-e"))
-                .andExpect(jsonPath("$[1].domain").value("PRICING"))
+                .andExpect(jsonPath("$[1].domainKey").value("PRICING"))
                 .andExpect(jsonPath("$[1].state").value("ARCHIVED"));
     }
 
@@ -203,10 +203,10 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.path").value("/api/v1/experiments/%s".formatted(id)));
     }
 
-    private Experiment experiment(String flagKey, String domain, long version, ExperimentState state) {
+    private Experiment experiment(String flagKey, String domainKey, long version, ExperimentState state) {
         return experiment(
                 flagKey,
-                domain,
+                domainKey,
                 version,
                 state,
                 new ExperimentVariant(
@@ -219,7 +219,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
     }
 
     private Experiment experiment(
-            String flagKey, String domain, long version, ExperimentState state, ExperimentVariant variant) {
-        return new Experiment(UUID.randomUUID(), flagKey, domain, List.of(variant), state, version, null, null);
+            String flagKey, String domainKey, long version, ExperimentState state, ExperimentVariant variant) {
+        return new Experiment(UUID.randomUUID(), flagKey, domainKey, List.of(variant), state, version, null, null);
     }
 }
