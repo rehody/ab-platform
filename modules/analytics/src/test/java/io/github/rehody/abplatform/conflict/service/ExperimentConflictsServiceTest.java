@@ -80,6 +80,136 @@ class ExperimentConflictsServiceTest {
     }
 
     @Test
+    void getAll_shouldReturnWarningForBothSidesOfDraftConflict() {
+        UUID firstExperimentId = UUID.randomUUID();
+        UUID secondExperimentId = UUID.randomUUID();
+        Experiment firstExperiment = experiment(firstExperimentId, "flag-a", "CHECKOUT", ExperimentState.DRAFT);
+        Experiment secondExperiment = experiment(secondExperimentId, "flag-a", "PRICING", ExperimentState.DRAFT);
+
+        when(experimentService.getById(firstExperimentId)).thenReturn(firstExperiment);
+        when(experimentService.getById(secondExperimentId)).thenReturn(secondExperiment);
+        when(experimentConflictRepository.findAll(firstExperimentId, "flag-a", "CHECKOUT"))
+                .thenReturn(List.of(secondExperiment));
+        when(experimentConflictRepository.findAll(secondExperimentId, "flag-a", "PRICING"))
+                .thenReturn(List.of(firstExperiment));
+
+        List<ExperimentConflict> firstConflicts = experimentConflictsService.getAll(firstExperimentId);
+        List<ExperimentConflict> secondConflicts = experimentConflictsService.getAll(secondExperimentId);
+
+        assertThat(firstConflicts).hasSize(1);
+        assertThat(firstConflicts.getFirst().experimentId()).isEqualTo(secondExperimentId);
+        assertThat(firstConflicts.getFirst().severity()).isEqualTo(ConflictSeverity.WARNING);
+
+        assertThat(secondConflicts).hasSize(1);
+        assertThat(secondConflicts.getFirst().experimentId()).isEqualTo(firstExperimentId);
+        assertThat(secondConflicts.getFirst().severity()).isEqualTo(ConflictSeverity.WARNING);
+    }
+
+    @Test
+    void getAll_shouldRecalculateConflictsWhenDraftIsUpdated() {
+        UUID experimentId = UUID.randomUUID();
+        Experiment initialDraft = experiment(experimentId, "flag-a", "CHECKOUT", ExperimentState.DRAFT);
+        Experiment updatedDraft = experiment(experimentId, "flag-a", "PRICING", ExperimentState.DRAFT);
+        Experiment domainConflict = experiment(UUID.randomUUID(), "flag-b", "PRICING", ExperimentState.APPROVED);
+
+        when(experimentService.getById(experimentId)).thenReturn(initialDraft, updatedDraft);
+        when(experimentConflictRepository.findAll(experimentId, "flag-a", "CHECKOUT"))
+                .thenReturn(List.of());
+        when(experimentConflictRepository.findAll(experimentId, "flag-a", "PRICING"))
+                .thenReturn(List.of(domainConflict));
+
+        List<ExperimentConflict> initialConflicts = experimentConflictsService.getAll(experimentId);
+        List<ExperimentConflict> updatedConflicts = experimentConflictsService.getAll(experimentId);
+
+        assertThat(initialConflicts).isEmpty();
+        assertThat(updatedConflicts).hasSize(1);
+        assertThat(updatedConflicts.getFirst().experimentId()).isEqualTo(domainConflict.id());
+        assertThat(updatedConflicts.getFirst().severity()).isEqualTo(ConflictSeverity.WARNING);
+    }
+
+    @Test
+    void getAll_shouldRecalculateConflictsWhenDraftFlagKeyChanges() {
+        UUID experimentId = UUID.randomUUID();
+        Experiment initialDraft = experiment(experimentId, "flag-a", "CHECKOUT", ExperimentState.DRAFT);
+        Experiment updatedDraft = experiment(experimentId, "flag-b", "CHECKOUT", ExperimentState.DRAFT);
+        Experiment flagConflict = experiment(UUID.randomUUID(), "flag-b", "PRICING", ExperimentState.APPROVED);
+
+        when(experimentService.getById(experimentId)).thenReturn(initialDraft, updatedDraft);
+        when(experimentConflictRepository.findAll(experimentId, "flag-a", "CHECKOUT"))
+                .thenReturn(List.of());
+        when(experimentConflictRepository.findAll(experimentId, "flag-b", "CHECKOUT"))
+                .thenReturn(List.of(flagConflict));
+
+        List<ExperimentConflict> initialConflicts = experimentConflictsService.getAll(experimentId);
+        List<ExperimentConflict> updatedConflicts = experimentConflictsService.getAll(experimentId);
+
+        assertThat(initialConflicts).isEmpty();
+        assertThat(updatedConflicts).hasSize(1);
+        assertThat(updatedConflicts.getFirst().experimentId()).isEqualTo(flagConflict.id());
+        assertThat(updatedConflicts.getFirst().severity()).isEqualTo(ConflictSeverity.WARNING);
+    }
+
+    @Test
+    void getAll_shouldRecalculateConflictsWhenDraftDomainKeyChanges() {
+        UUID experimentId = UUID.randomUUID();
+        Experiment initialDraft = experiment(experimentId, "flag-a", "CHECKOUT", ExperimentState.DRAFT);
+        Experiment updatedDraft = experiment(experimentId, "flag-a", "PRICING", ExperimentState.DRAFT);
+        Experiment domainConflict = experiment(UUID.randomUUID(), "flag-c", "PRICING", ExperimentState.PAUSED);
+
+        when(experimentService.getById(experimentId)).thenReturn(initialDraft, updatedDraft);
+        when(experimentConflictRepository.findAll(experimentId, "flag-a", "CHECKOUT"))
+                .thenReturn(List.of());
+        when(experimentConflictRepository.findAll(experimentId, "flag-a", "PRICING"))
+                .thenReturn(List.of(domainConflict));
+
+        List<ExperimentConflict> initialConflicts = experimentConflictsService.getAll(experimentId);
+        List<ExperimentConflict> updatedConflicts = experimentConflictsService.getAll(experimentId);
+
+        assertThat(initialConflicts).isEmpty();
+        assertThat(updatedConflicts).hasSize(1);
+        assertThat(updatedConflicts.getFirst().experimentId()).isEqualTo(domainConflict.id());
+        assertThat(updatedConflicts.getFirst().severity()).isEqualTo(ConflictSeverity.WARNING);
+    }
+
+    @Test
+    void getAll_shouldRecalculateConflictsAfterConflictingExperimentCompletes() {
+        UUID experimentId = UUID.randomUUID();
+        Experiment experiment = experiment(experimentId, "flag-a", "CHECKOUT", ExperimentState.APPROVED);
+        Experiment activeConflict = experiment(UUID.randomUUID(), "flag-a", "PRICING", ExperimentState.APPROVED);
+        Experiment completedConflict = experiment(activeConflict.id(), "flag-a", "PRICING", ExperimentState.COMPLETED);
+
+        when(experimentService.getById(experimentId)).thenReturn(experiment, experiment);
+        when(experimentConflictRepository.findAll(experimentId, "flag-a", "CHECKOUT"))
+                .thenReturn(List.of(activeConflict), List.of(completedConflict));
+
+        List<ExperimentConflict> conflictsBeforeComplete = experimentConflictsService.getAll(experimentId);
+        List<ExperimentConflict> conflictsAfterComplete = experimentConflictsService.getAll(experimentId);
+
+        assertThat(conflictsBeforeComplete).hasSize(1);
+        assertThat(conflictsBeforeComplete.getFirst().severity()).isEqualTo(ConflictSeverity.WARNING);
+        assertThat(conflictsAfterComplete).isEmpty();
+    }
+
+    @Test
+    void getAll_shouldRecalculateConflictsAfterConflictingExperimentIsArchived() {
+        UUID experimentId = UUID.randomUUID();
+        Experiment experiment = experiment(experimentId, "flag-a", "CHECKOUT", ExperimentState.APPROVED);
+        Experiment activeConflict = experiment(UUID.randomUUID(), "flag-a", "PRICING", ExperimentState.PAUSED);
+        Experiment archivedConflict = experiment(activeConflict.id(), "flag-a", "PRICING", ExperimentState.ARCHIVED);
+
+        when(experimentService.getById(experimentId)).thenReturn(experiment, experiment);
+        when(experimentConflictRepository.findAll(experimentId, "flag-a", "CHECKOUT"))
+                .thenReturn(List.of(activeConflict), List.of(archivedConflict));
+
+        List<ExperimentConflict> conflictsBeforeArchive = experimentConflictsService.getAll(experimentId);
+        List<ExperimentConflict> conflictsAfterArchive = experimentConflictsService.getAll(experimentId);
+
+        assertThat(conflictsBeforeArchive).hasSize(1);
+        assertThat(conflictsBeforeArchive.getFirst().severity()).isEqualTo(ConflictSeverity.WARNING);
+        assertThat(conflictsAfterArchive).isEmpty();
+    }
+
+    @Test
     void getBlockingConflicts_shouldReturnOnlyRunningConflicts() {
         Experiment experiment = experiment(UUID.randomUUID(), "flag-a", "CHECKOUT", ExperimentState.PAUSED);
         Experiment runningConflict = experiment(UUID.randomUUID(), "flag-a", "PRICING", ExperimentState.RUNNING);

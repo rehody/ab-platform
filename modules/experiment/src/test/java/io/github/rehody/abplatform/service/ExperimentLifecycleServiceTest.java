@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import io.github.rehody.abplatform.cache.ExperimentCache;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.enums.ExperimentVariantType;
+import io.github.rehody.abplatform.exception.ExperimentBlockingConflictDetails;
 import io.github.rehody.abplatform.exception.ExperimentBlockingConflictException;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
 import io.github.rehody.abplatform.exception.ExperimentStateTransitionException;
@@ -300,7 +301,13 @@ class ExperimentLifecycleServiceTest {
         ExperimentBlockingConflictException exception = new ExperimentBlockingConflictException(
                 "Experiment '%s' has blocking conflicts with running experiments: %s"
                         .formatted(id, "11111111-1111-1111-1111-111111111111"),
-                List.of("11111111-1111-1111-1111-111111111111"));
+                List.of(new ExperimentBlockingConflictDetails(
+                        UUID.fromString("11111111-1111-1111-1111-111111111111"),
+                        ExperimentState.RUNNING,
+                        "flag-conflict",
+                        "PRICING",
+                        List.of("SAME_FLAG"),
+                        "BLOCKING")));
 
         when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of(flagKey));
         when(experimentRepository.findById(id)).thenReturn(Optional.of(current));

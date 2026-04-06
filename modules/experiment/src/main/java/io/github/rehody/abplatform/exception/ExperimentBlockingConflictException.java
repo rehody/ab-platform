@@ -4,14 +4,14 @@ import java.util.List;
 
 public class ExperimentBlockingConflictException extends RuntimeException {
 
-    private final List<String> conflictingExperimentIds;
+    private final List<ExperimentBlockingConflictDetails> conflicts;
 
-    public ExperimentBlockingConflictException(String message, List<String> conflictingExperimentIds) {
+    public ExperimentBlockingConflictException(String message, List<ExperimentBlockingConflictDetails> conflicts) {
         super(message);
-        this.conflictingExperimentIds = List.copyOf(conflictingExperimentIds);
+        this.conflicts = List.copyOf(conflicts);
     }
 
-    public List<String> conflictingExperimentIds() {
-        return conflictingExperimentIds;
+    public List<ExperimentBlockingConflictDetails> conflicts() {
+        return conflicts;
     }
 }

@@ -123,7 +123,21 @@ class ExperimentExceptionHandlerTest {
         ResponseEntity<ErrorResponse> response = experimentExceptionHandler.handleBlockingConflict(
                 new ExperimentBlockingConflictException(
                         "Experiment '123' has blocking conflicts with running experiments: 1, 2",
-                        java.util.List.of("1", "2")),
+                        java.util.List.of(
+                                new ExperimentBlockingConflictDetails(
+                                        java.util.UUID.fromString("11111111-1111-1111-1111-111111111111"),
+                                        io.github.rehody.abplatform.enums.ExperimentState.RUNNING,
+                                        "flag-a",
+                                        "CHECKOUT",
+                                        java.util.List.of("SAME_FLAG", "DOMAIN_OVERLAP"),
+                                        "BLOCKING"),
+                                new ExperimentBlockingConflictDetails(
+                                        java.util.UUID.fromString("22222222-2222-2222-2222-222222222222"),
+                                        io.github.rehody.abplatform.enums.ExperimentState.RUNNING,
+                                        "flag-b",
+                                        "PRICING",
+                                        java.util.List.of("DOMAIN_OVERLAP"),
+                                        "BLOCKING"))),
                 request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
@@ -132,11 +146,33 @@ class ExperimentExceptionHandlerTest {
         assertThat(response.getBody().message())
                 .isEqualTo("Experiment '123' has blocking conflicts with running experiments: 1, 2");
         assertThat(response.getBody().path()).isEqualTo("/api/v1/experiments/123/start");
-        assertThat(response.getBody().violations()).hasSize(2);
-        assertThat(response.getBody().violations().get(0).field()).isEqualTo("conflictingExperimentIds");
-        assertThat(response.getBody().violations().get(0).message()).isEqualTo("1");
-        assertThat(response.getBody().violations().get(1).field()).isEqualTo("conflictingExperimentIds");
-        assertThat(response.getBody().violations().get(1).message()).isEqualTo("2");
+        assertThat(response.getBody().violations()).hasSize(13);
+        assertThat(response.getBody().violations().get(0).field()).isEqualTo("conflicts[0].experimentId");
+        assertThat(response.getBody().violations().get(0).message()).isEqualTo("11111111-1111-1111-1111-111111111111");
+        assertThat(response.getBody().violations().get(1).field()).isEqualTo("conflicts[0].state");
+        assertThat(response.getBody().violations().get(1).message()).isEqualTo("RUNNING");
+        assertThat(response.getBody().violations().get(2).field()).isEqualTo("conflicts[0].flagKey");
+        assertThat(response.getBody().violations().get(2).message()).isEqualTo("flag-a");
+        assertThat(response.getBody().violations().get(3).field()).isEqualTo("conflicts[0].domainKey");
+        assertThat(response.getBody().violations().get(3).message()).isEqualTo("CHECKOUT");
+        assertThat(response.getBody().violations().get(4).field()).isEqualTo("conflicts[0].severity");
+        assertThat(response.getBody().violations().get(4).message()).isEqualTo("BLOCKING");
+        assertThat(response.getBody().violations().get(5).field()).isEqualTo("conflicts[0].conflictTypes[0]");
+        assertThat(response.getBody().violations().get(5).message()).isEqualTo("SAME_FLAG");
+        assertThat(response.getBody().violations().get(6).field()).isEqualTo("conflicts[0].conflictTypes[1]");
+        assertThat(response.getBody().violations().get(6).message()).isEqualTo("DOMAIN_OVERLAP");
+        assertThat(response.getBody().violations().get(7).field()).isEqualTo("conflicts[1].experimentId");
+        assertThat(response.getBody().violations().get(7).message()).isEqualTo("22222222-2222-2222-2222-222222222222");
+        assertThat(response.getBody().violations().get(8).field()).isEqualTo("conflicts[1].state");
+        assertThat(response.getBody().violations().get(8).message()).isEqualTo("RUNNING");
+        assertThat(response.getBody().violations().get(9).field()).isEqualTo("conflicts[1].flagKey");
+        assertThat(response.getBody().violations().get(9).message()).isEqualTo("flag-b");
+        assertThat(response.getBody().violations().get(10).field()).isEqualTo("conflicts[1].domainKey");
+        assertThat(response.getBody().violations().get(10).message()).isEqualTo("PRICING");
+        assertThat(response.getBody().violations().get(11).field()).isEqualTo("conflicts[1].severity");
+        assertThat(response.getBody().violations().get(11).message()).isEqualTo("BLOCKING");
+        assertThat(response.getBody().violations().get(12).field()).isEqualTo("conflicts[1].conflictTypes[0]");
+        assertThat(response.getBody().violations().get(12).message()).isEqualTo("DOMAIN_OVERLAP");
     }
 
     @Test

@@ -23,11 +23,15 @@ public class ExperimentConflictsService {
 
     public List<ExperimentConflict> getAll(UUID experimentId) {
         Experiment experiment = experimentService.getById(experimentId);
+        return getAll(experiment);
+    }
+
+    public List<ExperimentConflict> getAll(Experiment experiment) {
         return findConflicts(experiment);
     }
 
     public List<ExperimentConflict> getBlockingConflicts(Experiment experiment) {
-        return findConflicts(experiment).stream()
+        return getAll(experiment).stream()
                 .filter(conflict -> conflict.severity().isBlocking())
                 .toList();
     }

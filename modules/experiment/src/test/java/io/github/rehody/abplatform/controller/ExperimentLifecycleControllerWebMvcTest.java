@@ -11,6 +11,7 @@ import io.github.rehody.abplatform.config.AbstractWebMvcTest;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.exception.ExperimentActivationConflictException;
+import io.github.rehody.abplatform.exception.ExperimentBlockingConflictDetails;
 import io.github.rehody.abplatform.exception.ExperimentBlockingConflictException;
 import io.github.rehody.abplatform.exception.ExperimentExceptionHandler;
 import io.github.rehody.abplatform.exception.ExperimentStateTransitionException;
@@ -136,22 +137,38 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
     @Test
     void blockingConflictTransitions_shouldReturnConflictWithConflictingExperimentIds() throws Exception {
         UUID id = UUID.randomUUID();
-        List<String> conflictingExperimentIds =
-                List.of("11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222");
+        List<ExperimentBlockingConflictDetails> conflicts = List.of(
+                new ExperimentBlockingConflictDetails(
+                        UUID.fromString("11111111-1111-1111-1111-111111111111"),
+                        ExperimentState.RUNNING,
+                        "flag-a",
+                        "CHECKOUT",
+                        List.of("SAME_FLAG"),
+                        "BLOCKING"),
+                new ExperimentBlockingConflictDetails(
+                        UUID.fromString("22222222-2222-2222-2222-222222222222"),
+                        ExperimentState.RUNNING,
+                        "flag-b",
+                        "PRICING",
+                        List.of("DOMAIN_OVERLAP"),
+                        "BLOCKING"));
+        List<String> conflictingExperimentIds = conflicts.stream()
+                .map(conflict -> conflict.experimentId().toString())
+                .toList();
 
         String message = "Experiment '%s' has blocking conflicts with running experiments: %s"
                 .formatted(id, String.join(", ", conflictingExperimentIds));
 
         when(experimentLifecycleService.approve(eq(id), eq(3L)))
-                .thenThrow(new ExperimentBlockingConflictException(message, conflictingExperimentIds));
+                .thenThrow(new ExperimentBlockingConflictException(message, conflicts));
         when(experimentLifecycleService.start(eq(id), eq(3L)))
-                .thenThrow(new ExperimentBlockingConflictException(message, conflictingExperimentIds));
+                .thenThrow(new ExperimentBlockingConflictException(message, conflicts));
         when(experimentLifecycleService.resume(eq(id), eq(3L)))
-                .thenThrow(new ExperimentBlockingConflictException(message, conflictingExperimentIds));
+                .thenThrow(new ExperimentBlockingConflictException(message, conflicts));
 
-        assertBlockingConflictResponse("/api/v1/experiments/{id}/approve", id, conflictingExperimentIds);
-        assertBlockingConflictResponse("/api/v1/experiments/{id}/start", id, conflictingExperimentIds);
-        assertBlockingConflictResponse("/api/v1/experiments/{id}/resume", id, conflictingExperimentIds);
+        assertBlockingConflictResponse("/api/v1/experiments/{id}/approve", id, conflicts);
+        assertBlockingConflictResponse("/api/v1/experiments/{id}/start", id, conflicts);
+        assertBlockingConflictResponse("/api/v1/experiments/{id}/resume", id, conflicts);
     }
 
     private void assertLifecycleResponse(String path, UUID id, String state, int version) throws Exception {
@@ -166,7 +183,7 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.version").value(version));
     }
 
-    private void assertBlockingConflictResponse(String path, UUID id, List<String> conflictingExperimentIds)
+    private void assertBlockingConflictResponse(String path, UUID id, List<ExperimentBlockingConflictDetails> conflicts)
             throws Exception {
         mockMvc.perform(post(path, id).contentType(APPLICATION_JSON).content("""
                         {"version":3}
@@ -174,10 +191,22 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.errorCode").value("CONFLICT"))
-                .andExpect(jsonPath("$.violations[0].field").value("conflictingExperimentIds"))
-                .andExpect(jsonPath("$.violations[0].message").value(conflictingExperimentIds.get(0)))
-                .andExpect(jsonPath("$.violations[1].field").value("conflictingExperimentIds"))
-                .andExpect(jsonPath("$.violations[1].message").value(conflictingExperimentIds.get(1)));
+                .andExpect(jsonPath("$.violations[0].field").value("conflicts[0].experimentId"))
+                .andExpect(jsonPath("$.violations[0].message")
+                        .value(conflicts.get(0).experimentId().toString()))
+                .andExpect(jsonPath("$.violations[1].field").value("conflicts[0].state"))
+                .andExpect(jsonPath("$.violations[1].message").value("RUNNING"))
+                .andExpect(jsonPath("$.violations[2].field").value("conflicts[0].flagKey"))
+                .andExpect(jsonPath("$.violations[2].message")
+                        .value(conflicts.get(0).flagKey()))
+                .andExpect(jsonPath("$.violations[3].field").value("conflicts[0].domainKey"))
+                .andExpect(jsonPath("$.violations[3].message")
+                        .value(conflicts.get(0).domainKey()))
+                .andExpect(jsonPath("$.violations[4].field").value("conflicts[0].severity"))
+                .andExpect(jsonPath("$.violations[4].message").value("BLOCKING"))
+                .andExpect(jsonPath("$.violations[5].field").value("conflicts[0].conflictTypes[0]"))
+                .andExpect(jsonPath("$.violations[5].message")
+                        .value(conflicts.get(0).conflictTypes().get(0)));
     }
 
     @SuppressWarnings("SameParameterValue")
