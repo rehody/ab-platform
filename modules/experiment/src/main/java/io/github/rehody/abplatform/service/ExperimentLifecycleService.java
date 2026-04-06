@@ -10,6 +10,7 @@ import io.github.rehody.abplatform.repository.ExperimentRepository.UpdateOutcome
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -33,7 +34,7 @@ public class ExperimentLifecycleService {
 
     @Transactional
     public Experiment approve(UUID id, long version) {
-        return transition(id, version, Experiment::approve, true);
+        return activate(id, version, Experiment::approve);
     }
 
     @Transactional
@@ -43,7 +44,7 @@ public class ExperimentLifecycleService {
 
     @Transactional
     public Experiment start(UUID id, long version) {
-        return transition(id, version, Experiment::start, true);
+        return activate(id, version, Experiment::start);
     }
 
     @Transactional
@@ -53,7 +54,7 @@ public class ExperimentLifecycleService {
 
     @Transactional
     public Experiment resume(UUID id, long version) {
-        return transition(id, version, Experiment::resume, true);
+        return activate(id, version, Experiment::resume);
     }
 
     @Transactional
@@ -67,41 +68,53 @@ public class ExperimentLifecycleService {
     }
 
     private Experiment transition(UUID id, long expectedVersion, UnaryOperator<Experiment> stateTransition) {
-        return transition(id, expectedVersion, stateTransition, false);
+        return withLockedExperiment(id, lockedExperiment -> {
+            Experiment transitionedExperiment =
+                    buildTransitionedExperiment(lockedExperiment.experiment(), stateTransition);
+
+            experimentAssignmentPolicy.validateAssignmentInvariants(transitionedExperiment);
+            return persistTransition(lockedExperiment.flagKey(), transitionedExperiment, expectedVersion);
+        });
     }
 
-    private Experiment transition(
-            UUID id,
-            long expectedVersion,
-            UnaryOperator<Experiment> stateTransition,
-            boolean validateBlockingConflicts) {
+    private Experiment activate(UUID id, long expectedVersion, UnaryOperator<Experiment> stateTransition) {
+        return withLockedExperiment(id, lockedExperiment -> {
+            Experiment transitionedExperiment =
+                    buildTransitionedExperiment(lockedExperiment.experiment(), stateTransition);
+
+            validateActivationPolicies(transitionedExperiment);
+            experimentAssignmentPolicy.validateAssignmentInvariants(transitionedExperiment);
+            return persistTransition(lockedExperiment.flagKey(), transitionedExperiment, expectedVersion);
+        });
+    }
+
+    private Experiment withLockedExperiment(UUID id, Function<LockedExperiment, Experiment> action) {
         String flagKey = experimentCommandSupport.getFlagKeyById(id);
 
         return experimentCommandSupport.withExperimentLock(flagKey, () -> {
             Experiment experiment = experimentCommandSupport.getById(id);
-            Experiment transitedExperiment = stateTransition.apply(experiment);
-            Experiment timestampedExperiment =
-                    experimentTimestampPolicy.applyTransitionTimestamps(experiment, transitedExperiment, Instant.now());
-
-            validateActivationIfNeeded(timestampedExperiment, validateBlockingConflicts);
-            experimentAssignmentPolicy.validateAssignmentInvariants(timestampedExperiment);
-            Experiment experimentToUpdate = timestampedExperiment.withVersion(expectedVersion);
-
-            long newVersion = updateExperiment(experimentToUpdate, expectedVersion);
-            experimentCommandSupport.invalidateCacheAfterCommit(flagKey);
-
-            return timestampedExperiment.withVersion(newVersion);
+            return action.apply(new LockedExperiment(flagKey, experiment));
         });
     }
 
-    private void validateActivationIfNeeded(Experiment experiment, boolean shouldValidateBlockingConflicts) {
-        if (!shouldValidateBlockingConflicts) {
-            return;
-        }
-
+    private void validateActivationPolicies(Experiment experiment) {
         for (ExperimentActivationPolicy experimentActivationPolicy : experimentActivationPolicies) {
             experimentActivationPolicy.validateActivation(experiment);
         }
+    }
+
+    private Experiment buildTransitionedExperiment(
+            Experiment currentExperiment, UnaryOperator<Experiment> stateTransition) {
+        Experiment transitionedExperiment = stateTransition.apply(currentExperiment);
+        return experimentTimestampPolicy.applyTransitionTimestamps(
+                currentExperiment, transitionedExperiment, Instant.now());
+    }
+
+    private Experiment persistTransition(String flagKey, Experiment experiment, long expectedVersion) {
+        Experiment experimentToUpdate = experiment.withVersion(expectedVersion);
+        long newVersion = updateExperiment(experimentToUpdate, expectedVersion);
+        experimentCommandSupport.invalidateCacheAfterCommit(flagKey);
+        return experiment.withVersion(newVersion);
     }
 
     private long updateExperiment(Experiment experiment, long expectedVersion) {
@@ -115,4 +128,6 @@ public class ExperimentLifecycleService {
             case UPDATED -> outcome.version();
         };
     }
+
+    private record LockedExperiment(String flagKey, Experiment experiment) {}
 }

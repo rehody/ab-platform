@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -12,6 +13,7 @@ import static org.mockito.Mockito.when;
 import io.github.rehody.abplatform.cache.ExperimentCache;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.enums.ExperimentVariantType;
+import io.github.rehody.abplatform.exception.ExperimentBlockingConflictException;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
 import io.github.rehody.abplatform.exception.ExperimentStateTransitionException;
 import io.github.rehody.abplatform.model.Experiment;
@@ -94,6 +96,12 @@ class ExperimentLifecycleServiceTest {
     }
 
     @Test
+    void approve_shouldThrowBlockingConflictExceptionAndSkipUpdate() {
+        assertBlockingConflictStopsTransition(
+                experimentLifecycleService::approve, ExperimentState.IN_REVIEW, ExperimentState.APPROVED);
+    }
+
+    @Test
     void reject_shouldUpdateStateIncrementVersionAndInvalidateCache() {
         assertSuccessfulTransition(
                 experimentLifecycleService::reject, ExperimentState.IN_REVIEW, ExperimentState.REJECTED);
@@ -107,6 +115,12 @@ class ExperimentLifecycleServiceTest {
     }
 
     @Test
+    void start_shouldThrowBlockingConflictExceptionAndSkipUpdate() {
+        assertBlockingConflictStopsTransition(
+                experimentLifecycleService::start, ExperimentState.APPROVED, ExperimentState.RUNNING);
+    }
+
+    @Test
     void pause_shouldUpdateStateIncrementVersionAndInvalidateCache() {
         assertSuccessfulTransition(experimentLifecycleService::pause, ExperimentState.RUNNING, ExperimentState.PAUSED);
     }
@@ -115,6 +129,12 @@ class ExperimentLifecycleServiceTest {
     void resume_shouldUpdateStateIncrementVersionAndInvalidateCache() {
         assertSuccessfulTransition(experimentLifecycleService::resume, ExperimentState.PAUSED, ExperimentState.RUNNING);
         verify(experimentActivationPolicy).validateActivation(any(Experiment.class));
+    }
+
+    @Test
+    void resume_shouldThrowBlockingConflictExceptionAndSkipUpdate() {
+        assertBlockingConflictStopsTransition(
+                experimentLifecycleService::resume, ExperimentState.PAUSED, ExperimentState.RUNNING);
     }
 
     @Test
@@ -269,6 +289,29 @@ class ExperimentLifecycleServiceTest {
                         persistedVersion,
                         null,
                         null));
+    }
+
+    private void assertBlockingConflictStopsTransition(
+            TransitionOperation operation, ExperimentState sourceState, ExperimentState targetState) {
+        UUID id = UUID.randomUUID();
+        long version = 3L;
+        String flagKey = "flag-" + targetState.name().toLowerCase();
+        Experiment current = experiment(id, flagKey, sourceState, version);
+        ExperimentBlockingConflictException exception = new ExperimentBlockingConflictException(
+                "Experiment '%s' has blocking conflicts with running experiments: %s"
+                        .formatted(id, "11111111-1111-1111-1111-111111111111"),
+                List.of("11111111-1111-1111-1111-111111111111"));
+
+        when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of(flagKey));
+        when(experimentRepository.findById(id)).thenReturn(Optional.of(current));
+        doThrow(exception).when(experimentActivationPolicy).validateActivation(any(Experiment.class));
+
+        assertThatThrownBy(() -> operation.apply(id, version))
+                .isInstanceOf(ExperimentBlockingConflictException.class)
+                .hasMessage(exception.getMessage());
+
+        verify(experimentRepository, never()).update(any());
+        verify(experimentCache, never()).invalidate(any());
     }
 
     private Experiment experiment(UUID id, String flagKey, ExperimentState state, long version) {

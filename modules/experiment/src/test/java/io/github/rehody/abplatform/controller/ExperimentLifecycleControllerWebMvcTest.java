@@ -11,6 +11,7 @@ import io.github.rehody.abplatform.config.AbstractWebMvcTest;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.exception.ExperimentActivationConflictException;
+import io.github.rehody.abplatform.exception.ExperimentBlockingConflictException;
 import io.github.rehody.abplatform.exception.ExperimentExceptionHandler;
 import io.github.rehody.abplatform.exception.ExperimentStateTransitionException;
 import io.github.rehody.abplatform.model.Experiment;
@@ -132,6 +133,27 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.path").value("/api/v1/experiments/%s/approve".formatted(id)));
     }
 
+    @Test
+    void blockingConflictTransitions_shouldReturnConflictWithConflictingExperimentIds() throws Exception {
+        UUID id = UUID.randomUUID();
+        List<String> conflictingExperimentIds =
+                List.of("11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222");
+
+        String message = "Experiment '%s' has blocking conflicts with running experiments: %s"
+                .formatted(id, String.join(", ", conflictingExperimentIds));
+
+        when(experimentLifecycleService.approve(eq(id), eq(3L)))
+                .thenThrow(new ExperimentBlockingConflictException(message, conflictingExperimentIds));
+        when(experimentLifecycleService.start(eq(id), eq(3L)))
+                .thenThrow(new ExperimentBlockingConflictException(message, conflictingExperimentIds));
+        when(experimentLifecycleService.resume(eq(id), eq(3L)))
+                .thenThrow(new ExperimentBlockingConflictException(message, conflictingExperimentIds));
+
+        assertBlockingConflictResponse("/api/v1/experiments/{id}/approve", id, conflictingExperimentIds);
+        assertBlockingConflictResponse("/api/v1/experiments/{id}/start", id, conflictingExperimentIds);
+        assertBlockingConflictResponse("/api/v1/experiments/{id}/resume", id, conflictingExperimentIds);
+    }
+
     private void assertLifecycleResponse(String path, UUID id, String state, int version) throws Exception {
         mockMvc.perform(post(path, id).contentType(APPLICATION_JSON).content("""
                         {"version":3}
@@ -142,6 +164,20 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.variants[0].key").value("control"))
                 .andExpect(jsonPath("$.state").value(state))
                 .andExpect(jsonPath("$.version").value(version));
+    }
+
+    private void assertBlockingConflictResponse(String path, UUID id, List<String> conflictingExperimentIds)
+            throws Exception {
+        mockMvc.perform(post(path, id).contentType(APPLICATION_JSON).content("""
+                        {"version":3}
+                        """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.errorCode").value("CONFLICT"))
+                .andExpect(jsonPath("$.violations[0].field").value("conflictingExperimentIds"))
+                .andExpect(jsonPath("$.violations[0].message").value(conflictingExperimentIds.get(0)))
+                .andExpect(jsonPath("$.violations[1].field").value("conflictingExperimentIds"))
+                .andExpect(jsonPath("$.violations[1].message").value(conflictingExperimentIds.get(1)));
     }
 
     @SuppressWarnings("SameParameterValue")

@@ -17,7 +17,6 @@ public class ExperimentConflictRepository {
         SELECT id, flag_key, domain_key, state, version, started_at, completed_at
         FROM experiments
         WHERE id <> :experimentId
-          AND state NOT IN (:completedState, :archivedState)
           AND (flag_key = :flagKey OR domain_key = :domainKey)
         ORDER BY CASE
             WHEN state = :runningState THEN 0
@@ -36,8 +35,6 @@ public class ExperimentConflictRepository {
                 .param("flagKey", flagKey)
                 .param("domainKey", domainKey)
                 .param("runningState", ExperimentState.RUNNING.toString())
-                .param("completedState", ExperimentState.COMPLETED.toString())
-                .param("archivedState", ExperimentState.ARCHIVED.toString())
                 .query(experimentRowMapper)
                 .list();
     }

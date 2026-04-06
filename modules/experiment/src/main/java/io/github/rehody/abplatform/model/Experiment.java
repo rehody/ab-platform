@@ -34,14 +34,6 @@ public record Experiment(
         return state == ExperimentState.COMPLETED;
     }
 
-    public boolean isArchived() {
-        return state == ExperimentState.ARCHIVED;
-    }
-
-    public boolean isTerminal() {
-        return isCompleted() || isArchived();
-    }
-
     public Experiment withVersion(long version) {
         return new Experiment(id, flagKey, domainKey, variants, state, version, startedAt, completedAt);
     }

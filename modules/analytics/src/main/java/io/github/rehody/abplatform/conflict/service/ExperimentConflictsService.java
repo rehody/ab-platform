@@ -8,6 +8,7 @@ import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.service.ExperimentService;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ public class ExperimentConflictsService {
 
     private final ExperimentConflictRepository experimentConflictRepository;
     private final ExperimentService experimentService;
+    private final ExperimentConflictSeverityResolver experimentConflictSeverityResolver;
 
     public List<ExperimentConflict> getAll(UUID experimentId) {
         Experiment experiment = experimentService.getById(experimentId);
@@ -31,7 +33,7 @@ public class ExperimentConflictsService {
     }
 
     private List<ExperimentConflict> findConflicts(Experiment experiment) {
-        if (experiment.isTerminal()) {
+        if (!isConflictRelevant(experiment)) {
             return List.of();
         }
 
@@ -39,18 +41,28 @@ public class ExperimentConflictsService {
                 .findAll(experiment.id(), experiment.flagKey(), experiment.domainKey())
                 .stream()
                 .map(conflictingExperiment -> buildConflict(experiment, conflictingExperiment))
-                .filter(this::hasConflictTypes)
+                .flatMap(Optional::stream)
                 .toList();
     }
 
-    private ExperimentConflict buildConflict(Experiment experiment, Experiment conflictingExperiment) {
-        return new ExperimentConflict(
+    private Optional<ExperimentConflict> buildConflict(Experiment experiment, Experiment conflictingExperiment) {
+        ConflictSeverity severity = experimentConflictSeverityResolver.resolve(conflictingExperiment.state());
+        if (severity.isNone()) {
+            return Optional.empty();
+        }
+
+        List<ExperimentConflictType> conflictTypes = resolveConflictTypes(experiment, conflictingExperiment);
+        if (conflictTypes.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new ExperimentConflict(
                 conflictingExperiment.id(),
                 conflictingExperiment.state(),
                 conflictingExperiment.flagKey(),
                 conflictingExperiment.domainKey(),
-                resolveConflictTypes(experiment, conflictingExperiment),
-                resolveSeverity(conflictingExperiment));
+                conflictTypes,
+                severity));
     }
 
     private List<ExperimentConflictType> resolveConflictTypes(Experiment experiment, Experiment conflictingExperiment) {
@@ -67,14 +79,7 @@ public class ExperimentConflictsService {
         return List.copyOf(conflictTypes);
     }
 
-    private ConflictSeverity resolveSeverity(Experiment conflictingExperiment) {
-        if (conflictingExperiment.isRunning()) {
-            return ConflictSeverity.BLOCKING;
-        }
-        return ConflictSeverity.WARNING;
-    }
-
-    private boolean hasConflictTypes(ExperimentConflict conflict) {
-        return !conflict.conflictTypes().isEmpty();
+    private boolean isConflictRelevant(Experiment experiment) {
+        return experimentConflictSeverityResolver.resolve(experiment.state()) != ConflictSeverity.NONE;
     }
 }

@@ -117,6 +117,29 @@ class ExperimentExceptionHandlerTest {
     }
 
     @Test
+    void handleBlockingConflict_shouldReturnConflictAndConflictingExperimentIds() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/experiments/123/start");
+
+        ResponseEntity<ErrorResponse> response = experimentExceptionHandler.handleBlockingConflict(
+                new ExperimentBlockingConflictException(
+                        "Experiment '123' has blocking conflicts with running experiments: 1, 2",
+                        java.util.List.of("1", "2")),
+                request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().errorCode()).isEqualTo(ErrorResponse.ErrorCode.CONFLICT);
+        assertThat(response.getBody().message())
+                .isEqualTo("Experiment '123' has blocking conflicts with running experiments: 1, 2");
+        assertThat(response.getBody().path()).isEqualTo("/api/v1/experiments/123/start");
+        assertThat(response.getBody().violations()).hasSize(2);
+        assertThat(response.getBody().violations().get(0).field()).isEqualTo("conflictingExperimentIds");
+        assertThat(response.getBody().violations().get(0).message()).isEqualTo("1");
+        assertThat(response.getBody().violations().get(1).field()).isEqualTo("conflictingExperimentIds");
+        assertThat(response.getBody().violations().get(1).message()).isEqualTo("2");
+    }
+
+    @Test
     void handleMethodArgumentNotValid_shouldReturnBadRequestAndViolations() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/experiments/123/approve");
         BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new ValidationPayload(""), "request");
