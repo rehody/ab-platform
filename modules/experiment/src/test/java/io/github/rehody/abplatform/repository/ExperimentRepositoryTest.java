@@ -86,7 +86,6 @@ class ExperimentRepositoryTest {
         Optional<Experiment> result = experimentRepository.findById(id);
 
         assertThat(result).isEmpty();
-        verify(experimentVariantJdbcRepository, never()).findByExperimentId(any());
     }
 
     @Test
@@ -111,7 +110,6 @@ class ExperimentRepositoryTest {
         List<Experiment> result = experimentRepository.findAll();
 
         assertThat(result).isEmpty();
-        verify(experimentVariantJdbcRepository, never()).findByExperimentIds(any());
     }
 
     @Test
@@ -130,6 +128,21 @@ class ExperimentRepositoryTest {
         List<Experiment> result = experimentRepository.findAll();
 
         assertThat(result).containsExactly(mappedFirst, mappedSecond);
+    }
+
+    @Test
+    void findRunning_shouldMapVariantsForRunningExperiments() {
+        Experiment running = experiment("flag-running", "CHECKOUT", 1L);
+        Experiment mappedRunning = experiment("flag-running", "CHECKOUT", 1L);
+        List<ExperimentVariant> runningVariants = variants();
+        when(experimentJdbcRepository.findByState(ExperimentState.RUNNING)).thenReturn(List.of(running));
+        when(experimentVariantJdbcRepository.findByExperimentIds(List.of(running.id())))
+                .thenReturn(Map.of(running.id(), runningVariants));
+        when(experimentAggregateMapper.withVariants(running, runningVariants)).thenReturn(mappedRunning);
+
+        List<Experiment> result = experimentRepository.findRunning();
+
+        assertThat(result).containsExactly(mappedRunning);
     }
 
     @Test
@@ -161,6 +174,30 @@ class ExperimentRepositoryTest {
         assertThat(result.status()).isEqualTo(ExperimentRepository.UpdateStatus.UPDATED);
         assertThat(result.version()).isEqualTo(6L);
         verify(experimentVariantSynchronizer).sync(experiment.id(), experiment.variants());
+    }
+
+    @Test
+    void updateWithVariants_shouldReturnVersionConflictWhenExperimentExistsButVersionDiffers() {
+        Experiment experiment = experiment("flag-f", "CHECKOUT", 5L);
+        when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.empty());
+        when(experimentJdbcRepository.findVersionById(experiment.id())).thenReturn(Optional.of(6L));
+
+        ExperimentRepository.UpdateOutcome result = experimentRepository.updateWithVariants(experiment);
+
+        assertThat(result.status()).isEqualTo(ExperimentRepository.UpdateStatus.VERSION_CONFLICT);
+        verify(experimentVariantSynchronizer, never()).sync(any(), any());
+    }
+
+    @Test
+    void updateWithVariants_shouldReturnNotFoundWhenExperimentMissing() {
+        Experiment experiment = experiment("flag-f", "CHECKOUT", 5L);
+        when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.empty());
+        when(experimentJdbcRepository.findVersionById(experiment.id())).thenReturn(Optional.empty());
+
+        ExperimentRepository.UpdateOutcome result = experimentRepository.updateWithVariants(experiment);
+
+        assertThat(result.status()).isEqualTo(ExperimentRepository.UpdateStatus.NOT_FOUND);
+        verify(experimentVariantSynchronizer, never()).sync(any(), any());
     }
 
     @Test

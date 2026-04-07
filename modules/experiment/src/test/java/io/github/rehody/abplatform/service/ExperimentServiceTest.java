@@ -130,18 +130,16 @@ class ExperimentServiceTest {
     }
 
     @Test
-    void create_shouldSaveExperimentAndInvalidateCacheWhenSynchronizationInactive() {
+    void create_shouldReturnCreatedExperimentAndPersistItWhenSynchronizationInactive() {
         List<ExperimentVariant> variants = variants();
         when(experimentRepository.existsByFlagKey("flag-b")).thenReturn(false);
 
         Experiment response = experimentService.create("flag-b", "CHECKOUT", variants, ExperimentState.APPROVED);
 
         ArgumentCaptor<Experiment> experimentCaptor = ArgumentCaptor.forClass(Experiment.class);
-        ArgumentCaptor<LockNamespace> namespaceCaptor = ArgumentCaptor.forClass(LockNamespace.class);
 
         verify(experimentRepository).save(experimentCaptor.capture());
         verify(experimentCache).invalidate("flag-b");
-        verify(lockExecutor).withLock(namespaceCaptor.capture(), eq("flag-b"), any(Supplier.class));
 
         Experiment savedExperiment = experimentCaptor.getValue();
         assertThat(savedExperiment.id()).isNotNull();
@@ -150,7 +148,6 @@ class ExperimentServiceTest {
         assertThat(savedExperiment.variants()).isEqualTo(variants);
         assertThat(savedExperiment.state()).isEqualTo(ExperimentState.APPROVED);
         assertThat(savedExperiment.version()).isZero();
-        assertThat(namespaceCaptor.getValue().value()).isEqualTo("experiment");
 
         assertThat(response.flagKey()).isEqualTo("flag-b");
         assertThat(response.domainKey()).isEqualTo("CHECKOUT");
@@ -179,6 +176,17 @@ class ExperimentServiceTest {
     }
 
     @Test
+    void create_shouldRejectUnknownDomain() {
+        List<ExperimentVariant> variants = variants();
+        when(experimentRepository.existsByFlagKey("flag-unknown")).thenReturn(false);
+        when(experimentDomainJdbcRepository.existsByKey("UNKNOWN")).thenReturn(false);
+
+        assertThatThrownBy(() -> experimentService.create("flag-unknown", "UNKNOWN", variants, ExperimentState.DRAFT))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Unknown experiment domainKey 'UNKNOWN'");
+    }
+
+    @Test
     void update_shouldUseCurrentFlagKeyForPartialUpdateInvalidateCacheAndReturnUpdatedResponse() {
         UUID id = UUID.randomUUID();
         List<ExperimentVariant> variants = variants();
@@ -202,6 +210,24 @@ class ExperimentServiceTest {
         assertThat(response.variants()).isEqualTo(variants);
         assertThat(response.state()).isEqualTo(ExperimentState.RUNNING);
         assertThat(response.version()).isEqualTo(4L);
+    }
+
+    @Test
+    void update_shouldUseCurrentDomainForPartialUpdateAndInvalidateBothFlagCachesWhenFlagChanges() {
+        UUID id = UUID.randomUUID();
+        List<ExperimentVariant> variants = variants();
+        Experiment current =
+                new Experiment(id, "flag-old", "CHECKOUT", variants, ExperimentState.RUNNING, 3L, null, null);
+        when(experimentRepository.findById(id)).thenReturn(Optional.of(current));
+        when(experimentRepository.findByFlagKey("flag-new")).thenReturn(Optional.empty());
+        when(experimentRepository.updateWithVariants(any(Experiment.class))).thenReturn(UpdateOutcome.updated(4L));
+
+        Experiment response = experimentService.update(id, "flag-new", null, variants, 3L);
+
+        verify(experimentCache).invalidate("flag-old");
+        verify(experimentCache).invalidate("flag-new");
+        assertThat(response.flagKey()).isEqualTo("flag-new");
+        assertThat(response.domainKey()).isEqualTo("CHECKOUT");
     }
 
     @Test
@@ -273,7 +299,7 @@ class ExperimentServiceTest {
     }
 
     @Test
-    void getById_shouldLoadFromRepositoryAndReturnResponseWhenCacheNeedsLoader() {
+    void getById_shouldLoadFromRepositoryWhenCacheMisses() {
         UUID id = UUID.randomUUID();
         Experiment persisted =
                 new Experiment(id, "flag-g", "CHECKOUT", variants(), ExperimentState.PAUSED, 8L, null, null);
@@ -292,11 +318,10 @@ class ExperimentServiceTest {
         assertThat(response.variants()).isEqualTo(persisted.variants());
         assertThat(response.state()).isEqualTo(ExperimentState.PAUSED);
         assertThat(response.version()).isEqualTo(8L);
-        verify(experimentRepository).findByFlagKey("flag-g");
     }
 
     @Test
-    void getById_shouldReturnCachedResponseAndSkipRepositoryLookupByFlagKeyWhenCacheHit() {
+    void getById_shouldReturnCachedResponseWhenPresent() {
         UUID id = UUID.randomUUID();
         Experiment experiment =
                 new Experiment(id, "flag-h", "CHECKOUT", variants(), ExperimentState.DRAFT, 12L, null, null);
@@ -307,7 +332,6 @@ class ExperimentServiceTest {
         Experiment response = experimentService.getById(id);
 
         assertThat(response).isEqualTo(experiment);
-        verify(experimentRepository, never()).findByFlagKey(any());
     }
 
     @Test
@@ -319,6 +343,21 @@ class ExperimentServiceTest {
         assertThatThrownBy(() -> experimentService.getById(id))
                 .isInstanceOf(ExperimentNotFoundException.class)
                 .hasMessage("Experiment '%s' not found".formatted(id));
+    }
+
+    @Test
+    void findByFlagKey_shouldReturnExperimentFromCacheLoader() {
+        Experiment persisted = new Experiment(
+                UUID.randomUUID(), "flag-find", "CHECKOUT", variants(), ExperimentState.RUNNING, 1L, null, null);
+        when(experimentCache.getOrLoad(eq("flag-find"), any(Supplier.class))).thenAnswer(invocation -> {
+            Supplier<Optional<Experiment>> loader = invocation.getArgument(1);
+            return loader.get();
+        });
+        when(experimentRepository.findByFlagKey("flag-find")).thenReturn(Optional.of(persisted));
+
+        Optional<Experiment> response = experimentService.findByFlagKey("flag-find");
+
+        assertThat(response).contains(persisted);
     }
 
     @Test

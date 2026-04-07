@@ -8,13 +8,14 @@ public sealed interface ExperimentMetricReportResponse
         permits CountableMetricReportResponse, UniqueMetricReportResponse {
 
     static ExperimentMetricReportResponse from(ExperimentMetricReport experimentMetricReport) {
+        if (experimentMetricReport == null) {
+            throw new IllegalArgumentException("Experiment metric report must not be null");
+        }
+
         if (experimentMetricReport instanceof CountableMetricReport countableMetricReport) {
             return CountableMetricReportResponse.from(countableMetricReport);
         }
-        if (experimentMetricReport instanceof UniqueMetricReport uniqueMetricReport) {
-            return UniqueMetricReportResponse.from(uniqueMetricReport);
-        }
-        throw new IllegalArgumentException(
-                "Unsupported experiment metric report type: %s".formatted(experimentMetricReport.getClass()));
+
+        return UniqueMetricReportResponse.from((UniqueMetricReport) experimentMetricReport);
     }
 }

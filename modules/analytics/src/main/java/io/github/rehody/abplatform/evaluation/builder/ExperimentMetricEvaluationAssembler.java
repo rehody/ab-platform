@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -110,13 +111,7 @@ public class ExperimentMetricEvaluationAssembler {
                 .map(ExperimentVariant::id)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Control variant not found"));
-
-        VariantMetricAggregate controlAggregate = aggregatesByVariantId.get(controlVariantId);
-        if (controlAggregate == null) {
-            throw new IllegalStateException("Control variant aggregate not found");
-        }
-
-        return controlAggregate;
+        return aggregatesByVariantId.get(controlVariantId);
     }
 
     private List<VariantComparison> buildComparisons(
@@ -210,10 +205,12 @@ public class ExperimentMetricEvaluationAssembler {
             return MetricComparisonStatus.INSUFFICIENT_DATA;
         }
 
+        MetricDirection requiredMetricDirection =
+                Objects.requireNonNull(metricDirection, "Metric direction is required");
         boolean hasNegativeDeviation = false;
-        if (metricDirection == MetricDirection.MORE_IS_BETTER) {
+        if (requiredMetricDirection == MetricDirection.MORE_IS_BETTER) {
             hasNegativeDeviation = relativeDeviation.compareTo(deviationThreshold.negate()) < 0;
-        } else if (metricDirection == MetricDirection.LESS_IS_BETTER) {
+        } else {
             hasNegativeDeviation = relativeDeviation.compareTo(deviationThreshold) > 0;
         }
 
@@ -251,7 +248,7 @@ public class ExperimentMetricEvaluationAssembler {
     }
 
     private BigDecimal divide(BigDecimal numerator, BigDecimal denominator) {
-        if (denominator == null || denominator.compareTo(BigDecimal.ZERO) == 0) {
+        if (denominator.compareTo(BigDecimal.ZERO) == 0) {
             return BigDecimal.ZERO;
         }
 

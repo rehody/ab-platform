@@ -110,6 +110,22 @@ class ExperimentJdbcRepositoryTest {
     }
 
     @Test
+    void findRunningByFlagKey_shouldReturnMappedRunningExperimentWhenRepositoryContainsRecord() {
+        Experiment experiment = new Experiment(
+                UUID.randomUUID(), "flag-running", "CHECKOUT", List.of(), ExperimentState.RUNNING, 4L, null, null);
+        when(jdbcClient.sql(anyString())).thenReturn(statementSpec);
+        when(statementSpec.param("flagKey", "flag-running")).thenReturn(statementSpec);
+        when(statementSpec.param("runningState", ExperimentState.RUNNING.name()))
+                .thenReturn(statementSpec);
+        when(statementSpec.query(experimentRowMapper)).thenReturn(mappedQuerySpec);
+        when(mappedQuerySpec.optional()).thenReturn(Optional.of(experiment));
+
+        Optional<Experiment> response = experimentJdbcRepository.findRunningByFlagKey("flag-running");
+
+        assertThat(response).contains(experiment);
+    }
+
+    @Test
     void findAll_shouldReturnMappedExperiments() {
         List<Experiment> experiments = List.of(new Experiment(
                 UUID.randomUUID(), "flag-d", "CHECKOUT", List.of(), ExperimentState.PAUSED, 5L, null, null));
@@ -118,6 +134,19 @@ class ExperimentJdbcRepositoryTest {
         when(mappedQuerySpec.list()).thenReturn(experiments);
 
         assertThat(experimentJdbcRepository.findAll()).isEqualTo(experiments);
+    }
+
+    @Test
+    void findByState_shouldReturnMappedExperiments() {
+        List<Experiment> experiments = List.of(new Experiment(
+                UUID.randomUUID(), "flag-running", "CHECKOUT", List.of(), ExperimentState.RUNNING, 5L, null, null));
+        when(jdbcClient.sql(anyString())).thenReturn(statementSpec);
+        when(statementSpec.param("state", ExperimentState.RUNNING.name())).thenReturn(statementSpec);
+        when(statementSpec.query(experimentRowMapper)).thenReturn(mappedQuerySpec);
+        when(mappedQuerySpec.list()).thenReturn(experiments);
+
+        assertThat(experimentJdbcRepository.findByState(ExperimentState.RUNNING))
+                .isEqualTo(experiments);
     }
 
     @Test

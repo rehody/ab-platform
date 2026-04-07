@@ -1,7 +1,6 @@
 package io.github.rehody.abplatform.conflict.policy;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.rehody.abplatform.conflict.enums.ConflictSeverity;
@@ -41,7 +40,6 @@ class ExperimentConflictActivationPolicyTest {
 
         assertThatThrownBy(() -> policy.validateActivation(experiment))
                 .isInstanceOfSatisfying(ExperimentBlockingConflictException.class, exception -> {
-                    verify(experimentConflictsService).getBlockingConflicts(experiment);
                     org.assertj.core.api.Assertions.assertThat(exception.conflicts())
                             .hasSize(1);
                     org.assertj.core.api.Assertions.assertThat(
@@ -63,5 +61,16 @@ class ExperimentConflictActivationPolicyTest {
                                     exception.conflicts().getFirst().severity())
                             .isEqualTo("BLOCKING");
                 });
+    }
+
+    @Test
+    void validateActivation_shouldReturnWhenBlockingConflictsAbsent() {
+        Experiment experiment = new Experiment(
+                UUID.randomUUID(), "flag-a", "CHECKOUT", List.of(), ExperimentState.APPROVED, 0L, null, null);
+        ExperimentConflictActivationPolicy policy = new ExperimentConflictActivationPolicy(experimentConflictsService);
+
+        when(experimentConflictsService.getBlockingConflicts(experiment)).thenReturn(List.of());
+
+        policy.validateActivation(experiment);
     }
 }

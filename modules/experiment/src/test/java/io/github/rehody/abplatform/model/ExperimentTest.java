@@ -83,6 +83,32 @@ class ExperimentTest {
     }
 
     @Test
+    void complete_shouldTransitionRunningToCompleted() {
+        Experiment updated = experiment(ExperimentState.RUNNING).complete();
+
+        assertThat(updated.state()).isEqualTo(ExperimentState.COMPLETED);
+    }
+
+    @Test
+    void statePredicatesAndWithers_shouldReflectExperimentState() {
+        Experiment running = experiment(ExperimentState.RUNNING);
+        Experiment completed = experiment(ExperimentState.COMPLETED);
+        Experiment archived = experiment(ExperimentState.ARCHIVED);
+
+        assertThat(running.isRunning()).isTrue();
+        assertThat(running.isApproved()).isFalse();
+        assertThat(completed.isCompleted()).isTrue();
+        assertThat(archived.state()).isEqualTo(ExperimentState.ARCHIVED);
+        assertThat(running.withVersion(7L).version()).isEqualTo(7L);
+        assertThat(running.withStartedAt(java.time.Instant.parse("2026-04-06T10:15:30Z"))
+                        .startedAt())
+                .isEqualTo(java.time.Instant.parse("2026-04-06T10:15:30Z"));
+        assertThat(running.withCompletedAt(java.time.Instant.parse("2026-04-06T11:15:30Z"))
+                        .completedAt())
+                .isEqualTo(java.time.Instant.parse("2026-04-06T11:15:30Z"));
+    }
+
+    @Test
     void transition_shouldThrowWhenCurrentStateIsInvalid() {
         assertThatThrownBy(() -> experiment(ExperimentState.DRAFT).approve())
                 .isInstanceOf(ExperimentStateTransitionException.class)

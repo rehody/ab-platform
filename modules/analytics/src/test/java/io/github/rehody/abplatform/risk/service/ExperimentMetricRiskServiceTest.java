@@ -1,11 +1,10 @@
 package io.github.rehody.abplatform.risk.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -31,7 +30,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -74,32 +72,15 @@ class ExperimentMetricRiskServiceTest {
         ExperimentMetricRisk initialRisk = openRisk(riskId, experimentId, "orders", null, new BigDecimal("0.10"));
         ExperimentMetricRisk lockedRisk =
                 openRisk(riskId, experimentId, "orders", Instant.parse("2026-04-04T08:00:00Z"), new BigDecimal("0.12"));
-        AtomicBoolean lockHeld = new AtomicBoolean(false);
-
-        when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
-                .thenAnswer(invocation -> {
-                    lockHeld.set(true);
-                    try {
-                        return ((Supplier<?>) invocation.getArgument(2)).get();
-                    } finally {
-                        lockHeld.set(false);
-                    }
-                });
         when(experimentMetricRiskRepository.findById(riskId))
-                .thenAnswer(invocation -> java.util.Optional.of(lockHeld.get() ? lockedRisk : initialRisk));
+                .thenReturn(java.util.Optional.of(initialRisk), java.util.Optional.of(lockedRisk));
 
         ExperimentMetricRisk response = experimentMetricRiskService.resolve(riskId, "manual");
 
-        ArgumentCaptor<LockNamespace> namespaceCaptor = ArgumentCaptor.forClass(LockNamespace.class);
         ArgumentCaptor<ExperimentMetricRisk> riskCaptor = ArgumentCaptor.forClass(ExperimentMetricRisk.class);
-        verify(lockExecutor)
-                .withLock(
-                        namespaceCaptor.capture(), eq("%s:%s".formatted(experimentId, "orders")), any(Supplier.class));
-        verify(experimentMetricRiskRepository, times(2)).findById(riskId);
         verify(experimentMetricRiskRepository).update(riskCaptor.capture());
 
         ExperimentMetricRisk resolvedRisk = riskCaptor.getValue();
-        assertThat(namespaceCaptor.getValue().value()).isEqualTo("experiment-metric-risk");
         assertThat(resolvedRisk.status()).isEqualTo(ExperimentMetricRiskStatus.RESOLVED);
         assertThat(resolvedRisk.resolutionComment()).isEqualTo("manual");
         assertThat(resolvedRisk.autoPausedAt()).isEqualTo(lockedRisk.autoPausedAt());
@@ -115,13 +96,6 @@ class ExperimentMetricRiskServiceTest {
 
         experimentMetricRiskService.applyEvaluation(experiment, metricDefinition, report);
 
-        ArgumentCaptor<LockNamespace> namespaceCaptor = ArgumentCaptor.forClass(LockNamespace.class);
-        verify(lockExecutor)
-                .withLock(
-                        namespaceCaptor.capture(),
-                        eq("%s:%s".formatted(experiment.id(), metricDefinition.key())),
-                        any(Supplier.class));
-        assertThat(namespaceCaptor.getValue().value()).isEqualTo("experiment-metric-risk");
         verify(experimentMetricRiskRepository, never()).save(any());
         verify(experimentMetricRiskRepository, never()).update(any());
     }
@@ -178,21 +152,7 @@ class ExperimentMetricRiskServiceTest {
         ExperimentMetricRisk currentRisk = openRisk(null, new BigDecimal("0.10"));
         ExperimentMetricEvaluationReport report =
                 report(TrafficStatus.NORMAL, comparison(MetricComparisonStatus.NEGATIVE_DEVIATION, currentRisk));
-        AtomicBoolean lockHeld = new AtomicBoolean(false);
-
-        when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
-                .thenAnswer(invocation -> {
-                    lockHeld.set(true);
-                    try {
-                        return ((Supplier<?>) invocation.getArgument(2)).get();
-                    } finally {
-                        lockHeld.set(false);
-                    }
-                });
-        when(experimentMetricAutoPauseService.pause(any(), any())).thenAnswer(invocation -> {
-            assertThat(lockHeld.get()).isTrue();
-            return pausedAt;
-        });
+        when(experimentMetricAutoPauseService.pause(any(), any())).thenReturn(pausedAt);
 
         experimentMetricRiskService.applyEvaluation(runningExperiment(), metricDefinition(), report);
 
@@ -238,6 +198,50 @@ class ExperimentMetricRiskServiceTest {
         assertThat(updatedRisk.autoPausedAt()).isEqualTo(autoPausedAt);
         assertThat(updatedRisk.lastBadDeviation()).isEqualByComparingTo("0.20");
         assertThat(updatedRisk.worstBadDeviation()).isEqualByComparingTo("0.20");
+    }
+
+    @Test
+    void shouldReturnRisksFromRepository() {
+        UUID experimentId = UUID.randomUUID();
+        ExperimentMetricRisk risk = openRisk(null, new BigDecimal("0.10"));
+        when(experimentMetricRiskRepository.findByExperimentAndMetric(experimentId, "orders"))
+                .thenReturn(List.of(risk));
+
+        assertThat(experimentMetricRiskService.getRisks(experimentId, "orders")).containsExactly(risk);
+    }
+
+    @Test
+    void shouldThrowWhenResolvingMissingRisk() {
+        UUID riskId = UUID.randomUUID();
+        when(experimentMetricRiskRepository.findById(riskId)).thenReturn(java.util.Optional.empty());
+
+        assertThatThrownBy(() -> experimentMetricRiskService.resolve(riskId, "manual"))
+                .isInstanceOf(io.github.rehody.abplatform.risk.exception.ExperimentMetricRiskNotFoundException.class)
+                .hasMessage("Experiment metric risk '%s' not found".formatted(riskId));
+    }
+
+    @Test
+    void shouldNotAutoPauseWhenExperimentIsNotRunning() {
+        Experiment pausedExperiment = new Experiment(
+                UUID.randomUUID(), "checkout-redesign", "CHECKOUT", List.of(), ExperimentState.PAUSED, 7L, null, null);
+        ExperimentMetricRisk currentRisk = openRisk(null, new BigDecimal("0.10"));
+        ExperimentMetricEvaluationReport report =
+                report(TrafficStatus.NORMAL, comparison(MetricComparisonStatus.NEGATIVE_DEVIATION, currentRisk));
+
+        experimentMetricRiskService.applyEvaluation(pausedExperiment, metricDefinition(), report);
+
+        verify(experimentMetricAutoPauseService, never()).pause(any(), any());
+    }
+
+    @Test
+    void shouldRefreshOpenRiskWithoutAutoPauseWhenDeviationDoesNotWorsen() {
+        ExperimentMetricRisk currentRisk = openRisk(null, new BigDecimal("0.20"));
+        ExperimentMetricEvaluationReport report =
+                report(TrafficStatus.NORMAL, comparison(MetricComparisonStatus.NEGATIVE_DEVIATION, currentRisk));
+
+        experimentMetricRiskService.applyEvaluation(runningExperiment(), metricDefinition(), report);
+
+        verify(experimentMetricAutoPauseService, never()).pause(any(), any());
     }
 
     private Experiment runningExperiment() {

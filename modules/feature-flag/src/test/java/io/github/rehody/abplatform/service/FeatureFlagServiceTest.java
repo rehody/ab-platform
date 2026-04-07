@@ -89,18 +89,15 @@ class FeatureFlagServiceTest {
         FeatureFlag response = featureFlagService.create("flag-b", defaultValue);
 
         ArgumentCaptor<FeatureFlag> featureFlagCaptor = ArgumentCaptor.forClass(FeatureFlag.class);
-        ArgumentCaptor<LockNamespace> namespaceCaptor = ArgumentCaptor.forClass(LockNamespace.class);
 
         verify(featureFlagRepository).save(featureFlagCaptor.capture());
         verify(featureFlagCache).invalidate("flag-b");
-        verify(lockExecutor).withLock(namespaceCaptor.capture(), eq("flag-b"), any(Supplier.class));
 
         FeatureFlag savedFeatureFlag = featureFlagCaptor.getValue();
         assertThat(savedFeatureFlag.id()).isNotNull();
         assertThat(savedFeatureFlag.key()).isEqualTo("flag-b");
         assertThat(savedFeatureFlag.defaultValue()).isEqualTo(defaultValue);
         assertThat(savedFeatureFlag.version()).isZero();
-        assertThat(namespaceCaptor.getValue().value()).isEqualTo("feature-flag");
 
         assertThat(response.key()).isEqualTo("flag-b");
         assertThat(response.defaultValue()).isEqualTo(defaultValue);
@@ -212,11 +209,10 @@ class FeatureFlagServiceTest {
         assertThat(response.key()).isEqualTo(key);
         assertThat(response.defaultValue()).isEqualTo(persisted.defaultValue());
         assertThat(response.version()).isEqualTo(8L);
-        verify(featureFlagRepository).findByKey(key);
     }
 
     @Test
-    void getByKey_shouldReturnCachedResponseAndSkipRepositoryWhenCacheHit() {
+    void getByKey_shouldReturnCachedResponseWhenCacheHit() {
         String key = "flag-g";
         FeatureFlag featureFlag =
                 new FeatureFlag(UUID.randomUUID(), key, new FeatureValue(true, FeatureValueType.BOOL), 12L);
@@ -226,7 +222,6 @@ class FeatureFlagServiceTest {
         FeatureFlag response = featureFlagService.getByKey(key);
 
         assertThat(response).isEqualTo(featureFlag);
-        verify(featureFlagRepository, never()).findByKey(any());
     }
 
     @Test

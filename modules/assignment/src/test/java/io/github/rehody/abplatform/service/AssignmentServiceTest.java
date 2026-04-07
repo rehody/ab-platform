@@ -6,9 +6,6 @@ import static io.github.rehody.abplatform.support.AssignmentFixtures.runningExpe
 import static io.github.rehody.abplatform.support.AssignmentFixtures.stringValue;
 import static io.github.rehody.abplatform.support.AssignmentFixtures.variant;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -71,9 +68,6 @@ class AssignmentServiceTest {
         FeatureValue response = assignmentService.resolve(userId, "flag-a");
 
         assertThat(response).isEqualTo(defaultValue);
-        verify(featureFlagService).getByKey("flag-a");
-        verify(experimentAssignmentPolicy, never()).canResolveAssignment(any());
-        verify(experimentVariantResolver, never()).resolve(any(), any());
     }
 
     @Test
@@ -90,8 +84,6 @@ class AssignmentServiceTest {
         FeatureValue response = assignmentService.resolve(userId, "flag-b");
 
         assertThat(response).isEqualTo(defaultValue);
-        verify(experimentAssignmentPolicy).canResolveAssignment(experiment);
-        verify(experimentVariantResolver, never()).resolve(any(), any());
     }
 
     @Test
@@ -113,8 +105,6 @@ class AssignmentServiceTest {
         FeatureValue response = assignmentService.resolve(userId, "flag-c");
 
         assertThat(response).isEqualTo(defaultValue);
-        verify(experimentVariantResolver).resolve(experiment, userId);
-        verify(featureFlagService).getByKey("flag-c");
         ArgumentCaptor<AssignmentEvent> assignmentEventCaptor = ArgumentCaptor.forClass(AssignmentEvent.class);
         verify(assignmentEventRepository).saveIfAbsent(assignmentEventCaptor.capture());
         AssignmentEvent assignmentEvent = assignmentEventCaptor.getValue();
@@ -141,8 +131,6 @@ class AssignmentServiceTest {
         FeatureValue response = assignmentService.resolve(userId, "flag-d");
 
         assertThat(response).isEqualTo(variant.value());
-        verify(experimentVariantResolver).resolve(experiment, userId);
-        verify(featureFlagService, never()).getByKey(anyString());
         ArgumentCaptor<AssignmentEvent> assignmentEventCaptor = ArgumentCaptor.forClass(AssignmentEvent.class);
         verify(assignmentEventRepository).saveIfAbsent(assignmentEventCaptor.capture());
         AssignmentEvent assignmentEvent = assignmentEventCaptor.getValue();

@@ -236,6 +236,20 @@ class ExperimentConflictsServiceTest {
                 .isEmpty();
     }
 
+    @Test
+    void getAll_shouldReturnEmptyForConflictIrrelevantExperimentAndUnmatchedRepositoryRows() {
+        Experiment completedExperiment = experiment(UUID.randomUUID(), "flag-a", "CHECKOUT", ExperimentState.COMPLETED);
+        Experiment unrelatedExperiment = experiment(UUID.randomUUID(), "flag-b", "PRICING", ExperimentState.RUNNING);
+        Experiment activeExperiment = experiment(UUID.randomUUID(), "flag-a", "CHECKOUT", ExperimentState.DRAFT);
+
+        assertThat(experimentConflictsService.getAll(completedExperiment)).isEmpty();
+
+        when(experimentConflictRepository.findAll(activeExperiment.id(), "flag-a", "CHECKOUT"))
+                .thenReturn(List.of(unrelatedExperiment));
+
+        assertThat(experimentConflictsService.getAll(activeExperiment)).isEmpty();
+    }
+
     private Experiment experiment(UUID id, String flagKey, String domainKey, ExperimentState state) {
         return new Experiment(id, flagKey, domainKey, List.of(), state, 0L, null, null);
     }

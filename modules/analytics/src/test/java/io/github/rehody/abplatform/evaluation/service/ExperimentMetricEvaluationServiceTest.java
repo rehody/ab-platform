@@ -1,9 +1,9 @@
 package io.github.rehody.abplatform.evaluation.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,6 +29,7 @@ import io.github.rehody.abplatform.report.model.CountableMetricReport;
 import io.github.rehody.abplatform.report.model.ExperimentMetricReport;
 import io.github.rehody.abplatform.report.model.ExperimentMetricReportMeta;
 import io.github.rehody.abplatform.report.model.ExperimentReportWindow;
+import io.github.rehody.abplatform.report.model.UniqueMetricReport;
 import io.github.rehody.abplatform.report.repository.AssignmentEventReportRepository;
 import io.github.rehody.abplatform.report.repository.CountableMetricEventReportRepository;
 import io.github.rehody.abplatform.report.repository.aggregate.AssignmentVariantAggregate;
@@ -147,9 +148,6 @@ class ExperimentMetricEvaluationServiceTest {
                 experimentMetricEvaluationService.getEvaluationReport(experiment.id(), metricDefinition.key());
 
         assertThat(response).isEqualTo(evaluationReport);
-        verify(assignmentEventReportRepository, never()).findParticipantCountsByVariant(any(), any());
-        verify(countableMetricEventReportRepository, never()).findMetricStatsByVariant(any(), any(), any());
-        verify(countableMetricReportAssembler, never()).assemble(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -213,6 +211,72 @@ class ExperimentMetricEvaluationServiceTest {
         verify(countableMetricReportAssembler, times(1))
                 .assemble(eq(experiment), eq(metricDefinition), any(), any(), any(), eq(reportWindow));
         verify(experimentMetricRiskService, times(2)).getRisks(experiment.id(), metricDefinition.key());
+    }
+
+    @Test
+    void shouldRejectNonCountableCachedReportWhenGettingEvaluationReport() {
+        Experiment experiment = experiment();
+        MetricDefinition metricDefinition = metricDefinition();
+        String cacheKey =
+                experimentMetricReportCacheKeyFactory.forExperimentMetric(experiment.id(), metricDefinition.key());
+        UniqueMetricReport uniqueMetricReport = new UniqueMetricReport(
+                new ExperimentMetricReportMeta(
+                        experiment.id(),
+                        experiment.flagKey(),
+                        metricDefinition.key(),
+                        MetricType.UNIQUE,
+                        experiment.state(),
+                        experiment.startedAt(),
+                        experiment.completedAt(),
+                        Instant.parse("2026-04-04T10:00:00Z"),
+                        Instant.parse("2026-04-04T11:00:00Z")),
+                220,
+                65,
+                new BigDecimal("0.2955"),
+                List.of());
+
+        when(experimentService.getById(experiment.id())).thenReturn(experiment);
+        when(experimentMetricEvaluationPolicy.getMetricDefinitionForEvaluation(experiment.id(), metricDefinition.key()))
+                .thenReturn(metricDefinition);
+        when(experimentMetricReportCache.getOrLoad(eq(cacheKey), any())).thenReturn(Optional.of(uniqueMetricReport));
+
+        assertThatThrownBy(() ->
+                        experimentMetricEvaluationService.getEvaluationReport(experiment.id(), metricDefinition.key()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Evaluation requires countable metric report");
+    }
+
+    @Test
+    void shouldBuildEvaluationAndApplyRisk() {
+        Experiment experiment = experiment();
+        MetricDefinition metricDefinition = metricDefinition();
+        ExperimentReportWindow reportWindow = new ExperimentReportWindow(
+                Instant.parse("2026-04-04T10:00:00Z"), Instant.parse("2026-04-04T11:00:00Z"));
+        CountableMetricReport countableMetricReport = countableMetricReport(experiment, metricDefinition);
+        ExperimentMetricEvaluationReport evaluationReport = evaluationReport();
+
+        when(experimentMetricEvaluationPolicy.getMetricDefinitionForEvaluation(experiment.id(), metricDefinition.key()))
+                .thenReturn(metricDefinition);
+        when(experimentReportWindowFactory.create(eq(experiment), any())).thenReturn(reportWindow);
+        when(assignmentEventReportRepository.findParticipantCountsByVariant(experiment.id(), reportWindow))
+                .thenReturn(List.of(new AssignmentVariantAggregate(
+                        experiment.variants().get(0).id(), 100)));
+        when(countableMetricEventReportRepository.findMetricStatsByVariant(
+                        experiment.id(), metricDefinition.key(), reportWindow))
+                .thenReturn(List.of(new CountableMetricVariantAggregate(
+                        experiment.variants().get(0).id(), 30, 40)));
+        when(countableMetricReportAssembler.assemble(
+                        eq(experiment), eq(metricDefinition), any(), any(), any(), eq(reportWindow)))
+                .thenReturn(countableMetricReport);
+        when(experimentMetricRiskService.getRisks(experiment.id(), metricDefinition.key()))
+                .thenReturn(List.of());
+        when(experimentMetricEvaluationAssembler.assemble(
+                        eq(experiment), eq(metricDefinition), any(), any(), any(), any(), any()))
+                .thenReturn(evaluationReport);
+
+        experimentMetricEvaluationService.evaluateAndApplyRisk(experiment, metricDefinition.key());
+
+        verify(experimentMetricRiskService).applyEvaluation(experiment, metricDefinition, evaluationReport);
     }
 
     private Experiment experiment() {

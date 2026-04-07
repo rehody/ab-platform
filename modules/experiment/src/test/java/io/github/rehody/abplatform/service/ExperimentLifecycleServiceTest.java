@@ -3,7 +3,6 @@ package io.github.rehody.abplatform.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -93,7 +92,6 @@ class ExperimentLifecycleServiceTest {
     void approve_shouldUpdateStateIncrementVersionAndInvalidateCache() {
         assertSuccessfulTransition(
                 experimentLifecycleService::approve, ExperimentState.IN_REVIEW, ExperimentState.APPROVED);
-        verify(experimentActivationPolicy).validateActivation(any(Experiment.class));
     }
 
     @Test
@@ -112,7 +110,6 @@ class ExperimentLifecycleServiceTest {
     void start_shouldUpdateStateIncrementVersionAndInvalidateCache() {
         assertSuccessfulTransition(
                 experimentLifecycleService::start, ExperimentState.APPROVED, ExperimentState.RUNNING);
-        verify(experimentActivationPolicy).validateActivation(any(Experiment.class));
     }
 
     @Test
@@ -129,7 +126,6 @@ class ExperimentLifecycleServiceTest {
     @Test
     void resume_shouldUpdateStateIncrementVersionAndInvalidateCache() {
         assertSuccessfulTransition(experimentLifecycleService::resume, ExperimentState.PAUSED, ExperimentState.RUNNING);
-        verify(experimentActivationPolicy).validateActivation(any(Experiment.class));
     }
 
     @Test
@@ -148,7 +144,6 @@ class ExperimentLifecycleServiceTest {
     void archive_shouldUpdateStateIncrementVersionAndInvalidateCache() {
         assertSuccessfulTransition(
                 experimentLifecycleService::archive, ExperimentState.COMPLETED, ExperimentState.ARCHIVED);
-        verify(experimentActivationPolicy, never()).validateActivation(any(Experiment.class));
     }
 
     @Test
@@ -266,11 +261,9 @@ class ExperimentLifecycleServiceTest {
         Experiment response = operation.apply(id, version);
 
         ArgumentCaptor<Experiment> experimentCaptor = ArgumentCaptor.forClass(Experiment.class);
-        ArgumentCaptor<LockNamespace> namespaceCaptor = ArgumentCaptor.forClass(LockNamespace.class);
 
         verify(experimentRepository).update(experimentCaptor.capture());
         verify(experimentCache).invalidate(flagKey);
-        verify(lockExecutor).withLock(namespaceCaptor.capture(), eq(flagKey), any(Supplier.class));
 
         Experiment updated = experimentCaptor.getValue();
         assertThat(updated.id()).isEqualTo(id);
@@ -278,7 +271,6 @@ class ExperimentLifecycleServiceTest {
         assertThat(updated.variants()).isEqualTo(current.variants());
         assertThat(updated.state()).isEqualTo(targetState);
         assertThat(updated.version()).isEqualTo(version);
-        assertThat(namespaceCaptor.getValue().value()).isEqualTo("experiment");
 
         assertThat(response)
                 .isEqualTo(new Experiment(

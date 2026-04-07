@@ -17,16 +17,15 @@ public record CachedExperimentMetricReport(
     }
 
     public static CachedExperimentMetricReport from(ExperimentMetricReport experimentMetricReport) {
+        if (experimentMetricReport == null) {
+            throw new IllegalArgumentException("Experiment metric report must not be null");
+        }
+
         if (experimentMetricReport instanceof CountableMetricReport countableMetricReport) {
             return of(CachedCountableMetricReport.from(countableMetricReport));
         }
 
-        if (experimentMetricReport instanceof UniqueMetricReport uniqueMetricReport) {
-            return of(CachedUniqueMetricReport.from(uniqueMetricReport));
-        }
-
-        throw new IllegalArgumentException("Unsupported experiment metric report type: %s"
-                .formatted(experimentMetricReport.getClass().getName()));
+        return of(CachedUniqueMetricReport.from((UniqueMetricReport) experimentMetricReport));
     }
 
     public static CachedExperimentMetricReport of(CachedCountableMetricReport cachedCountableMetricReport) {

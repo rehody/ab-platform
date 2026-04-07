@@ -115,4 +115,17 @@ class VariantAllocationSnapshotFactoryTest {
                 .hasMessage("Bucket ranges do not cover pool size for experiment %s. Covered: 9999"
                         .formatted(experiment.id()));
     }
+
+    @Test
+    void create_shouldThrowWhenAllocatorReturnsNoRanges() {
+        ExperimentVariant control = variant(0, "control", "blue", 1);
+        Experiment experiment = runningExperiment("flag-f", "CHECKOUT", List.of(control), 5L);
+        when(assignmentVariantsPreparer.prepare(experiment)).thenReturn(List.of(control));
+        when(variantBucketAllocator.allocate(experiment.id(), List.of(control))).thenReturn(List.of());
+
+        assertThatThrownBy(() -> variantAllocationSnapshotFactory.create(experiment))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Bucket ranges do not cover pool size for experiment %s. Covered: 0"
+                        .formatted(experiment.id()));
+    }
 }

@@ -1,7 +1,8 @@
 package io.github.rehody.abplatform.policy;
 
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.ExperimentVariant;
@@ -22,6 +23,17 @@ class ExperimentVariantPolicyTest {
         FeatureValue defaultValue = boolValue(true);
         List<ExperimentVariant> variants =
                 List.of(controlVariant("control", defaultValue), regularVariant("variant-a", boolValue(false)));
+
+        assertThatCode(() -> policy.validateVariantConfiguration(experimentId, variants, defaultValue))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void validateVariantConfiguration_shouldAcceptValidStringConfiguration() {
+        UUID experimentId = UUID.randomUUID();
+        FeatureValue defaultValue = stringValue("blue");
+        List<ExperimentVariant> variants =
+                List.of(controlVariant("control", defaultValue), regularVariant("variant-a", stringValue("red")));
 
         assertThatCode(() -> policy.validateVariantConfiguration(experimentId, variants, defaultValue))
                 .doesNotThrowAnyException();
@@ -102,6 +114,44 @@ class ExperimentVariantPolicyTest {
     }
 
     @Test
+    void validateVariantConfiguration_shouldRejectControlValueTypeMismatch() {
+        UUID experimentId = UUID.randomUUID();
+        FeatureValue defaultValue = boolValue(true);
+        List<ExperimentVariant> variants =
+                List.of(controlVariant("control", stringValue("true")), regularVariant("variant-a", stringValue("on")));
+
+        assertThatThrownBy(() -> policy.validateVariantConfiguration(experimentId, variants, defaultValue))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("CONTROL variant value must match default flag value for experiment %s"
+                        .formatted(experimentId));
+    }
+
+    @Test
+    void validateVariantConfiguration_shouldRejectNullControlValue() {
+        UUID experimentId = UUID.randomUUID();
+        FeatureValue defaultValue = boolValue(true);
+        List<ExperimentVariant> variants =
+                List.of(controlVariant("control", null), regularVariant("variant-a", boolValue(false)));
+
+        assertThatThrownBy(() -> policy.validateVariantConfiguration(experimentId, variants, defaultValue))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("CONTROL variant value must match default flag value for experiment %s"
+                        .formatted(experimentId));
+    }
+
+    @Test
+    void validateVariantConfiguration_shouldRejectNullDefaultValue() {
+        UUID experimentId = UUID.randomUUID();
+        List<ExperimentVariant> variants =
+                List.of(controlVariant("control", boolValue(true)), regularVariant("variant-a", boolValue(false)));
+
+        assertThatThrownBy(() -> policy.validateVariantConfiguration(experimentId, variants, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("CONTROL variant value must match default flag value for experiment %s"
+                        .formatted(experimentId));
+    }
+
+    @Test
     void validateVariantConfiguration_shouldRejectDuplicateVariantValues() {
         UUID experimentId = UUID.randomUUID();
         FeatureValue defaultValue = boolValue(true);
@@ -109,6 +159,35 @@ class ExperimentVariantPolicyTest {
                 controlVariant("control", defaultValue),
                 regularVariant("variant-a", boolValue(false)),
                 regularVariant("variant-b", boolValue(false)));
+
+        assertThatThrownBy(() -> policy.validateVariantConfiguration(experimentId, variants, defaultValue))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Duplicate variant value for experiment %s: BOOL:false".formatted(experimentId));
+    }
+
+    @Test
+    void validateVariantConfiguration_shouldRejectDuplicateNormalizedNumberValues() {
+        UUID experimentId = UUID.randomUUID();
+        FeatureValue defaultValue = numberValue("0");
+        List<ExperimentVariant> variants = List.of(
+                controlVariant("control", defaultValue),
+                regularVariant("variant-a", numberValue("1.0")),
+                regularVariant("variant-b", numberValue("1")));
+
+        assertThatThrownBy(() -> policy.validateVariantConfiguration(experimentId, variants, defaultValue))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Duplicate variant value for experiment %s: NUMBER:1".formatted(experimentId));
+    }
+
+    @Test
+    void validateVariantConfiguration_shouldReportRepeatedDuplicateValueConsistently() {
+        UUID experimentId = UUID.randomUUID();
+        FeatureValue defaultValue = boolValue(true);
+        List<ExperimentVariant> variants = List.of(
+                controlVariant("control", defaultValue),
+                regularVariant("variant-a", boolValue(false)),
+                regularVariant("variant-b", boolValue(false)),
+                regularVariant("variant-c", boolValue(false)));
 
         assertThatThrownBy(() -> policy.validateVariantConfiguration(experimentId, variants, defaultValue))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -135,8 +214,44 @@ class ExperimentVariantPolicyTest {
                 .hasMessage("Running experiment %s must contain at least one REGULAR variant".formatted(experimentId));
     }
 
+    @Test
+    void validateResolvableVariantConfiguration_shouldRejectMissingControlVariant() {
+        UUID experimentId = UUID.randomUUID();
+        List<ExperimentVariant> variants = List.of(regularVariant("variant-a", boolValue(false)));
+
+        assertThatThrownBy(() -> policy.validateResolvableVariantConfiguration(experimentId, variants))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Running experiment %s must contain exactly one CONTROL variant".formatted(experimentId));
+    }
+
+    @Test
+    void validateVariantConfiguration_shouldRejectUnexpectedRegularVariantType() {
+        UUID experimentId = UUID.randomUUID();
+        FeatureValue defaultValue = boolValue(true);
+        ExperimentVariant brokenRegular = mock(ExperimentVariant.class);
+        when(brokenRegular.isControl()).thenReturn(false);
+        when(brokenRegular.isRegular()).thenReturn(false);
+        when(brokenRegular.key()).thenReturn("variant-a");
+        when(brokenRegular.type()).thenReturn(ExperimentVariantType.CONTROL);
+        when(brokenRegular.value()).thenReturn(boolValue(false));
+
+        List<ExperimentVariant> variants = List.of(controlVariant("control", defaultValue), brokenRegular);
+
+        assertThatThrownBy(() -> policy.validateVariantConfiguration(experimentId, variants, defaultValue))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Unexpected variant type CONTROL for experiment %s".formatted(experimentId));
+    }
+
     private FeatureValue boolValue(boolean value) {
         return new FeatureValue(value, FeatureValueType.BOOL);
+    }
+
+    private FeatureValue stringValue(String value) {
+        return new FeatureValue(value, FeatureValueType.STRING);
+    }
+
+    private FeatureValue numberValue(String value) {
+        return new FeatureValue(value, FeatureValueType.NUMBER);
     }
 
     private ExperimentVariant controlVariant(String key, FeatureValue value) {

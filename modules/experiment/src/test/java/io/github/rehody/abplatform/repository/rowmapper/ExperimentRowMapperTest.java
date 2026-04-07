@@ -49,4 +49,22 @@ class ExperimentRowMapperTest {
         assertThat(experiment.startedAt()).isEqualTo(startedAt);
         assertThat(experiment.completedAt()).isEqualTo(completedAt);
     }
+
+    @Test
+    void mapRow_shouldReturnNullInstantsWhenTimestampsMissing() throws SQLException {
+        UUID id = UUID.randomUUID();
+
+        when(resultSet.getObject("id", UUID.class)).thenReturn(id);
+        when(resultSet.getString("flag_key")).thenReturn("checkout-redesign");
+        when(resultSet.getString("domain_key")).thenReturn("CHECKOUT");
+        when(resultSet.getString("state")).thenReturn("DRAFT");
+        when(resultSet.getLong("version")).thenReturn(1L);
+        when(resultSet.getTimestamp("started_at")).thenReturn(null);
+        when(resultSet.getTimestamp("completed_at")).thenReturn(null);
+
+        Experiment experiment = rowMapper.mapRow(resultSet, 0);
+
+        assertThat(experiment.startedAt()).isNull();
+        assertThat(experiment.completedAt()).isNull();
+    }
 }

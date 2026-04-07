@@ -31,6 +31,14 @@ class FeatureValueTest {
     }
 
     @Test
+    void hasMatchingType_shouldReturnTrueForBoolAndNumberValues() {
+        assertThat(new FeatureValue(true, FeatureValueType.BOOL).hasMatchingType())
+                .isTrue();
+        assertThat(new FeatureValue(42, FeatureValueType.NUMBER).hasMatchingType())
+                .isTrue();
+    }
+
+    @Test
     void hasMatchingType_shouldReturnFalseForNullTypeOrValue() {
         assertThat(new FeatureValue("variant-a", null).hasMatchingType()).isFalse();
         assertThat(new FeatureValue(null, FeatureValueType.STRING).hasMatchingType())

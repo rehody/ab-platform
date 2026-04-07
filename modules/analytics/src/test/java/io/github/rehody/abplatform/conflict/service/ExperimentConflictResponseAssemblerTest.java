@@ -32,4 +32,27 @@ class ExperimentConflictResponseAssemblerTest {
         assertThat(response.conflicts().getFirst().state()).isEqualTo(ExperimentState.DRAFT);
         assertThat(response.conflicts().getFirst().severity()).isEqualTo(ConflictSeverity.WARNING);
     }
+
+    @Test
+    void assemble_shouldReturnBlockingStatusWhenBlockingConflictExists() {
+        ExperimentConflict conflict = new ExperimentConflict(
+                UUID.randomUUID(),
+                ExperimentState.RUNNING,
+                "flag-a",
+                "CHECKOUT",
+                List.of(ExperimentConflictType.SAME_FLAG),
+                ConflictSeverity.BLOCKING);
+
+        ExperimentConflictListResponse response = assembler.assemble(List.of(conflict));
+
+        assertThat(response.status()).isEqualTo(ConflictSeverity.BLOCKING);
+    }
+
+    @Test
+    void assemble_shouldReturnNoneStatusWhenConflictsAreEmpty() {
+        ExperimentConflictListResponse response = assembler.assemble(List.of());
+
+        assertThat(response.status()).isEqualTo(ConflictSeverity.NONE);
+        assertThat(response.conflicts()).isEmpty();
+    }
 }
