@@ -12,7 +12,7 @@ public class ExperimentMetricRiskPolicy {
         return badDeviation.compareTo(currentRisk.worstBadDeviation()) > 0;
     }
 
-    public BigDecimal toBadDeviation(MetricDirection metricDirection, BigDecimal relativeDeviation) {
+    public BigDecimal mapToBadDeviation(MetricDirection metricDirection, BigDecimal relativeDeviation) {
         if (metricDirection == MetricDirection.MORE_IS_BETTER) {
             return relativeDeviation.negate();
         }

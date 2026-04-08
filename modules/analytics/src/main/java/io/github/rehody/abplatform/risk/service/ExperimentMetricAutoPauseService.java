@@ -5,15 +5,13 @@ import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
 import io.github.rehody.abplatform.service.ExperimentLifecycleService;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class ExperimentMetricAutoPauseService {
-
-    private static final Logger log = LoggerFactory.getLogger(ExperimentMetricAutoPauseService.class);
 
     private final ExperimentLifecycleService experimentLifecycleService;
 

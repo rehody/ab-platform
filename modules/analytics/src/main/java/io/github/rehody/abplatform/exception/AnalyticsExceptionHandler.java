@@ -84,7 +84,7 @@ public class AnalyticsExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
         List<Violation> violations = ex.getBindingResult().getFieldErrors().stream()
-                .map(this::toViolation)
+                .map(this::mapToViolation)
                 .toList();
 
         return buildResponse(
@@ -131,7 +131,7 @@ public class AnalyticsExceptionHandler {
                 List.of());
     }
 
-    private Violation toViolation(FieldError error) {
+    private Violation mapToViolation(FieldError error) {
         return new Violation(error.getField(), Objects.toString(error.getDefaultMessage(), error.getCode()));
     }
 

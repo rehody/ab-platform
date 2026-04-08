@@ -75,7 +75,7 @@ public class ExperimentExceptionHandler {
                 ErrorCode.CONFLICT,
                 ex.getMessage(),
                 request.getRequestURI(),
-                toBlockingConflictViolations(ex.conflicts()));
+                mapToBlockingConflictViolations(ex.conflicts()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -89,7 +89,7 @@ public class ExperimentExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
         List<Violation> violations = ex.getBindingResult().getFieldErrors().stream()
-                .map(this::toViolation)
+                .map(this::mapToViolation)
                 .toList();
 
         return buildResponse(
@@ -136,11 +136,11 @@ public class ExperimentExceptionHandler {
                 List.of());
     }
 
-    private Violation toViolation(FieldError error) {
+    private Violation mapToViolation(FieldError error) {
         return new Violation(error.getField(), Objects.toString(error.getDefaultMessage(), error.getCode()));
     }
 
-    private List<Violation> toBlockingConflictViolations(List<ExperimentBlockingConflictDetails> conflicts) {
+    private List<Violation> mapToBlockingConflictViolations(List<ExperimentBlockingConflictDetails> conflicts) {
         List<Violation> violations = new ArrayList<>();
 
         for (int conflictIndex = 0; conflictIndex < conflicts.size(); conflictIndex++) {

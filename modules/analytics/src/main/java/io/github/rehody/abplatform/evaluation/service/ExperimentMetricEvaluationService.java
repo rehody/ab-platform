@@ -59,7 +59,7 @@ public class ExperimentMetricEvaluationService {
                 .getOrLoad(
                         cacheKey,
                         () -> Optional.of(buildCountableMetricReport(experiment, metricDefinition, Instant.now())))
-                .map(this::toCountableMetricReport)
+                .map(this::mapToCountableMetricReport)
                 .orElseThrow(() -> new IllegalStateException("Experiment metric report cache loader returned empty"));
 
         return buildEvaluationReport(experiment, metricDefinition, countableMetricReport);
@@ -132,7 +132,7 @@ public class ExperimentMetricEvaluationService {
         return experimentMetricReportCacheKeyFactory.forExperimentMetric(experimentId, metricKey);
     }
 
-    private CountableMetricReport toCountableMetricReport(ExperimentMetricReport experimentMetricReport) {
+    private CountableMetricReport mapToCountableMetricReport(ExperimentMetricReport experimentMetricReport) {
         if (experimentMetricReport instanceof CountableMetricReport countableMetricReport) {
             return countableMetricReport;
         }

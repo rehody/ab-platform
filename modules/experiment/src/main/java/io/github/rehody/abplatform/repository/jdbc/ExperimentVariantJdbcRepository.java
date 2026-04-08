@@ -123,9 +123,9 @@ public class ExperimentVariantJdbcRepository {
             return;
         }
 
-        SqlParameterSource[] batchParams = toVariantBatchParams(experimentId, variants);
+        SqlParameterSource[] batchParams = mapToVariantBatchParams(experimentId, variants);
         int[] affectedRows = namedParameterJdbcTemplate.batchUpdate(INSERT_VARIANT_SQL, batchParams);
-        assertBatchSingleRows(affectedRows, "inserted", experimentId, toVariantIds(variants));
+        assertBatchSingleRows(affectedRows, "inserted", experimentId, mapToVariantIds(variants));
     }
 
     public void batchUpdate(UUID experimentId, List<ExperimentVariant> variants) {
@@ -133,9 +133,9 @@ public class ExperimentVariantJdbcRepository {
             return;
         }
 
-        SqlParameterSource[] batchParams = toVariantBatchParams(experimentId, variants);
+        SqlParameterSource[] batchParams = mapToVariantBatchParams(experimentId, variants);
         int[] affectedRows = namedParameterJdbcTemplate.batchUpdate(UPDATE_VARIANT_SQL, batchParams);
-        assertBatchSingleRows(affectedRows, "updated", experimentId, toVariantIds(variants));
+        assertBatchSingleRows(affectedRows, "updated", experimentId, mapToVariantIds(variants));
     }
 
     public void batchDelete(UUID experimentId, List<UUID> variantIds) {
@@ -161,7 +161,7 @@ public class ExperimentVariantJdbcRepository {
         }
     }
 
-    private SqlParameterSource[] toVariantBatchParams(UUID experimentId, List<ExperimentVariant> variants) {
+    private SqlParameterSource[] mapToVariantBatchParams(UUID experimentId, List<ExperimentVariant> variants) {
         return variants.stream()
                 .map(variant -> new MapSqlParameterSource()
                         .addValue("id", variant.id())
@@ -175,7 +175,7 @@ public class ExperimentVariantJdbcRepository {
                 .toArray(SqlParameterSource[]::new);
     }
 
-    private List<UUID> toVariantIds(List<ExperimentVariant> variants) {
+    private List<UUID> mapToVariantIds(List<ExperimentVariant> variants) {
         return variants.stream().map(ExperimentVariant::id).toList();
     }
 

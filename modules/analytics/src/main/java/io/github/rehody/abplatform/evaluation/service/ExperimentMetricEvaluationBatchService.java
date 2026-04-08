@@ -5,15 +5,13 @@ import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.service.ExperimentService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class ExperimentMetricEvaluationBatchService {
-
-    private static final Logger log = LoggerFactory.getLogger(ExperimentMetricEvaluationBatchService.class);
 
     private final ExperimentService experimentService;
     private final ExperimentMetricBindingService experimentMetricBindingService;

@@ -32,7 +32,7 @@ public class UniqueMetricReportAssembler {
             ExperimentReportWindow reportWindow) {
 
         List<UniqueVariantSummary> variants = orderedVariants.stream()
-                .map(variant -> toVariantSummary(variant, participantsByVariant, metricAggregatesByVariant))
+                .map(variant -> mapToVariantSummary(variant, participantsByVariant, metricAggregatesByVariant))
                 .toList();
 
         int totalParticipants =
@@ -50,7 +50,7 @@ public class UniqueMetricReportAssembler {
                 variants);
     }
 
-    private UniqueVariantSummary toVariantSummary(
+    private UniqueVariantSummary mapToVariantSummary(
             ExperimentVariant variant,
             Map<UUID, Integer> participantsByVariant,
             Map<UUID, UniqueMetricVariantAggregate> metricAggregatesByVariant) {

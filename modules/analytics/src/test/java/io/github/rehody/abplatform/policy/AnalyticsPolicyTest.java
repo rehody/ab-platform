@@ -132,9 +132,9 @@ class AnalyticsPolicyTest {
                 new BigDecimal("0.20"),
                 null);
 
-        assertThat(policy.toBadDeviation(MetricDirection.MORE_IS_BETTER, new BigDecimal("-0.15")))
+        assertThat(policy.mapToBadDeviation(MetricDirection.MORE_IS_BETTER, new BigDecimal("-0.15")))
                 .isEqualByComparingTo("0.15");
-        assertThat(policy.toBadDeviation(MetricDirection.LESS_IS_BETTER, new BigDecimal("0.15")))
+        assertThat(policy.mapToBadDeviation(MetricDirection.LESS_IS_BETTER, new BigDecimal("0.15")))
                 .isEqualByComparingTo("0.15");
         assertThat(policy.isWorsening(risk, new BigDecimal("0.25"))).isTrue();
         assertThat(policy.isWorsening(risk, new BigDecimal("0.20"))).isFalse();

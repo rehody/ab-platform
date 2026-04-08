@@ -73,7 +73,7 @@ public class ExperimentMetricRiskService {
                 continue;
             }
 
-            BigDecimal badDeviation = experimentMetricRiskPolicy.toBadDeviation(
+            BigDecimal badDeviation = experimentMetricRiskPolicy.mapToBadDeviation(
                     metricDefinition.direction(), comparison.relativeDeviation());
 
             if (currentRisk == null) {

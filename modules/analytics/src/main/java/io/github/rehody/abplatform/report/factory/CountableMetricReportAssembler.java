@@ -32,7 +32,7 @@ public class CountableMetricReportAssembler {
             ExperimentReportWindow reportWindow) {
 
         List<CountableVariantSummary> variants = orderedVariants.stream()
-                .map(variant -> toVariantSummary(variant, participantsByVariant, metricAggregatesByVariant))
+                .map(variant -> mapToVariantSummary(variant, participantsByVariant, metricAggregatesByVariant))
                 .toList();
 
         int totalParticipants = variants.stream()
@@ -57,7 +57,7 @@ public class CountableMetricReportAssembler {
                 variants);
     }
 
-    private CountableVariantSummary toVariantSummary(
+    private CountableVariantSummary mapToVariantSummary(
             ExperimentVariant variant,
             Map<UUID, Integer> participantsByVariant,
             Map<UUID, CountableMetricVariantAggregate> metricAggregatesByVariant) {

@@ -158,15 +158,15 @@ public class ExperimentMetricRiskRepository {
                 rs.getObject("variant_id", UUID.class),
                 ExperimentMetricRiskStatus.valueOf(rs.getString("status")),
                 rs.getTimestamp("opened_at").toInstant(),
-                toInstant(rs, "resolved_at"),
+                mapToInstant(rs, "resolved_at"),
                 rs.getString("resolution_comment"),
                 rs.getTimestamp("last_evaluated_at").toInstant(),
                 rs.getObject("last_bad_deviation", BigDecimal.class),
                 rs.getObject("worst_bad_deviation", BigDecimal.class),
-                toInstant(rs, "auto_paused_at"));
+                mapToInstant(rs, "auto_paused_at"));
     }
 
-    private Instant toInstant(ResultSet rs, String column) throws SQLException {
+    private Instant mapToInstant(ResultSet rs, String column) throws SQLException {
         Timestamp timestamp = rs.getTimestamp(column);
         if (timestamp == null) {
             return null;

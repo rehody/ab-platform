@@ -45,7 +45,7 @@ public class ExperimentMetricEvaluationAssembler {
             ExperimentReportWindow reportWindow) {
 
         List<VariantMetricAggregate> variants = orderedVariants.stream()
-                .map(variant -> toVariantMetricAggregate(variant, participantsByVariant, metricAggregatesByVariant))
+                .map(variant -> mapToVariantMetricAggregate(variant, participantsByVariant, metricAggregatesByVariant))
                 .toList();
         Map<UUID, VariantMetricAggregate> aggregatesByVariantId = mapAggregatesByVariantId(variants);
         TrafficEvaluation traffic = buildTrafficEvaluation(orderedVariants, aggregatesByVariantId);
@@ -60,7 +60,7 @@ public class ExperimentMetricEvaluationAssembler {
                 comparisons);
     }
 
-    private VariantMetricAggregate toVariantMetricAggregate(
+    private VariantMetricAggregate mapToVariantMetricAggregate(
             ExperimentVariant variant,
             Map<UUID, Integer> participantsByVariant,
             Map<UUID, CountableMetricVariantAggregate> metricAggregatesByVariant) {
@@ -91,7 +91,8 @@ public class ExperimentMetricEvaluationAssembler {
                 orderedVariants.stream().map(ExperimentVariant::weight).reduce(BigDecimal.ZERO, BigDecimal::add);
 
         List<VariantTrafficShare> trafficShares = orderedVariants.stream()
-                .map(variant -> toVariantTrafficShare(variant, aggregatesByVariantId, totalParticipants, totalWeight))
+                .map(variant ->
+                        mapToVariantTrafficShare(variant, aggregatesByVariantId, totalParticipants, totalWeight))
                 .toList();
 
         TrafficStatus trafficStatus = TrafficStatus.NORMAL;
@@ -122,12 +123,12 @@ public class ExperimentMetricEvaluationAssembler {
             Map<UUID, ExperimentMetricRisk> risksByVariant) {
         return orderedVariants.stream()
                 .filter(ExperimentVariant::isRegular)
-                .map(variant -> toVariantComparison(
+                .map(variant -> mapToVariantComparison(
                         variant, aggregatesByVariantId, controlAggregate, metricDefinition, risksByVariant))
                 .toList();
     }
 
-    private VariantTrafficShare toVariantTrafficShare(
+    private VariantTrafficShare mapToVariantTrafficShare(
             ExperimentVariant variant,
             Map<UUID, VariantMetricAggregate> aggregatesByVariantId,
             int totalParticipants,
@@ -149,7 +150,7 @@ public class ExperimentMetricEvaluationAssembler {
                 shareDelta);
     }
 
-    private VariantComparison toVariantComparison(
+    private VariantComparison mapToVariantComparison(
             ExperimentVariant variant,
             Map<UUID, VariantMetricAggregate> aggregatesByVariantId,
             VariantMetricAggregate controlAggregate,

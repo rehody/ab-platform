@@ -438,10 +438,10 @@ class ExperimentMetricRiskRepositoryTest {
         verify(statementSpec, times(2)).param("status", "OPEN");
         verify(statementSpec, times(2)).param("resolutionComment", "manual");
 
-        Method toInstant =
-                ExperimentMetricRiskRepository.class.getDeclaredMethod("toInstant", ResultSet.class, String.class);
-        toInstant.setAccessible(true);
-        assertThat(toInstant.invoke(experimentMetricRiskRepository, resultSet, "resolved_at"))
+        Method mapToInstant =
+                ExperimentMetricRiskRepository.class.getDeclaredMethod("mapToInstant", ResultSet.class, String.class);
+        mapToInstant.setAccessible(true);
+        assertThat(mapToInstant.invoke(experimentMetricRiskRepository, resultSet, "resolved_at"))
                 .isNull();
     }
 }
