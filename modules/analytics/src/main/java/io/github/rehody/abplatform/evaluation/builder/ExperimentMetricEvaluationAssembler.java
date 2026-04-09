@@ -156,14 +156,7 @@ public class ExperimentMetricEvaluationAssembler {
     }
 
     private BigDecimal expectedShare(Experiment experiment, ExperimentVariant variant, BigDecimal totalRegularWeight) {
-        BigDecimal expectedWeight = BigDecimal.valueOf(experiment.rolloutPlan().controlPercentage());
-
-        if (variant.isRegular()) {
-            expectedWeight = variant.weight()
-                    .multiply(BigDecimal.valueOf(experiment.rolloutPlan().regularRolloutPercentage()))
-                    .divide(totalRegularWeight, RATIO_SCALE, RoundingMode.HALF_UP);
-        }
-
+        BigDecimal expectedWeight = experiment.rolloutPlan().assignmentWeight(variant, totalRegularWeight, RATIO_SCALE);
         return divide(expectedWeight, BigDecimal.valueOf(100));
     }
 

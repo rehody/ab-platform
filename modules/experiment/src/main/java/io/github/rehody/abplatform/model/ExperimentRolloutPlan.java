@@ -1,5 +1,7 @@
 package io.github.rehody.abplatform.model;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 public record ExperimentRolloutPlan(
@@ -30,6 +32,18 @@ public record ExperimentRolloutPlan(
         return TOTAL_PERCENTAGE - regularRolloutPercentage;
     }
 
+    public BigDecimal assignmentWeight(ExperimentVariant variant, BigDecimal totalRegularWeight, int scale) {
+        if (variant.isControl()) {
+            return BigDecimal.valueOf(controlPercentage());
+        }
+
+        validateTotalRegularWeight(totalRegularWeight);
+
+        return variant.weight()
+                .multiply(BigDecimal.valueOf(regularRolloutPercentage))
+                .divide(totalRegularWeight, scale, RoundingMode.HALF_UP);
+    }
+
     private static List<Integer> validateSteps(List<Integer> steps) {
         if (steps.isEmpty()) {
             throw new IllegalArgumentException("Regular rollout steps must not be empty");
@@ -52,6 +66,12 @@ public record ExperimentRolloutPlan(
                 throw new IllegalArgumentException("Regular rollout steps must be strictly increasing");
             }
             prev = curr;
+        }
+    }
+
+    private void validateTotalRegularWeight(BigDecimal totalRegularWeight) {
+        if (totalRegularWeight == null || totalRegularWeight.signum() <= 0) {
+            throw new IllegalStateException("Total REGULAR weight must be positive for rollout calculation");
         }
     }
 }

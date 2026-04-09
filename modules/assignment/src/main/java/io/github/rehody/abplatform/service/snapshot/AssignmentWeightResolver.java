@@ -3,7 +3,6 @@ package io.github.rehody.abplatform.service.snapshot;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,34 +26,27 @@ public class AssignmentWeightResolver {
                 .map(ExperimentVariant::weight)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal regularPercentage =
-                BigDecimal.valueOf(experiment.rolloutPlan().regularRolloutPercentage());
-
-        BigDecimal controlPercentage =
-                BigDecimal.valueOf(experiment.rolloutPlan().controlPercentage());
+        validateRegularWeights(experiment.id(), variants, totalRegularWeight);
 
         return variants.stream()
                 .collect(Collectors.toMap(
                         ExperimentVariant::id,
-                        variant -> resolveWeight(variant, totalRegularWeight, regularPercentage, controlPercentage),
+                        variant -> experiment.rolloutPlan().assignmentWeight(variant, totalRegularWeight, WEIGHT_SCALE),
                         (left, _) -> left,
                         LinkedHashMap::new));
     }
 
-    private BigDecimal resolveWeight(
-            ExperimentVariant variant,
-            BigDecimal totalRegularWeight,
-            BigDecimal regularPercentage,
-            BigDecimal controlPercentage) {
-
-        if (variant.isControl()) {
-            return controlPercentage;
+    private void validateRegularWeights(
+            UUID experimentId, List<ExperimentVariant> variants, BigDecimal totalRegularWeight) {
+        boolean hasRegularVariant = variants.stream().anyMatch(ExperimentVariant::isRegular);
+        if (!hasRegularVariant) {
+            throw new IllegalStateException(
+                    "Experiment %s must have at least one REGULAR variant for rollout".formatted(experimentId));
         }
-        return scaleWeight(variant.weight(), totalRegularWeight, regularPercentage);
-    }
 
-    private BigDecimal scaleWeight(
-            BigDecimal regularWeight, BigDecimal totalRegularWeight, BigDecimal regularPercentage) {
-        return regularWeight.multiply(regularPercentage).divide(totalRegularWeight, WEIGHT_SCALE, RoundingMode.HALF_UP);
+        if (totalRegularWeight.signum() <= 0) {
+            throw new IllegalStateException(
+                    "Experiment %s must have positive total REGULAR weight for rollout".formatted(experimentId));
+        }
     }
 }
