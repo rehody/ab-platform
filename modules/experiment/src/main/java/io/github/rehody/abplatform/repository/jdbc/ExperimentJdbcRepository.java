@@ -15,14 +15,39 @@ import org.springframework.stereotype.Repository;
 public class ExperimentJdbcRepository {
 
     private static final String INSERT_EXPERIMENT_SQL = """
-        INSERT INTO experiments (id, flag_key, domain_key, state, version, started_at, completed_at)
-        VALUES (:id, :flagKey, :domainKey, :state, :version, :startedAt, :completedAt)
+        INSERT INTO experiments (
+            id,
+            flag_key,
+            domain_key,
+            regular_rollout_percentage,
+            is_in_rollback_state,
+            repeated_negative_evaluation_after_rollback,
+            state,
+            version,
+            started_at,
+            completed_at
+        )
+        VALUES (
+            :id,
+            :flagKey,
+            :domainKey,
+            :regularRolloutPercentage,
+            :isInRollbackState,
+            :repeatedNegativeEvaluationAfterRollback,
+            :state,
+            :version,
+            :startedAt,
+            :completedAt
+        )
         """;
 
     private static final String UPDATE_EXPERIMENT_SQL = """
         UPDATE experiments
         SET flag_key = :flagKey,
             domain_key = :domainKey,
+            regular_rollout_percentage = :regularRolloutPercentage,
+            is_in_rollback_state = :isInRollbackState,
+            repeated_negative_evaluation_after_rollback = :repeatedNegativeEvaluationAfterRollback,
             state = :state,
             started_at = :startedAt,
             completed_at = :completedAt,
@@ -52,19 +77,46 @@ public class ExperimentJdbcRepository {
         """;
 
     private static final String SELECT_EXPERIMENT_BY_ID_SQL = """
-        SELECT id, flag_key, domain_key, state, version, started_at, completed_at
+        SELECT id,
+               flag_key,
+               domain_key,
+               regular_rollout_percentage,
+               is_in_rollback_state,
+               repeated_negative_evaluation_after_rollback,
+               state,
+               version,
+               started_at,
+               completed_at
         FROM experiments
         WHERE id = :id
         """;
 
     private static final String SELECT_EXPERIMENT_BY_FLAG_KEY_SQL = """
-        SELECT id, flag_key, domain_key, state, version, started_at, completed_at
+        SELECT id,
+               flag_key,
+               domain_key,
+               regular_rollout_percentage,
+               is_in_rollback_state,
+               repeated_negative_evaluation_after_rollback,
+               state,
+               version,
+               started_at,
+               completed_at
         FROM experiments
         WHERE flag_key = :flagKey
         """;
 
     private static final String SELECT_RUNNING_EXPERIMENT_BY_FLAG_KEY_SQL = """
-        SELECT id, flag_key, domain_key, state, version, started_at, completed_at
+        SELECT id,
+               flag_key,
+               domain_key,
+               regular_rollout_percentage,
+               is_in_rollback_state,
+               repeated_negative_evaluation_after_rollback,
+               state,
+               version,
+               started_at,
+               completed_at
         FROM experiments
         WHERE flag_key = :flagKey
           AND state = :runningState
@@ -73,13 +125,31 @@ public class ExperimentJdbcRepository {
         """;
 
     private static final String SELECT_ALL_EXPERIMENTS_SQL = """
-        SELECT id, flag_key, domain_key, state, version, started_at, completed_at
+        SELECT id,
+               flag_key,
+               domain_key,
+               regular_rollout_percentage,
+               is_in_rollback_state,
+               repeated_negative_evaluation_after_rollback,
+               state,
+               version,
+               started_at,
+               completed_at
         FROM experiments
         ORDER BY created_at DESC, id
         """;
 
     private static final String SELECT_EXPERIMENTS_BY_STATE_SQL = """
-        SELECT id, flag_key, domain_key, state, version, started_at, completed_at
+        SELECT id,
+               flag_key,
+               domain_key,
+               regular_rollout_percentage,
+               is_in_rollback_state,
+               repeated_negative_evaluation_after_rollback,
+               state,
+               version,
+               started_at,
+               completed_at
         FROM experiments
         WHERE state = :state
         ORDER BY created_at DESC, id
@@ -115,6 +185,11 @@ public class ExperimentJdbcRepository {
                 .param("id", experiment.id())
                 .param("flagKey", experiment.flagKey())
                 .param("domainKey", experiment.domainKey())
+                .param("regularRolloutPercentage", experiment.rolloutPlan().regularRolloutPercentage())
+                .param("isInRollbackState", experiment.rolloutPlan().isInRollbackState())
+                .param(
+                        "repeatedNegativeEvaluationAfterRollback",
+                        experiment.rolloutPlan().repeatedNegativeEvaluationAfterRollback())
                 .param("state", experiment.state().name())
                 .param("version", experiment.version())
                 .param("startedAt", experiment.startedAt())
@@ -184,6 +259,11 @@ public class ExperimentJdbcRepository {
                 .param("id", experiment.id())
                 .param("flagKey", experiment.flagKey())
                 .param("domainKey", experiment.domainKey())
+                .param("regularRolloutPercentage", experiment.rolloutPlan().regularRolloutPercentage())
+                .param("isInRollbackState", experiment.rolloutPlan().isInRollbackState())
+                .param(
+                        "repeatedNegativeEvaluationAfterRollback",
+                        experiment.rolloutPlan().repeatedNegativeEvaluationAfterRollback())
                 .param("state", experiment.state().name())
                 .param("startedAt", experiment.startedAt())
                 .param("completedAt", experiment.completedAt())

@@ -2,6 +2,7 @@ package io.github.rehody.abplatform.repository.rowmapper;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -20,6 +21,10 @@ public class ExperimentRowMapper implements RowMapper<Experiment> {
                 rs.getObject("id", UUID.class),
                 rs.getString("flag_key"),
                 rs.getString("domain_key"),
+                ExperimentRolloutPlan.of(
+                        rs.getInt("regular_rollout_percentage"),
+                        rs.getBoolean("is_in_rollback_state"),
+                        rs.getBoolean("repeated_negative_evaluation_after_rollback")),
                 List.of(),
                 ExperimentState.valueOf(rs.getString("state")),
                 rs.getLong("version"),

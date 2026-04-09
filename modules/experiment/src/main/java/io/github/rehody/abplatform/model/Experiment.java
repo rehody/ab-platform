@@ -12,6 +12,7 @@ public record Experiment(
         UUID id,
         String flagKey,
         String domainKey,
+        ExperimentRolloutPlan rolloutPlan,
         List<ExperimentVariant> variants,
         ExperimentState state,
         long version,
@@ -35,15 +36,15 @@ public record Experiment(
     }
 
     public Experiment withVersion(long version) {
-        return new Experiment(id, flagKey, domainKey, variants, state, version, startedAt, completedAt);
+        return new Experiment(id, flagKey, domainKey, rolloutPlan, variants, state, version, startedAt, completedAt);
     }
 
     public Experiment withStartedAt(Instant startedAt) {
-        return new Experiment(id, flagKey, domainKey, variants, state, version, startedAt, completedAt);
+        return new Experiment(id, flagKey, domainKey, rolloutPlan, variants, state, version, startedAt, completedAt);
     }
 
     public Experiment withCompletedAt(Instant completedAt) {
-        return new Experiment(id, flagKey, domainKey, variants, state, version, startedAt, completedAt);
+        return new Experiment(id, flagKey, domainKey, rolloutPlan, variants, state, version, startedAt, completedAt);
     }
 
     public Experiment submitForReview() {
@@ -91,6 +92,7 @@ public record Experiment(
                     .formatted(action, state, allowedStates));
         }
 
-        return new Experiment(id, flagKey, domainKey, variants, targetState, version, startedAt, completedAt);
+        return new Experiment(
+                id, flagKey, domainKey, rolloutPlan, variants, targetState, version, startedAt, completedAt);
     }
 }

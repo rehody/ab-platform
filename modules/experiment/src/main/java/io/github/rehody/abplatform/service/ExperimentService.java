@@ -5,6 +5,7 @@ import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.exception.ExperimentAlreadyExistsException;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureFlag;
 import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
@@ -46,10 +47,12 @@ public class ExperimentService {
             FeatureFlag featureFlag = featureFlagService.getByKey(flagKey);
 
             UUID experimentId = UUID.randomUUID();
+            ExperimentRolloutPlan rolloutPlan = ExperimentRolloutPlan.initial();
             List<ExperimentVariant> preparedVariants = prepareVariants(experimentId, variants);
             validateVariantsForFlagDefault(experimentId, preparedVariants, featureFlag);
 
-            Experiment experiment = buildExperiment(experimentId, flagKey, domainKey, preparedVariants, state);
+            Experiment experiment =
+                    buildExperiment(experimentId, flagKey, domainKey, rolloutPlan, preparedVariants, state);
 
             experimentAssignmentPolicy.validateAssignmentInvariants(experiment);
             experimentRepository.save(experiment);
@@ -63,9 +66,11 @@ public class ExperimentService {
             UUID experimentId,
             String flagKey,
             String domainKey,
+            ExperimentRolloutPlan rolloutPlan,
             List<ExperimentVariant> variants,
             ExperimentState state) {
-        Experiment experiment = new Experiment(experimentId, flagKey, domainKey, variants, state, 0L, null, null);
+        Experiment experiment =
+                new Experiment(experimentId, flagKey, domainKey, rolloutPlan, variants, state, 0L, null, null);
         return experimentTimestampPolicy.initializeTimestamps(experiment, Instant.now());
     }
 
@@ -163,6 +168,7 @@ public class ExperimentService {
                 currentExperiment.id(),
                 flagKey,
                 domainKey,
+                currentExperiment.rolloutPlan(),
                 variants,
                 currentExperiment.state(),
                 currentExperiment.version(),

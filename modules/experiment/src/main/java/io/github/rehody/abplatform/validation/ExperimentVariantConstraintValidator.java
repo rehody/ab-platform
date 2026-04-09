@@ -5,7 +5,8 @@ import io.github.rehody.abplatform.model.FeatureValue;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
-public class ExperimentVariantValidator implements ConstraintValidator<ValidExperimentVariant, ExperimentVariant> {
+public class ExperimentVariantConstraintValidator
+        implements ConstraintValidator<ValidExperimentVariant, ExperimentVariant> {
 
     @Override
     public boolean isValid(ExperimentVariant variant, ConstraintValidatorContext context) {
@@ -17,14 +18,30 @@ public class ExperimentVariantValidator implements ConstraintValidator<ValidExpe
         if (normalizedKey == null || normalizedKey.isBlank()) {
             return false;
         }
-        if (variant.weight() == null || variant.weight().signum() <= 0) {
+        if (variant.type() == null) {
             return false;
         }
-        if (variant.type() == null) {
+        if (!hasValidWeight(variant)) {
             return false;
         }
 
         return isValidFeatureValue(variant.value());
+    }
+
+    private boolean hasValidWeight(ExperimentVariant variant) {
+        if (variant.isControl()) {
+            return variant.weight() == null;
+        }
+
+        if (!variant.isRegular()) {
+            return false;
+        }
+
+        if (variant.weight() == null) {
+            return false;
+        }
+
+        return variant.weight().signum() > 0;
     }
 
     private boolean isValidFeatureValue(FeatureValue featureValue) {

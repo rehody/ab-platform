@@ -14,7 +14,16 @@ import org.springframework.stereotype.Repository;
 public class ExperimentConflictRepository {
 
     private static final String SELECT_POTENTIAL_CONFLICTS_SQL = """
-        SELECT id, flag_key, domain_key, state, version, started_at, completed_at
+        SELECT id,
+               flag_key,
+               domain_key,
+               regular_rollout_percentage,
+               is_in_rollback_state,
+               repeated_negative_evaluation_after_rollback,
+               state,
+               version,
+               started_at,
+               completed_at
         FROM experiments
         WHERE id <> :experimentId
           AND (flag_key = :flagKey OR domain_key = :domainKey)

@@ -2,6 +2,7 @@ package io.github.rehody.abplatform.cache;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import java.time.Instant;
 import java.util.List;
@@ -11,6 +12,7 @@ public record CachedExperiment(
         UUID id,
         String flagKey,
         String domainKey,
+        ExperimentRolloutPlan rolloutPlan,
         List<ExperimentVariant> variants,
         ExperimentState state,
         long version,
@@ -26,6 +28,7 @@ public record CachedExperiment(
                 experiment.id(),
                 experiment.flagKey(),
                 experiment.domainKey(),
+                experiment.rolloutPlan(),
                 experiment.variants(),
                 experiment.state(),
                 experiment.version(),
@@ -34,6 +37,6 @@ public record CachedExperiment(
     }
 
     public Experiment toModel() {
-        return new Experiment(id, flagKey, domainKey, variants, state, version, startedAt, completedAt);
+        return new Experiment(id, flagKey, domainKey, rolloutPlan, variants, state, version, startedAt, completedAt);
     }
 }

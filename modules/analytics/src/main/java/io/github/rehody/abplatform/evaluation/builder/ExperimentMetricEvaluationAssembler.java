@@ -48,7 +48,7 @@ public class ExperimentMetricEvaluationAssembler {
                 .map(variant -> mapToVariantMetricAggregate(variant, participantsByVariant, metricAggregatesByVariant))
                 .toList();
         Map<UUID, VariantMetricAggregate> aggregatesByVariantId = mapAggregatesByVariantId(variants);
-        TrafficEvaluation traffic = buildTrafficEvaluation(orderedVariants, aggregatesByVariantId);
+        TrafficEvaluation traffic = buildTrafficEvaluation(experiment, orderedVariants, aggregatesByVariantId);
         VariantMetricAggregate controlAggregate = findControlAggregate(orderedVariants, aggregatesByVariantId);
         List<VariantComparison> comparisons = buildComparisons(
                 orderedVariants, aggregatesByVariantId, controlAggregate, metricDefinition, risksByVariant);
@@ -82,17 +82,21 @@ public class ExperimentMetricEvaluationAssembler {
     }
 
     private TrafficEvaluation buildTrafficEvaluation(
-            List<ExperimentVariant> orderedVariants, Map<UUID, VariantMetricAggregate> aggregatesByVariantId) {
+            Experiment experiment,
+            List<ExperimentVariant> orderedVariants,
+            Map<UUID, VariantMetricAggregate> aggregatesByVariantId) {
         int totalParticipants = aggregatesByVariantId.values().stream()
                 .mapToInt(VariantMetricAggregate::participants)
                 .sum();
 
-        BigDecimal totalWeight =
-                orderedVariants.stream().map(ExperimentVariant::weight).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalRegularWeight = orderedVariants.stream()
+                .filter(ExperimentVariant::isRegular)
+                .map(ExperimentVariant::weight)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         List<VariantTrafficShare> trafficShares = orderedVariants.stream()
-                .map(variant ->
-                        mapToVariantTrafficShare(variant, aggregatesByVariantId, totalParticipants, totalWeight))
+                .map(variant -> mapToVariantTrafficShare(
+                        experiment, variant, aggregatesByVariantId, totalParticipants, totalRegularWeight))
                 .toList();
 
         TrafficStatus trafficStatus = TrafficStatus.NORMAL;
@@ -129,12 +133,13 @@ public class ExperimentMetricEvaluationAssembler {
     }
 
     private VariantTrafficShare mapToVariantTrafficShare(
+            Experiment experiment,
             ExperimentVariant variant,
             Map<UUID, VariantMetricAggregate> aggregatesByVariantId,
             int totalParticipants,
-            BigDecimal totalWeight) {
+            BigDecimal totalRegularWeight) {
         VariantMetricAggregate aggregate = aggregatesByVariantId.get(variant.id());
-        BigDecimal expectedShare = divide(variant.weight(), totalWeight);
+        BigDecimal expectedShare = expectedShare(experiment, variant, totalRegularWeight);
         BigDecimal actualShare =
                 divide(BigDecimal.valueOf(aggregate.participants()), BigDecimal.valueOf(totalParticipants));
 
@@ -148,6 +153,18 @@ public class ExperimentMetricEvaluationAssembler {
                 expectedShare,
                 actualShare,
                 shareDelta);
+    }
+
+    private BigDecimal expectedShare(Experiment experiment, ExperimentVariant variant, BigDecimal totalRegularWeight) {
+        BigDecimal expectedWeight = BigDecimal.valueOf(experiment.rolloutPlan().controlPercentage());
+
+        if (variant.isRegular()) {
+            expectedWeight = variant.weight()
+                    .multiply(BigDecimal.valueOf(experiment.rolloutPlan().regularRolloutPercentage()))
+                    .divide(totalRegularWeight, RATIO_SCALE, RoundingMode.HALF_UP);
+        }
+
+        return divide(expectedWeight, BigDecimal.valueOf(100));
     }
 
     private VariantComparison mapToVariantComparison(

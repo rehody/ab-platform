@@ -10,11 +10,11 @@ import org.junit.jupiter.api.Test;
 class BucketAllocationTest {
 
     @Test
-    void withAdditionalBucket_shouldIncrementBucketCountAndPreserveOtherFields() {
+    void withExtraBucket_shouldIncrementBucketCountAndPreserveOtherFields() {
         ExperimentVariant variant = variant(3, "treatment", "red", 5);
         BucketAllocation allocation = new BucketAllocation(3, variant, 41, BigDecimal.valueOf(7));
 
-        BucketAllocation updated = allocation.withAdditionalBucket();
+        BucketAllocation updated = allocation.withExtraBucket();
 
         assertThat(updated.position()).isEqualTo(3);
         assertThat(updated.variant()).isEqualTo(variant);

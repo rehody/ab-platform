@@ -8,7 +8,9 @@ import io.github.rehody.abplatform.service.allocation.BucketAllocation;
 import io.github.rehody.abplatform.service.allocation.VariantBucketAllocator;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -17,17 +19,18 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class VariantAllocationSnapshotFactory {
 
-    private final AssignmentVariantsPreparer assignmentVariantsPreparer;
+    private final AssignmentWeightResolver assignmentWeightResolver;
     private final VariantBucketAllocator variantBucketAllocator;
 
     public VariantAllocationSnapshot create(Experiment experiment) {
-        List<ExperimentVariant> orderedVariants = assignmentVariantsPreparer.prepare(experiment);
-        validateAllocationInputs(experiment.id(), orderedVariants);
-        List<BucketAllocation> allocations = variantBucketAllocator.allocate(experiment.id(), orderedVariants);
+        List<ExperimentVariant> variants = sortVariants(experiment.variants());
+        Map<UUID, BigDecimal> assignmentWeights = assignmentWeightResolver.resolve(experiment, variants);
+        validateWeights(experiment.id(), variants, assignmentWeights);
+        List<BucketAllocation> allocations =
+                variantBucketAllocator.allocate(experiment.id(), variants, assignmentWeights);
+
         List<BucketRange> bucketRanges = createBucketRanges(allocations);
-
         validateFullBucketCoverage(experiment.id(), bucketRanges);
-
         return new VariantAllocationSnapshot(bucketRanges);
     }
 
@@ -44,9 +47,16 @@ public class VariantAllocationSnapshotFactory {
         return List.copyOf(bucketRanges);
     }
 
-    private void validateAllocationInputs(UUID experimentId, List<ExperimentVariant> variants) {
+    private List<ExperimentVariant> sortVariants(List<ExperimentVariant> variants) {
+        return variants.stream()
+                .sorted(Comparator.comparingInt(ExperimentVariant::position))
+                .toList();
+    }
+
+    private void validateWeights(
+            UUID experimentId, List<ExperimentVariant> variants, Map<UUID, BigDecimal> assignmentWeights) {
         BigDecimal totalWeight = variants.stream()
-                .map(variant -> validatePositiveWeight(experimentId, variant))
+                .map(variant -> validateWeight(experimentId, variant, assignmentWeights))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         if (totalWeight.signum() <= 0) {
@@ -55,12 +65,19 @@ public class VariantAllocationSnapshotFactory {
         }
     }
 
-    private BigDecimal validatePositiveWeight(UUID experimentId, ExperimentVariant variant) {
-        BigDecimal weight = variant.weight();
-        if (weight == null || weight.signum() <= 0) {
+    private BigDecimal validateWeight(
+            UUID experimentId, ExperimentVariant variant, Map<UUID, BigDecimal> assignmentWeights) {
+        BigDecimal weight = assignmentWeights.get(variant.id());
+        if (weight == null || weight.signum() < 0) {
             throw new IllegalStateException("Invalid assignment weight for experiment %s, variant %s: %s"
                     .formatted(experimentId, variant.id(), weight));
         }
+
+        if (variant.isRegular() && weight.signum() == 0) {
+            throw new IllegalStateException("REGULAR variant %s has zero assignment weight for experiment %s"
+                    .formatted(variant.id(), experimentId));
+        }
+
         return weight;
     }
 
