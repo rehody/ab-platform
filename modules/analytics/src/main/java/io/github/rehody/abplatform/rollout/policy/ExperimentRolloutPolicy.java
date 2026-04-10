@@ -31,6 +31,10 @@ public class ExperimentRolloutPolicy {
             return ExperimentRolloutDecision.ROLLBACK;
         }
 
+        if (!experiment.rolloutPlan().canAdvance()) {
+            return ExperimentRolloutDecision.HOLD;
+        }
+
         return ExperimentRolloutDecision.ADVANCE;
     }
 
