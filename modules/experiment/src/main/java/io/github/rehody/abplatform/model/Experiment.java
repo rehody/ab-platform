@@ -35,6 +35,10 @@ public record Experiment(
         return state == ExperimentState.COMPLETED;
     }
 
+    public boolean isPaused() {
+        return state == ExperimentState.PAUSED;
+    }
+
     public Experiment withVersion(long version) {
         return new Experiment(id, flagKey, domainKey, rolloutPlan, variants, state, version, startedAt, completedAt);
     }
@@ -44,6 +48,10 @@ public record Experiment(
     }
 
     public Experiment withCompletedAt(Instant completedAt) {
+        return new Experiment(id, flagKey, domainKey, rolloutPlan, variants, state, version, startedAt, completedAt);
+    }
+
+    public Experiment withRolloutPlan(ExperimentRolloutPlan rolloutPlan) {
         return new Experiment(id, flagKey, domainKey, rolloutPlan, variants, state, version, startedAt, completedAt);
     }
 

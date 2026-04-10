@@ -20,8 +20,8 @@ public class ExperimentJdbcRepository {
             flag_key,
             domain_key,
             regular_rollout_percentage,
-            is_in_rollback_state,
-            repeated_negative_evaluation_after_rollback,
+            after_rollback,
+            still_negative_after_rollback,
             state,
             version,
             started_at,
@@ -32,8 +32,8 @@ public class ExperimentJdbcRepository {
             :flagKey,
             :domainKey,
             :regularRolloutPercentage,
-            :isInRollbackState,
-            :repeatedNegativeEvaluationAfterRollback,
+            :afterRollback,
+            :stillNegativeAfterRollback,
             :state,
             :version,
             :startedAt,
@@ -46,8 +46,8 @@ public class ExperimentJdbcRepository {
         SET flag_key = :flagKey,
             domain_key = :domainKey,
             regular_rollout_percentage = :regularRolloutPercentage,
-            is_in_rollback_state = :isInRollbackState,
-            repeated_negative_evaluation_after_rollback = :repeatedNegativeEvaluationAfterRollback,
+            after_rollback = :afterRollback,
+            still_negative_after_rollback = :stillNegativeAfterRollback,
             state = :state,
             started_at = :startedAt,
             completed_at = :completedAt,
@@ -81,8 +81,8 @@ public class ExperimentJdbcRepository {
                flag_key,
                domain_key,
                regular_rollout_percentage,
-               is_in_rollback_state,
-               repeated_negative_evaluation_after_rollback,
+               after_rollback,
+               still_negative_after_rollback,
                state,
                version,
                started_at,
@@ -96,8 +96,8 @@ public class ExperimentJdbcRepository {
                flag_key,
                domain_key,
                regular_rollout_percentage,
-               is_in_rollback_state,
-               repeated_negative_evaluation_after_rollback,
+               after_rollback,
+               still_negative_after_rollback,
                state,
                version,
                started_at,
@@ -111,8 +111,8 @@ public class ExperimentJdbcRepository {
                flag_key,
                domain_key,
                regular_rollout_percentage,
-               is_in_rollback_state,
-               repeated_negative_evaluation_after_rollback,
+               after_rollback,
+               still_negative_after_rollback,
                state,
                version,
                started_at,
@@ -129,8 +129,8 @@ public class ExperimentJdbcRepository {
                flag_key,
                domain_key,
                regular_rollout_percentage,
-               is_in_rollback_state,
-               repeated_negative_evaluation_after_rollback,
+               after_rollback,
+               still_negative_after_rollback,
                state,
                version,
                started_at,
@@ -144,8 +144,8 @@ public class ExperimentJdbcRepository {
                flag_key,
                domain_key,
                regular_rollout_percentage,
-               is_in_rollback_state,
-               repeated_negative_evaluation_after_rollback,
+               after_rollback,
+               still_negative_after_rollback,
                state,
                version,
                started_at,
@@ -186,10 +186,8 @@ public class ExperimentJdbcRepository {
                 .param("flagKey", experiment.flagKey())
                 .param("domainKey", experiment.domainKey())
                 .param("regularRolloutPercentage", experiment.rolloutPlan().regularRolloutPercentage())
-                .param("isInRollbackState", experiment.rolloutPlan().isInRollbackState())
-                .param(
-                        "repeatedNegativeEvaluationAfterRollback",
-                        experiment.rolloutPlan().repeatedNegativeEvaluationAfterRollback())
+                .param("afterRollback", experiment.rolloutPlan().afterRollback())
+                .param("stillNegativeAfterRollback", experiment.rolloutPlan().stillNegativeAfterRollback())
                 .param("state", experiment.state().name())
                 .param("version", experiment.version())
                 .param("startedAt", experiment.startedAt())
@@ -260,10 +258,8 @@ public class ExperimentJdbcRepository {
                 .param("flagKey", experiment.flagKey())
                 .param("domainKey", experiment.domainKey())
                 .param("regularRolloutPercentage", experiment.rolloutPlan().regularRolloutPercentage())
-                .param("isInRollbackState", experiment.rolloutPlan().isInRollbackState())
-                .param(
-                        "repeatedNegativeEvaluationAfterRollback",
-                        experiment.rolloutPlan().repeatedNegativeEvaluationAfterRollback())
+                .param("afterRollback", experiment.rolloutPlan().afterRollback())
+                .param("stillNegativeAfterRollback", experiment.rolloutPlan().stillNegativeAfterRollback())
                 .param("state", experiment.state().name())
                 .param("startedAt", experiment.startedAt())
                 .param("completedAt", experiment.completedAt())

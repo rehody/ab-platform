@@ -4,7 +4,7 @@ import io.github.rehody.abplatform.binding.policy.ExperimentMetricBindingConflic
 import io.github.rehody.abplatform.binding.policy.ExperimentMetricBindingPolicy;
 import io.github.rehody.abplatform.binding.repository.ExperimentMetricBindingRepository;
 import io.github.rehody.abplatform.model.Experiment;
-import io.github.rehody.abplatform.service.ExperimentService;
+import io.github.rehody.abplatform.service.ExperimentQueryService;
 import io.github.rehody.abplatform.service.ServiceActionExecutor;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
 import io.github.rehody.abplatform.util.lock.LockNamespace;
@@ -25,7 +25,7 @@ public class ExperimentMetricBindingService {
             LockNamespace.of("experiment-metric-binding");
 
     private final ExperimentMetricBindingRepository experimentMetricBindingRepository;
-    private final ExperimentService experimentService;
+    private final ExperimentQueryService experimentQueryService;
     private final ExperimentMetricBindingPolicy experimentMetricBindingPolicy;
     private final ExperimentMetricBindingConflictPolicy experimentMetricBindingConflictPolicy;
     private final ExperimentMetricBindingCacheInvalidator experimentMetricBindingCacheInvalidator;
@@ -35,7 +35,7 @@ public class ExperimentMetricBindingService {
     @Transactional
     public List<String> updateMetricKeys(UUID experimentId, List<String> metricKeys) {
         return executeUnderLock(experimentId, () -> {
-            Experiment experiment = experimentService.getById(experimentId);
+            Experiment experiment = experimentQueryService.getById(experimentId);
             List<String> preparedMetricKeys = experimentMetricBindingPolicy.prepareMetricKeys(metricKeys);
 
             if (experiment.isRunning()) {
@@ -53,7 +53,7 @@ public class ExperimentMetricBindingService {
 
     @Transactional(readOnly = true)
     public List<String> getMetricKeys(UUID experimentId) {
-        experimentService.ensureExistsById(experimentId);
+        experimentQueryService.ensureExistsById(experimentId);
         return experimentMetricBindingRepository.findMetricKeysByExperimentId(experimentId);
     }
 

@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AssignmentService {
 
-    private final ExperimentService experimentService;
+    private final ExperimentQueryService experimentQueryService;
     private final FeatureFlagService featureFlagService;
     private final ExperimentVariantResolver experimentVariantResolver;
     private final ExperimentAssignmentPolicy experimentAssignmentPolicy;
@@ -43,7 +43,7 @@ public class AssignmentService {
     }
 
     private Optional<Experiment> findResolvableExperiment(String flagKey) {
-        return experimentService.findByFlagKey(flagKey).filter(experimentAssignmentPolicy::canResolveAssignment);
+        return experimentQueryService.findByFlagKey(flagKey).filter(experimentAssignmentPolicy::canResolveAssignment);
     }
 
     private void recordAssignment(Experiment experiment, ExperimentVariant resolvedVariant, UUID userId) {

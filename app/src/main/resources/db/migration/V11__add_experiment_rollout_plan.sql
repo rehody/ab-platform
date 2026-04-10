@@ -2,10 +2,10 @@ ALTER TABLE experiments
     ADD COLUMN IF NOT EXISTS regular_rollout_percentage INT NOT NULL DEFAULT 5;
 
 ALTER TABLE experiments
-    ADD COLUMN IF NOT EXISTS is_in_rollback_state BOOLEAN NOT NULL DEFAULT FALSE;
+    ADD COLUMN IF NOT EXISTS after_rollback BOOLEAN NOT NULL DEFAULT FALSE;
 
 ALTER TABLE experiments
-    ADD COLUMN IF NOT EXISTS repeated_negative_evaluation_after_rollback BOOLEAN NOT NULL DEFAULT FALSE;
+    ADD COLUMN IF NOT EXISTS still_negative_after_rollback BOOLEAN NOT NULL DEFAULT FALSE;
 
 DO
 $$

@@ -1,6 +1,5 @@
 package io.github.rehody.abplatform.service;
 
-import io.github.rehody.abplatform.cache.ExperimentCache;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.exception.ExperimentAlreadyExistsException;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
@@ -16,7 +15,6 @@ import io.github.rehody.abplatform.repository.ExperimentRepository.UpdateOutcome
 import io.github.rehody.abplatform.repository.jdbc.ExperimentDomainJdbcRepository;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -25,11 +23,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class ExperimentService {
+public class ExperimentDraftService {
 
     private final ExperimentRepository experimentRepository;
     private final ExperimentCommandSupport experimentCommandSupport;
-    private final ExperimentCache experimentCache;
     private final ExperimentAssignmentPolicy experimentAssignmentPolicy;
     private final ExperimentTimestampPolicy experimentTimestampPolicy;
     private final FeatureFlagService featureFlagService;
@@ -90,37 +87,6 @@ public class ExperimentService {
         return experimentCommandSupport.withExperimentLocks(
                 List.of(currentExperiment.flagKey(), updatedExperiment.flagKey()),
                 () -> updateUnderLock(currentExperiment, updatedExperiment, version));
-    }
-
-    @Transactional(readOnly = true)
-    public Experiment getById(UUID id) {
-        String flagKey = experimentCommandSupport.getFlagKeyById(id);
-
-        return experimentCache
-                .getOrLoad(flagKey, () -> experimentRepository.findByFlagKey(flagKey))
-                .orElseThrow(() -> new ExperimentNotFoundException("Experiment '%s' not found".formatted(id)));
-    }
-
-    @Transactional(readOnly = true)
-    public List<Experiment> getAll() {
-        return experimentRepository.findAll();
-    }
-
-    @Transactional(readOnly = true)
-    public List<Experiment> getRunning() {
-        return experimentRepository.findRunning();
-    }
-
-    @Transactional(readOnly = true)
-    public Optional<Experiment> findByFlagKey(String flagKey) {
-        return experimentCache.getOrLoad(flagKey, () -> experimentRepository.findByFlagKey(flagKey));
-    }
-
-    @Transactional(readOnly = true)
-    public void ensureExistsById(UUID id) {
-        if (!experimentRepository.existsById(id)) {
-            throw new ExperimentNotFoundException("Experiment '%s' not found".formatted(id));
-        }
     }
 
     private long updateWithVariants(Experiment experiment, long version) {

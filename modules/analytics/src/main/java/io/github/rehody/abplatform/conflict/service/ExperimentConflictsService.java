@@ -5,7 +5,7 @@ import io.github.rehody.abplatform.conflict.enums.ExperimentConflictType;
 import io.github.rehody.abplatform.conflict.model.ExperimentConflict;
 import io.github.rehody.abplatform.conflict.repository.ExperimentConflictRepository;
 import io.github.rehody.abplatform.model.Experiment;
-import io.github.rehody.abplatform.service.ExperimentService;
+import io.github.rehody.abplatform.service.ExperimentQueryService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -18,11 +18,11 @@ import org.springframework.stereotype.Service;
 public class ExperimentConflictsService {
 
     private final ExperimentConflictRepository experimentConflictRepository;
-    private final ExperimentService experimentService;
+    private final ExperimentQueryService experimentQueryService;
     private final ExperimentConflictSeverityResolver experimentConflictSeverityResolver;
 
     public List<ExperimentConflict> getAll(UUID experimentId) {
-        Experiment experiment = experimentService.getById(experimentId);
+        Experiment experiment = experimentQueryService.getById(experimentId);
         return getAll(experiment);
     }
 

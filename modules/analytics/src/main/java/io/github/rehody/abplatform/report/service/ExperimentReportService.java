@@ -17,7 +17,7 @@ import io.github.rehody.abplatform.report.repository.UniqueMetricEventReportRepo
 import io.github.rehody.abplatform.report.repository.aggregate.AssignmentVariantAggregate;
 import io.github.rehody.abplatform.report.repository.aggregate.CountableMetricVariantAggregate;
 import io.github.rehody.abplatform.report.repository.aggregate.UniqueMetricVariantAggregate;
-import io.github.rehody.abplatform.service.ExperimentService;
+import io.github.rehody.abplatform.service.ExperimentQueryService;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -36,7 +36,7 @@ public class ExperimentReportService {
 
     private final ExperimentMetricReportCache experimentMetricReportCache;
     private final ExperimentMetricReportCacheKeyFactory experimentMetricReportCacheKeyFactory;
-    private final ExperimentService experimentService;
+    private final ExperimentQueryService experimentQueryService;
     private final MetricDefinitionService metricDefinitionService;
     private final AssignmentEventReportRepository assignmentEventReportRepository;
     private final UniqueMetricEventReportRepository uniqueMetricEventReportRepository;
@@ -57,7 +57,7 @@ public class ExperimentReportService {
     private ExperimentMetricReport loadReport(UUID experimentId, String metricKey) {
         Instant now = Instant.now();
 
-        Experiment experiment = experimentService.getById(experimentId);
+        Experiment experiment = experimentQueryService.getById(experimentId);
         ExperimentReportWindow reportWindow = experimentReportWindowFactory.create(experiment, now);
         MetricDefinition metricDefinition = metricDefinitionService.getByKey(metricKey);
 

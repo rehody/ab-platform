@@ -4,7 +4,8 @@ import io.github.rehody.abplatform.dto.request.ExperimentCreateRequest;
 import io.github.rehody.abplatform.dto.request.ExperimentUpdateRequest;
 import io.github.rehody.abplatform.dto.response.ExperimentResponse;
 import io.github.rehody.abplatform.model.Experiment;
-import io.github.rehody.abplatform.service.ExperimentService;
+import io.github.rehody.abplatform.service.ExperimentDraftService;
+import io.github.rehody.abplatform.service.ExperimentQueryService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -24,32 +25,33 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ExperimentController {
 
-    private final ExperimentService experimentService;
+    private final ExperimentDraftService experimentDraftService;
+    private final ExperimentQueryService experimentQueryService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ExperimentResponse create(@Valid @RequestBody ExperimentCreateRequest request) {
-        Experiment experiment =
-                experimentService.create(request.flagKey(), request.domainKey(), request.variants(), request.state());
+        Experiment experiment = experimentDraftService.create(
+                request.flagKey(), request.domainKey(), request.variants(), request.state());
         return ExperimentResponse.from(experiment);
     }
 
     @PatchMapping("/{id}")
     public ExperimentResponse update(@PathVariable UUID id, @Valid @RequestBody ExperimentUpdateRequest request) {
-        Experiment experiment = experimentService.update(
+        Experiment experiment = experimentDraftService.update(
                 id, request.flagKey(), request.domainKey(), request.variants(), request.version());
         return ExperimentResponse.from(experiment);
     }
 
     @GetMapping("/{id}")
     public ExperimentResponse get(@PathVariable UUID id) {
-        Experiment experiment = experimentService.getById(id);
+        Experiment experiment = experimentQueryService.getById(id);
         return ExperimentResponse.from(experiment);
     }
 
     @GetMapping
     public List<ExperimentResponse> getAll() {
-        List<Experiment> experiments = experimentService.getAll();
+        List<Experiment> experiments = experimentQueryService.getAll();
         return experiments.stream().map(ExperimentResponse::from).toList();
     }
 }

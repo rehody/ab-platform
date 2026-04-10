@@ -19,7 +19,7 @@ import io.github.rehody.abplatform.report.repository.aggregate.AssignmentVariant
 import io.github.rehody.abplatform.report.repository.aggregate.CountableMetricVariantAggregate;
 import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
 import io.github.rehody.abplatform.risk.service.ExperimentMetricRiskService;
-import io.github.rehody.abplatform.service.ExperimentService;
+import io.github.rehody.abplatform.service.ExperimentQueryService;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -38,7 +38,7 @@ public class ExperimentMetricEvaluationService {
 
     private final ExperimentMetricReportCache experimentMetricReportCache;
     private final ExperimentMetricReportCacheKeyFactory experimentMetricReportCacheKeyFactory;
-    private final ExperimentService experimentService;
+    private final ExperimentQueryService experimentQueryService;
     private final ExperimentMetricEvaluationPolicy experimentMetricEvaluationPolicy;
     private final AssignmentEventReportRepository assignmentEventReportRepository;
     private final CountableMetricEventReportRepository countableMetricEventReportRepository;
@@ -49,7 +49,7 @@ public class ExperimentMetricEvaluationService {
 
     @Transactional(readOnly = true)
     public ExperimentMetricEvaluationReport getEvaluationReport(UUID experimentId, String metricKey) {
-        Experiment experiment = experimentService.getById(experimentId);
+        Experiment experiment = experimentQueryService.getById(experimentId);
         MetricDefinition metricDefinition =
                 experimentMetricEvaluationPolicy.getMetricDefinitionForEvaluation(experiment.id(), metricKey);
 
@@ -66,12 +66,19 @@ public class ExperimentMetricEvaluationService {
     }
 
     @Transactional
-    public void evaluateAndApplyRisk(Experiment experiment, String metricKey) {
+    public ExperimentMetricEvaluationReport evaluateAndApplyRisk(UUID experimentId, String metricKey) {
+        Experiment experiment = experimentQueryService.getById(experimentId);
+        return evaluateAndApplyRisk(experiment, metricKey);
+    }
+
+    @Transactional
+    public ExperimentMetricEvaluationReport evaluateAndApplyRisk(Experiment experiment, String metricKey) {
         MetricDefinition metricDefinition =
                 experimentMetricEvaluationPolicy.getMetricDefinitionForEvaluation(experiment.id(), metricKey);
 
         ExperimentMetricEvaluationReport report = buildEvaluationReport(experiment, metricDefinition, Instant.now());
         experimentMetricRiskService.applyEvaluation(experiment, metricDefinition, report);
+        return report;
     }
 
     private ExperimentMetricEvaluationReport buildEvaluationReport(

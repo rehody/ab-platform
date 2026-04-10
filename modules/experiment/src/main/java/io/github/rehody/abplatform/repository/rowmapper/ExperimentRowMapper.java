@@ -23,8 +23,8 @@ public class ExperimentRowMapper implements RowMapper<Experiment> {
                 rs.getString("domain_key"),
                 ExperimentRolloutPlan.of(
                         rs.getInt("regular_rollout_percentage"),
-                        rs.getBoolean("is_in_rollback_state"),
-                        rs.getBoolean("repeated_negative_evaluation_after_rollback")),
+                        rs.getBoolean("after_rollback"),
+                        rs.getBoolean("still_negative_after_rollback")),
                 List.of(),
                 ExperimentState.valueOf(rs.getString("state")),
                 rs.getLong("version"),
