@@ -81,11 +81,15 @@ public class VariantAllocationSnapshotFactory {
     }
 
     private ExperimentVariant findControlVariant(UUID experimentId, List<ExperimentVariant> variants) {
-        return variants.stream()
-                .filter(ExperimentVariant::isControl)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "Running experiment %s must contain exactly one CONTROL variant".formatted(experimentId)));
+        List<ExperimentVariant> controlVariants =
+                variants.stream().filter(ExperimentVariant::isControl).toList();
+
+        if (controlVariants.size() != 1) {
+            throw new IllegalStateException(
+                    "Running experiment %s must contain exactly one CONTROL variant".formatted(experimentId));
+        }
+
+        return controlVariants.getFirst();
     }
 
     private List<ExperimentVariant> selectRegularVariants(List<ExperimentVariant> variants) {
