@@ -31,6 +31,14 @@ public record ExperimentRolloutPlan(
         return TOTAL_PERCENTAGE - regularRolloutPercentage;
     }
 
+    public int regularBucketPoolSize(int bucketPoolSize) {
+        return bucketPoolSize * regularRolloutPercentage / TOTAL_PERCENTAGE;
+    }
+
+    public int controlBucketPoolSize(int bucketPoolSize) {
+        return bucketPoolSize - regularBucketPoolSize(bucketPoolSize);
+    }
+
     public ExperimentRolloutPlan advance() {
         return new ExperimentRolloutPlan(nextStep(), false, false);
     }

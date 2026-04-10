@@ -1,12 +1,9 @@
 package io.github.rehody.abplatform.service.allocation;
 
-import static io.github.rehody.abplatform.service.VariantBucketPolicy.BUCKET_POOL_SIZE;
-
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -15,42 +12,32 @@ import org.springframework.stereotype.Component;
 @Component
 public class VariantBucketAllocator {
 
-    public List<BucketAllocation> allocate(
-            UUID experimentId, List<ExperimentVariant> variants, Map<UUID, BigDecimal> assignmentWeights) {
-
-        List<ExperimentVariant> participatingVariants =
-                filterParticipatingVariants(experimentId, variants, assignmentWeights);
-
-        int remainingBucketPool = BUCKET_POOL_SIZE - participatingVariants.size();
-        validateRemainingBucketPool(experimentId, participatingVariants.size(), remainingBucketPool);
-
-        if (remainingBucketPool == 0) {
-            return allocateGuaranteedBuckets(participatingVariants);
+    public List<BucketAllocation> allocate(UUID experimentId, List<ExperimentVariant> variants, int bucketPoolSize) {
+        if (bucketPoolSize == 0 || variants.isEmpty()) {
+            return List.of();
         }
 
-        BigDecimal totalWeight = calculateTotalWeight(experimentId, participatingVariants, assignmentWeights);
-        List<BucketAllocation> initialAllocations = allocateWeightedBuckets(
-                experimentId, participatingVariants, assignmentWeights, totalWeight, remainingBucketPool);
+        int remainingBucketPool = bucketPoolSize - variants.size();
+        validateRemainingBucketPool(experimentId, variants.size(), bucketPoolSize, remainingBucketPool);
+
+        if (remainingBucketPool == 0) {
+            return allocateGuaranteedBuckets(variants);
+        }
+
+        BigDecimal totalWeight = calculateTotalWeight(experimentId, variants);
+        List<BucketAllocation> initialAllocations =
+                allocateWeightedBuckets(experimentId, variants, totalWeight, remainingBucketPool);
 
         int allocatedBucketCount = initialAllocations.stream()
                 .mapToInt(BucketAllocation::bucketCount)
                 .sum();
 
-        int remainingBuckets = BUCKET_POOL_SIZE - allocatedBucketCount;
+        int remainingBuckets = bucketPoolSize - allocatedBucketCount;
         if (remainingBuckets == 0) {
             return initialAllocations;
         }
 
         return distributeRemainingBuckets(initialAllocations, remainingBuckets);
-    }
-
-    private List<ExperimentVariant> filterParticipatingVariants(
-            UUID experimentId, List<ExperimentVariant> variants, Map<UUID, BigDecimal> assignmentWeights) {
-        return variants.stream()
-                .filter(variant -> assignmentWeightOf(experimentId, variant, assignmentWeights)
-                                .signum()
-                        > 0)
-                .toList();
     }
 
     private List<BucketAllocation> allocateGuaranteedBuckets(List<ExperimentVariant> variants) {
@@ -59,47 +46,36 @@ public class VariantBucketAllocator {
                 .toList();
     }
 
-    private BigDecimal calculateTotalWeight(
-            UUID experimentId, List<ExperimentVariant> variants, Map<UUID, BigDecimal> assignmentWeights) {
+    private BigDecimal calculateTotalWeight(UUID experimentId, List<ExperimentVariant> variants) {
         return variants.stream()
-                .map(variant -> assignmentWeightOf(experimentId, variant, assignmentWeights))
+                .map(variant -> weightOf(experimentId, variant))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private List<BucketAllocation> allocateWeightedBuckets(
-            UUID experimentId,
-            List<ExperimentVariant> variants,
-            Map<UUID, BigDecimal> assignmentWeights,
-            BigDecimal totalWeight,
-            int remainingBucketPool) {
+            UUID experimentId, List<ExperimentVariant> variants, BigDecimal totalWeight, int remainingBucketPool) {
         return variants.stream()
-                .map(variant -> createWeightedAllocation(
-                        experimentId, variant, assignmentWeights, totalWeight, remainingBucketPool))
+                .map(variant -> createWeightedAllocation(experimentId, variant, totalWeight, remainingBucketPool))
                 .toList();
     }
 
     private BucketAllocation createWeightedAllocation(
-            UUID experimentId,
-            ExperimentVariant variant,
-            Map<UUID, BigDecimal> assignmentWeights,
-            BigDecimal totalWeight,
-            int remainingBucketPool) {
-        BigDecimal assignmentWeight = assignmentWeightOf(experimentId, variant, assignmentWeights);
-        BigDecimal scaledWeight = assignmentWeight.multiply(BigDecimal.valueOf(remainingBucketPool));
+            UUID experimentId, ExperimentVariant variant, BigDecimal totalWeight, int remainingBucketPool) {
+        BigDecimal weight = weightOf(experimentId, variant);
+        BigDecimal scaledWeight = weight.multiply(BigDecimal.valueOf(remainingBucketPool));
         BigDecimal additionalBuckets = scaledWeight.divideToIntegralValue(totalWeight);
         BigDecimal remainder = scaledWeight.remainder(totalWeight);
 
         return new BucketAllocation(variant.position(), variant, 1 + additionalBuckets.intValueExact(), remainder);
     }
 
-    private BigDecimal assignmentWeightOf(
-            UUID experimentId, ExperimentVariant variant, Map<UUID, BigDecimal> assignmentWeights) {
-        BigDecimal assignmentWeight = assignmentWeights.get(variant.id());
-        if (assignmentWeight == null) {
-            throw new IllegalStateException(
-                    "Missing assignment weight for experiment %s, variant %s".formatted(experimentId, variant.id()));
+    private BigDecimal weightOf(UUID experimentId, ExperimentVariant variant) {
+        BigDecimal weight = variant.weight();
+        if (weight == null || weight.signum() <= 0) {
+            throw new IllegalStateException("Invalid REGULAR weight for experiment %s, variant %s: %s"
+                    .formatted(experimentId, variant.id(), weight));
         }
-        return assignmentWeight;
+        return weight;
     }
 
     private List<BucketAllocation> distributeRemainingBuckets(
@@ -124,10 +100,11 @@ public class VariantBucketAllocator {
         return allocation;
     }
 
-    private void validateRemainingBucketPool(UUID experimentId, int variantCount, int remainingBucketPool) {
+    private void validateRemainingBucketPool(
+            UUID experimentId, int variantCount, int bucketPoolSize, int remainingBucketPool) {
         if (remainingBucketPool < 0) {
             throw new IllegalStateException("Experiment %s has %d variants, which exceeds bucket pool size %d"
-                    .formatted(experimentId, variantCount, BUCKET_POOL_SIZE));
+                    .formatted(experimentId, variantCount, bucketPoolSize));
         }
     }
 }
