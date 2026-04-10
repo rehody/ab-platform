@@ -39,6 +39,14 @@ public record ExperimentRolloutPlan(
         return bucketPoolSize - regularBucketPoolSize(bucketPoolSize);
     }
 
+    public boolean canAdvance() {
+        return currentStepIndex() < REGULAR_ROLLOUT_STEPS.size() - 1;
+    }
+
+    public boolean canRollback() {
+        return currentStepIndex() > 0;
+    }
+
     public ExperimentRolloutPlan advance() {
         return new ExperimentRolloutPlan(nextStep(), false, false);
     }
@@ -96,18 +104,18 @@ public record ExperimentRolloutPlan(
 
     private int nextStep() {
         int currentStepIndex = currentStepIndex();
-        if (currentStepIndex == REGULAR_ROLLOUT_STEPS.size() - 1) {
-            return regularRolloutPercentage;
+        if (canAdvance()) {
+            return REGULAR_ROLLOUT_STEPS.get(currentStepIndex + 1);
         }
-        return REGULAR_ROLLOUT_STEPS.get(currentStepIndex + 1);
+        return regularRolloutPercentage;
     }
 
     private int previousStep() {
         int currentStepIndex = currentStepIndex();
-        if (currentStepIndex == 0) {
-            return regularRolloutPercentage;
+        if (canRollback()) {
+            return REGULAR_ROLLOUT_STEPS.get(currentStepIndex - 1);
         }
-        return REGULAR_ROLLOUT_STEPS.get(currentStepIndex - 1);
+        return regularRolloutPercentage;
     }
 
     private int currentStepIndex() {

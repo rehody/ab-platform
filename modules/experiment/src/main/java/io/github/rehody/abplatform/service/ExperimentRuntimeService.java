@@ -1,11 +1,13 @@
 package io.github.rehody.abplatform.service;
 
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
+import io.github.rehody.abplatform.exception.ExperimentRolloutException;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
 import io.github.rehody.abplatform.repository.ExperimentRepository.UpdateOutcome;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -21,19 +23,47 @@ public class ExperimentRuntimeService {
     private final ExperimentLifecycleService experimentLifecycleService;
 
     @Transactional
-    public void advanceRollout(UUID experimentId) {
-        updateRollout(experimentId, experiment -> {
-            ExperimentRolloutPlan advanced = experiment.rolloutPlan().advance();
-            return experiment.withRolloutPlan(advanced);
-        });
+    public Experiment advanceRollout(UUID experimentId, long version) {
+        return applyRolloutAction(
+                experimentId,
+                version,
+                "advance",
+                ExperimentRolloutPlan::canAdvance,
+                ExperimentRolloutPlan::advance,
+                true);
     }
 
     @Transactional
-    public void rollbackRollout(UUID experimentId) {
-        updateRollout(experimentId, experiment -> {
-            ExperimentRolloutPlan rolledBack = experiment.rolloutPlan().rollback();
-            return experiment.withRolloutPlan(rolledBack);
-        });
+    public Experiment rollbackRollout(UUID experimentId, long version) {
+        return applyRolloutAction(
+                experimentId,
+                version,
+                "rollback",
+                ExperimentRolloutPlan::canRollback,
+                ExperimentRolloutPlan::rollback,
+                true);
+    }
+
+    @Transactional
+    public void autoAdvanceRollout(UUID experimentId) {
+        applyRolloutAction(
+                experimentId,
+                null,
+                "advance",
+                ExperimentRolloutPlan::canAdvance,
+                ExperimentRolloutPlan::advance,
+                false);
+    }
+
+    @Transactional
+    public void autoRollbackRollout(UUID experimentId) {
+        applyRolloutAction(
+                experimentId,
+                null,
+                "rollback",
+                ExperimentRolloutPlan::canRollback,
+                ExperimentRolloutPlan::rollback,
+                false);
     }
 
     @Transactional
@@ -50,22 +80,44 @@ public class ExperimentRuntimeService {
         }
     }
 
-    private void updateRollout(UUID experimentId, UnaryOperator<Experiment> update) {
+    private Experiment applyRolloutAction(
+            UUID experimentId,
+            Long expectedVersion,
+            String action,
+            Predicate<ExperimentRolloutPlan> canUpdate,
+            UnaryOperator<ExperimentRolloutPlan> update,
+            boolean strict) {
         String flagKey = experimentCommandSupport.getFlagKeyById(experimentId);
 
-        experimentCommandSupport.withExperimentLock(flagKey, () -> {
+        return experimentCommandSupport.withExperimentLock(flagKey, () -> {
             Experiment experiment = experimentCommandSupport.getById(experimentId);
             if (!experiment.isRunning()) {
-                return null;
+                if (strict) {
+                    throw new ExperimentRolloutException(
+                            "Cannot %s rollout for experiment in state %s. Allowed source states: [RUNNING]"
+                                    .formatted(action, experiment.state()));
+                }
+                return experiment;
             }
 
-            Experiment updatedExperiment = update.apply(experiment);
-            if (updatedExperiment.equals(experiment)) {
-                return null;
+            validateExpectedVersion(experiment, expectedVersion);
+
+            if (!canUpdate.test(experiment.rolloutPlan())) {
+                if (strict) {
+                    throw new ExperimentRolloutException("Cannot %s rollout for experiment %s at step %d"
+                            .formatted(
+                                    action,
+                                    experiment.id(),
+                                    experiment.rolloutPlan().regularRolloutPercentage()));
+                }
+                return experiment;
             }
 
-            persist(flagKey, updatedExperiment);
-            return null;
+            ExperimentRolloutPlan updatedRolloutPlan = update.apply(experiment.rolloutPlan());
+            Experiment updatedExperiment = experiment.withRolloutPlan(updatedRolloutPlan);
+
+            long updatedVersion = persist(flagKey, updatedExperiment);
+            return updatedExperiment.withVersion(updatedVersion);
         });
     }
 
@@ -107,16 +159,30 @@ public class ExperimentRuntimeService {
         });
     }
 
-    private void persist(String flagKey, Experiment experiment) {
+    private void validateExpectedVersion(Experiment experiment, Long expectedVersion) {
+        if (expectedVersion == null) {
+            return;
+        }
+
+        if (experiment.version() != expectedVersion) {
+            throw new OptimisticLockingFailureException("Experiment '%s' version mismatch. Expected version %d"
+                    .formatted(experiment.id(), expectedVersion));
+        }
+    }
+
+    private long persist(String flagKey, Experiment experiment) {
         UpdateOutcome outcome = experimentRepository.update(experiment);
-        switch (outcome.status()) {
+        return switch (outcome.status()) {
             case NOT_FOUND ->
                 throw new ExperimentNotFoundException("Experiment '%s' not found".formatted(experiment.id()));
             case VERSION_CONFLICT ->
                 throw new OptimisticLockingFailureException("Experiment '%s' version mismatch. Expected version %d"
                         .formatted(experiment.id(), experiment.version()));
-            case UPDATED -> experimentCommandSupport.invalidateCacheAfterCommit(flagKey);
-        }
+            case UPDATED -> {
+                experimentCommandSupport.invalidateCacheAfterCommit(flagKey);
+                yield outcome.version();
+            }
+        };
     }
 
     private enum PauseCommand {

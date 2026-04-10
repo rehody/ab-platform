@@ -20,9 +20,10 @@ public class ExperimentRolloutAutomationService {
         ExperimentRolloutDecision decision = experimentRolloutPolicy.decide(experiment, evaluationReports);
 
         switch (decision) {
-            case ADVANCE -> experimentRuntimeService.advanceRollout(experiment.id());
-            case ROLLBACK -> experimentRuntimeService.rollbackRollout(experiment.id());
+            case ADVANCE -> experimentRuntimeService.autoAdvanceRollout(experiment.id());
+            case ROLLBACK -> experimentRuntimeService.autoRollbackRollout(experiment.id());
             case PAUSE -> experimentRuntimeService.pauseOnNegativeAfterRollback(experiment.id());
+            case HOLD -> {}
         }
     }
 }

@@ -54,6 +54,13 @@ public class ExperimentExceptionHandler {
                 HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
     }
 
+    @ExceptionHandler(ExperimentRolloutException.class)
+    public ResponseEntity<ErrorResponse> handleRolloutFailure(
+            ExperimentRolloutException ex, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
+    }
+
     @ExceptionHandler(ExperimentActivationConflictException.class)
     public ResponseEntity<ErrorResponse> handleActivationConflict(
             ExperimentActivationConflictException ex, HttpServletRequest request) {
