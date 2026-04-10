@@ -38,18 +38,16 @@ public class ExperimentRuntimeService {
 
     @Transactional
     public void pauseOnNegativeAfterRollback(UUID experimentId) {
-        Experiment experiment = experimentCommandSupport.getById(experimentId);
-        if (experiment.isPaused()) {
-            markNegativeAfterRollback(experimentId);
-            return;
-        }
+        PauseResolution pauseResolution = resolvePauseCommand(experimentId);
+        PauseCommand pauseCommand = pauseResolution.command();
 
-        if (!experiment.isRunning()) {
-            return;
+        switch (pauseCommand) {
+            case MARK_ONLY -> markNegativeAfterRollback(experimentId);
+            case PAUSE_AND_MARK -> {
+                experimentLifecycleService.pause(experimentId, pauseResolution.version());
+                markNegativeAfterRollback(experimentId);
+            }
         }
-
-        experimentLifecycleService.pause(experimentId, experiment.version());
-        markNegativeAfterRollback(experimentId);
     }
 
     private void updateRollout(UUID experimentId, UnaryOperator<Experiment> update) {
@@ -92,6 +90,23 @@ public class ExperimentRuntimeService {
         });
     }
 
+    private PauseResolution resolvePauseCommand(UUID experimentId) {
+        String flagKey = experimentCommandSupport.getFlagKeyById(experimentId);
+
+        return experimentCommandSupport.withExperimentLock(flagKey, () -> {
+            Experiment experiment = experimentCommandSupport.getById(experimentId);
+            if (experiment.isPaused()) {
+                return new PauseResolution(PauseCommand.MARK_ONLY);
+            }
+
+            if (!experiment.isRunning()) {
+                return new PauseResolution(PauseCommand.NONE);
+            }
+
+            return new PauseResolution(PauseCommand.PAUSE_AND_MARK, experiment.version());
+        });
+    }
+
     private void persist(String flagKey, Experiment experiment) {
         UpdateOutcome outcome = experimentRepository.update(experiment);
         switch (outcome.status()) {
@@ -101,6 +116,18 @@ public class ExperimentRuntimeService {
                 throw new OptimisticLockingFailureException("Experiment '%s' version mismatch. Expected version %d"
                         .formatted(experiment.id(), experiment.version()));
             case UPDATED -> experimentCommandSupport.invalidateCacheAfterCommit(flagKey);
+        }
+    }
+
+    private enum PauseCommand {
+        NONE,
+        MARK_ONLY,
+        PAUSE_AND_MARK
+    }
+
+    private record PauseResolution(PauseCommand command, Long version) {
+        private PauseResolution(PauseCommand command) {
+            this(command, null);
         }
     }
 }
