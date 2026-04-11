@@ -21,6 +21,11 @@ spring:
       password: ${REDIS_PASSWORD:}
 
 ab:
+  authentication:
+    internal-token:
+      issuer: ${AB_AUTH_INTERNAL_TOKEN_ISSUER:ab-platform-internal}
+      shared-secret: ${AB_AUTH_INTERNAL_TOKEN_SHARED_SECRET:dev-only-internal-token-secret-please-change}
+
   authorization:
     actors:
       11111111-1111-1111-1111-111111111111: VIEWER

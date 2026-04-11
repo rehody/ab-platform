@@ -8,10 +8,13 @@ import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
+import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
@@ -21,15 +24,30 @@ import tools.jackson.databind.ObjectMapper;
 @RequiredArgsConstructor
 public class PlatformSecurityExceptionHandler implements AuthenticationEntryPoint, AccessDeniedHandler {
 
+    private static final String AUTHENTICATION_REQUIRED_MESSAGE = "Authentication required";
+    private static final String INVALID_AUTHENTICATION_TOKEN_MESSAGE = "Invalid authentication token";
+    private static final String ACCESS_DENIED_MESSAGE = "Access denied";
+
+    private final BearerTokenAuthenticationEntryPoint authenticationEntryPoint =
+            new BearerTokenAuthenticationEntryPoint();
+
+    private final BearerTokenAccessDeniedHandler accessDeniedHandler = new BearerTokenAccessDeniedHandler();
+
     private final ObjectMapper objectMapper;
 
     @Override
     public void commence(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
-            AuthenticationException authException)
+            @NonNull AuthenticationException authException)
             throws IOException {
-        writeError(request, response, HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED, authException.getMessage());
+        authenticationEntryPoint.commence(request, response, authException);
+        writeError(
+                request,
+                response,
+                HttpStatus.UNAUTHORIZED,
+                ErrorCode.UNAUTHORIZED,
+                resolveAuthenticationMessage(request));
     }
 
     @Override
@@ -38,7 +56,16 @@ public class PlatformSecurityExceptionHandler implements AuthenticationEntryPoin
             @NonNull HttpServletResponse response,
             @NonNull AccessDeniedException accessDeniedException)
             throws IOException {
-        writeError(request, response, HttpStatus.FORBIDDEN, ErrorCode.FORBIDDEN, "Access denied");
+        accessDeniedHandler.handle(request, response, accessDeniedException);
+        writeError(request, response, HttpStatus.FORBIDDEN, ErrorCode.FORBIDDEN, ACCESS_DENIED_MESSAGE);
+    }
+
+    private String resolveAuthenticationMessage(HttpServletRequest request) {
+        String authorizationHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authorizationHeader == null || authorizationHeader.isBlank()) {
+            return AUTHENTICATION_REQUIRED_MESSAGE;
+        }
+        return INVALID_AUTHENTICATION_TOKEN_MESSAGE;
     }
 
     private void writeError(

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/reports/experiments")
+@RequestMapping("/api/v1/reports/experiments")
 @RequiredArgsConstructor
 public class ExperimentReportController {
 

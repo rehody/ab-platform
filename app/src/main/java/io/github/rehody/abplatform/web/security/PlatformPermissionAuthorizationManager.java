@@ -2,12 +2,16 @@ package io.github.rehody.abplatform.web.security;
 
 import io.github.rehody.abplatform.security.PlatformPermission;
 import io.github.rehody.abplatform.security.RequiresPlatformPermission;
+import java.lang.reflect.Method;
 import java.util.function.Supplier;
 import org.aopalliance.intercept.MethodInvocation;
+import org.jspecify.annotations.NonNull;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.security.authorization.AuthorityAuthorizationManager;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.AuthorizationManager;
+import org.springframework.security.authorization.AuthorizationResult;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
@@ -16,27 +20,27 @@ public class PlatformPermissionAuthorizationManager implements AuthorizationMana
 
     @Override
     public AuthorizationDecision authorize(
-            Supplier<? extends Authentication> authentication, MethodInvocation methodInvocation) {
+            @NonNull Supplier<? extends Authentication> authentication, MethodInvocation methodInvocation) {
+
         PlatformPermission requiredPermission = getRequiredPermission(methodInvocation);
-        Authentication currentAuthentication = authentication.get();
-        if (currentAuthentication == null || !currentAuthentication.isAuthenticated()) {
-            return new AuthorizationDecision(false);
-        }
+        AuthorizationResult result = AuthorityAuthorizationManager.<MethodInvocation>hasAuthority(
+                        requiredPermission.name())
+                .authorize(authentication, methodInvocation);
 
-        boolean granted = currentAuthentication.getAuthorities().stream()
-                .anyMatch(authority -> requiredPermission.name().equals(authority.getAuthority()));
-
-        return new AuthorizationDecision(granted);
+        return new AuthorizationDecision(result.isGranted());
     }
 
     private PlatformPermission getRequiredPermission(MethodInvocation methodInvocation) {
+        Class<?> targetClass = getTargetClass(methodInvocation);
+        Method method = AopUtils.getMostSpecificMethod(methodInvocation.getMethod(), targetClass);
+
         RequiresPlatformPermission methodPermission =
-                AnnotationUtils.findAnnotation(methodInvocation.getMethod(), RequiresPlatformPermission.class);
+                AnnotationUtils.findAnnotation(method, RequiresPlatformPermission.class);
+
         if (methodPermission != null) {
             return methodPermission.value();
         }
 
-        Class<?> targetClass = getTargetClass(methodInvocation);
         RequiresPlatformPermission classPermission =
                 AnnotationUtils.findAnnotation(targetClass, RequiresPlatformPermission.class);
 
