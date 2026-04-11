@@ -3,6 +3,8 @@ package io.github.rehody.abplatform.evaluation.controller;
 import io.github.rehody.abplatform.evaluation.dto.response.ExperimentMetricEvaluationResponse;
 import io.github.rehody.abplatform.evaluation.model.ExperimentMetricEvaluationReport;
 import io.github.rehody.abplatform.evaluation.service.ExperimentMetricEvaluationService;
+import io.github.rehody.abplatform.security.PlatformPermission;
+import io.github.rehody.abplatform.security.RequiresPlatformPermission;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +20,7 @@ public class ExperimentMetricEvaluationController {
     private final ExperimentMetricEvaluationService experimentMetricEvaluationService;
 
     @GetMapping("/{experimentId}/metrics/{metricKey}/evaluation")
+    @RequiresPlatformPermission(PlatformPermission.VIEW_REPORTS)
     public ExperimentMetricEvaluationResponse getEvaluationReport(
             @PathVariable UUID experimentId, @PathVariable String metricKey) {
         ExperimentMetricEvaluationReport experimentMetricEvaluationReport =

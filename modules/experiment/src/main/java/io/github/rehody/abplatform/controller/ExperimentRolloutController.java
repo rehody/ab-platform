@@ -3,6 +3,8 @@ package io.github.rehody.abplatform.controller;
 import io.github.rehody.abplatform.dto.request.ExperimentRolloutActionRequest;
 import io.github.rehody.abplatform.dto.response.ExperimentRolloutResponse;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.security.PlatformPermission;
+import io.github.rehody.abplatform.security.RequiresPlatformPermission;
 import io.github.rehody.abplatform.service.ExperimentQueryService;
 import io.github.rehody.abplatform.service.ExperimentRuntimeService;
 import jakarta.validation.Valid;
@@ -24,12 +26,14 @@ public class ExperimentRolloutController {
     private final ExperimentRuntimeService experimentRuntimeService;
 
     @GetMapping("/{id}/rollout")
+    @RequiresPlatformPermission(PlatformPermission.VIEW_ROLLOUT_STATE)
     public ExperimentRolloutResponse get(@PathVariable UUID id) {
         Experiment experiment = experimentQueryService.getById(id);
         return ExperimentRolloutResponse.from(experiment);
     }
 
     @PostMapping("/{id}/rollout/advance")
+    @RequiresPlatformPermission(PlatformPermission.ADVANCE_EXPERIMENT_ROLLOUT)
     public ExperimentRolloutResponse advance(
             @PathVariable UUID id, @Valid @RequestBody ExperimentRolloutActionRequest request) {
         Experiment experiment = experimentRuntimeService.advanceRollout(id, request.version());
@@ -37,6 +41,7 @@ public class ExperimentRolloutController {
     }
 
     @PostMapping("/{id}/rollout/rollback")
+    @RequiresPlatformPermission(PlatformPermission.ROLLBACK_EXPERIMENT_ROLLOUT)
     public ExperimentRolloutResponse rollback(
             @PathVariable UUID id, @Valid @RequestBody ExperimentRolloutActionRequest request) {
         Experiment experiment = experimentRuntimeService.rollbackRollout(id, request.version());

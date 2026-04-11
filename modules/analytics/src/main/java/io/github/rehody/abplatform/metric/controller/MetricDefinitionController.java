@@ -5,6 +5,8 @@ import io.github.rehody.abplatform.metric.dto.request.MetricDefinitionUpdateRequ
 import io.github.rehody.abplatform.metric.dto.response.MetricDefinitionResponse;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.metric.service.MetricDefinitionService;
+import io.github.rehody.abplatform.security.PlatformPermission;
+import io.github.rehody.abplatform.security.RequiresPlatformPermission;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ public class MetricDefinitionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @RequiresPlatformPermission(PlatformPermission.CREATE_METRIC_DEFINITION)
     public MetricDefinitionResponse create(@Valid @RequestBody MetricDefinitionCreateRequest request) {
         MetricDefinition metricDefinition = metricDefinitionService.create(
                 request.key(),
@@ -40,6 +43,7 @@ public class MetricDefinitionController {
     }
 
     @PutMapping("/{key}")
+    @RequiresPlatformPermission(PlatformPermission.UPDATE_METRIC_DEFINITION)
     public MetricDefinitionResponse update(
             @PathVariable String key, @Valid @RequestBody MetricDefinitionUpdateRequest request) {
         MetricDefinition metricDefinition = metricDefinitionService.update(
@@ -54,12 +58,14 @@ public class MetricDefinitionController {
     }
 
     @GetMapping("/{key}")
+    @RequiresPlatformPermission(PlatformPermission.VIEW_METRIC_DEFINITIONS)
     public MetricDefinitionResponse getByKey(@PathVariable String key) {
         MetricDefinition metricDefinition = metricDefinitionService.getByKey(key);
         return MetricDefinitionResponse.from(metricDefinition);
     }
 
     @GetMapping
+    @RequiresPlatformPermission(PlatformPermission.VIEW_METRIC_DEFINITIONS)
     public List<MetricDefinitionResponse> getAll() {
         List<MetricDefinition> metricDefinitions = metricDefinitionService.getAll();
         return metricDefinitions.stream().map(MetricDefinitionResponse::from).toList();

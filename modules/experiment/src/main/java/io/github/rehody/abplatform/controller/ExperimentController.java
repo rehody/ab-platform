@@ -4,6 +4,8 @@ import io.github.rehody.abplatform.dto.request.ExperimentCreateRequest;
 import io.github.rehody.abplatform.dto.request.ExperimentUpdateRequest;
 import io.github.rehody.abplatform.dto.response.ExperimentResponse;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.security.PlatformPermission;
+import io.github.rehody.abplatform.security.RequiresPlatformPermission;
 import io.github.rehody.abplatform.service.ExperimentDraftService;
 import io.github.rehody.abplatform.service.ExperimentQueryService;
 import jakarta.validation.Valid;
@@ -30,6 +32,7 @@ public class ExperimentController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @RequiresPlatformPermission(PlatformPermission.CREATE_EXPERIMENT)
     public ExperimentResponse create(@Valid @RequestBody ExperimentCreateRequest request) {
         Experiment experiment = experimentDraftService.create(
                 request.flagKey(), request.domainKey(), request.variants(), request.state());
@@ -37,6 +40,7 @@ public class ExperimentController {
     }
 
     @PatchMapping("/{id}")
+    @RequiresPlatformPermission(PlatformPermission.UPDATE_EXPERIMENT_DRAFT)
     public ExperimentResponse update(@PathVariable UUID id, @Valid @RequestBody ExperimentUpdateRequest request) {
         Experiment experiment = experimentDraftService.update(
                 id, request.flagKey(), request.domainKey(), request.variants(), request.version());
@@ -44,12 +48,14 @@ public class ExperimentController {
     }
 
     @GetMapping("/{id}")
+    @RequiresPlatformPermission(PlatformPermission.VIEW_EXPERIMENTS)
     public ExperimentResponse get(@PathVariable UUID id) {
         Experiment experiment = experimentQueryService.getById(id);
         return ExperimentResponse.from(experiment);
     }
 
     @GetMapping
+    @RequiresPlatformPermission(PlatformPermission.VIEW_EXPERIMENTS)
     public List<ExperimentResponse> getAll() {
         List<Experiment> experiments = experimentQueryService.getAll();
         return experiments.stream().map(ExperimentResponse::from).toList();

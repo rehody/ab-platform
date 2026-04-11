@@ -4,6 +4,8 @@ import io.github.rehody.abplatform.conflict.dto.response.ExperimentConflictListR
 import io.github.rehody.abplatform.conflict.model.ExperimentConflict;
 import io.github.rehody.abplatform.conflict.service.ExperimentConflictResponseAssembler;
 import io.github.rehody.abplatform.conflict.service.ExperimentConflictsService;
+import io.github.rehody.abplatform.security.PlatformPermission;
+import io.github.rehody.abplatform.security.RequiresPlatformPermission;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ public class ExperimentConflictsController {
     private final ExperimentConflictResponseAssembler experimentConflictResponseAssembler;
 
     @GetMapping("/{id}/conflicts")
+    @RequiresPlatformPermission(PlatformPermission.VIEW_CONFLICTS)
     public ExperimentConflictListResponse getConflicts(@PathVariable UUID id) {
         List<ExperimentConflict> conflicts = experimentConflictService.getAll(id);
         return experimentConflictResponseAssembler.assemble(conflicts);

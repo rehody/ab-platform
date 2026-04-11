@@ -19,7 +19,9 @@ public record ErrorResponse(
         VALIDATION_ERROR,
         NOT_FOUND,
         BAD_REQUEST,
-        CONFLICT
+        CONFLICT,
+        UNAUTHORIZED,
+        FORBIDDEN
     }
 
     public record Violation(String field, String message) {}

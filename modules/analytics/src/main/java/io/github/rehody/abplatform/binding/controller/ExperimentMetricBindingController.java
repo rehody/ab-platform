@@ -3,6 +3,8 @@ package io.github.rehody.abplatform.binding.controller;
 import io.github.rehody.abplatform.binding.dto.request.ExperimentMetricsUpdateRequest;
 import io.github.rehody.abplatform.binding.dto.response.ExperimentMetricsResponse;
 import io.github.rehody.abplatform.binding.service.ExperimentMetricBindingService;
+import io.github.rehody.abplatform.security.PlatformPermission;
+import io.github.rehody.abplatform.security.RequiresPlatformPermission;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -22,6 +24,7 @@ public class ExperimentMetricBindingController {
     private final ExperimentMetricBindingService experimentMetricBindingService;
 
     @PutMapping
+    @RequiresPlatformPermission(PlatformPermission.UPDATE_EXPERIMENT_METRIC_BINDINGS)
     public ExperimentMetricsResponse updateMetricKeys(
             @PathVariable UUID experimentId, @Valid @RequestBody ExperimentMetricsUpdateRequest request) {
         List<String> metricKeys = experimentMetricBindingService.updateMetricKeys(experimentId, request.metricKeys());
@@ -29,6 +32,7 @@ public class ExperimentMetricBindingController {
     }
 
     @GetMapping
+    @RequiresPlatformPermission(PlatformPermission.VIEW_EXPERIMENT_METRIC_BINDINGS)
     public ExperimentMetricsResponse getMetricKeys(@PathVariable UUID experimentId) {
         List<String> metricKeys = experimentMetricBindingService.getMetricKeys(experimentId);
         return new ExperimentMetricsResponse(experimentId, metricKeys);
