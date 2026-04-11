@@ -27,3 +27,10 @@ dependencies {
 springBoot {
     mainClass = 'io.github.rehody.abplatform.Application'
 }
+
+tasks.register('runDevToken', JavaExec) {
+    group = 'application'
+    description = 'Generates a development JWT for a predefined actor fixture.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.github.rehody.abplatform.dev.DevTokenGenerator'
+}
