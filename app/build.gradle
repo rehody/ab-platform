@@ -6,11 +6,18 @@ plugins {
 dependencies {
     implementation project(':modules:feature-flag')
     implementation project(':modules:experiment')
-    implementation project(':shared:locking')
+    implementation project(':modules:assignment')
+    implementation project(':modules:analytics')
+    implementation project(':shared:common')
+    implementation project(':shared:contracts')
 
     implementation libs.spring.boot.starter
     implementation libs.spring.boot.starter.web
+    implementation libs.spring.boot.starter.security
+    implementation libs.spring.boot.starter.oauth2.resource.server
+    implementation libs.spring.boot.starter.validation
     implementation libs.spring.boot.starter.flyway
+
     runtimeOnly libs.flyway.database.postgresql
     runtimeOnly libs.postgresql
 
@@ -19,4 +26,11 @@ dependencies {
 
 springBoot {
     mainClass = 'io.github.rehody.abplatform.Application'
+}
+
+tasks.register('runDevToken', JavaExec) {
+    group = 'application'
+    description = 'Generates a development JWT for a predefined actor fixture.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.github.rehody.abplatform.dev.DevTokenGenerator'
 }

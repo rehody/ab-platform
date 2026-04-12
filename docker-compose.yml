@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:18.2-alpine
+    environment:
+      POSTGRES_DB: abplatform
+      POSTGRES_USER: abplatform
+      POSTGRES_PASSWORD: abplatform
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U abplatform -d abplatform" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:8.4-alpine
+    command: [ "redis-server", "--save", "", "--appendonly", "no" ]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: jdbc:postgresql://postgres:5432/abplatform
+      DB_USER: abplatform
+      DB_PASSWORD: abplatform
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD:
+      FLYWAY_ENABLED: true
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:

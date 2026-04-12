@@ -1,12 +1,12 @@
 package io.github.rehody.abplatform.repository;
 
+import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.repository.jdbc.ExperimentJdbcRepository;
 import io.github.rehody.abplatform.repository.jdbc.ExperimentVariantJdbcRepository;
 import io.github.rehody.abplatform.repository.mapper.ExperimentAggregateMapper;
 import io.github.rehody.abplatform.repository.sync.ExperimentVariantSynchronizer;
-import io.github.rehody.abplatform.repository.validation.ExperimentVariantPreparer;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -23,14 +23,11 @@ public class ExperimentRepository {
     private final ExperimentVariantJdbcRepository experimentVariantJdbcRepository;
     private final ExperimentAggregateMapper experimentAggregateMapper;
     private final ExperimentVariantSynchronizer experimentVariantSynchronizer;
-    private final ExperimentVariantPreparer experimentVariantPreparer;
 
     @Transactional
     public void save(Experiment experiment) {
-        List<ExperimentVariant> preparedVariants =
-                experimentVariantPreparer.prepare(experiment.id(), experiment.variants());
         experimentJdbcRepository.insert(experiment);
-        experimentVariantJdbcRepository.batchInsert(experiment.id(), preparedVariants);
+        experimentVariantJdbcRepository.batchInsert(experiment.id(), experiment.variants());
     }
 
     public Optional<Experiment> findById(UUID id) {
@@ -49,6 +46,15 @@ public class ExperimentRepository {
 
     public List<Experiment> findAll() {
         List<Experiment> experiments = experimentJdbcRepository.findAll();
+        return attachVariants(experiments);
+    }
+
+    public List<Experiment> findRunning() {
+        List<Experiment> experiments = experimentJdbcRepository.findByState(ExperimentState.RUNNING);
+        return attachVariants(experiments);
+    }
+
+    private List<Experiment> attachVariants(List<Experiment> experiments) {
         if (experiments.isEmpty()) {
             return List.of();
         }
@@ -76,6 +82,20 @@ public class ExperimentRepository {
     }
 
     @Transactional
+    public UpdateOutcome updateWithVariants(Experiment experiment) {
+        Optional<Long> newVersion = experimentJdbcRepository.update(experiment);
+        if (newVersion.isEmpty()) {
+            return experimentJdbcRepository
+                    .findVersionById(experiment.id())
+                    .map(_ -> UpdateOutcome.versionConflict())
+                    .orElse(UpdateOutcome.notFound());
+        }
+
+        experimentVariantSynchronizer.sync(experiment.id(), experiment.variants());
+        return UpdateOutcome.updated(newVersion.get());
+    }
+
+    @Transactional
     public int deleteById(UUID id) {
         return experimentJdbcRepository.deleteById(id);
     }
@@ -91,7 +111,6 @@ public class ExperimentRepository {
     @Transactional
     public ReplaceVariantsResult replaceVariants(
             UUID experimentId, long expectedVersion, List<ExperimentVariant> variants) {
-        List<ExperimentVariant> preparedVariants = experimentVariantPreparer.prepare(experimentId, variants);
         int affectedRows = experimentJdbcRepository.incrementVersion(experimentId, expectedVersion);
         if (affectedRows == 0) {
             return experimentJdbcRepository
@@ -100,7 +119,7 @@ public class ExperimentRepository {
                     .orElse(ReplaceVariantsResult.NOT_FOUND);
         }
 
-        experimentVariantSynchronizer.sync(experimentId, preparedVariants);
+        experimentVariantSynchronizer.sync(experimentId, variants);
         return ReplaceVariantsResult.UPDATED;
     }
 

@@ -1,5 +1,6 @@
 package io.github.rehody.abplatform.cache;
 
+import static io.github.rehody.abplatform.support.AssignmentFixtures.variant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -113,8 +114,7 @@ class AssignmentPlanCacheTest {
     }
 
     private VariantAllocationSnapshot snapshot() {
-        return new VariantAllocationSnapshot(List.of(new BucketRange(
-                0, 10000, io.github.rehody.abplatform.support.AssignmentFixtures.variant(0, "control", "blue", 1))));
+        return new VariantAllocationSnapshot(List.of(new BucketRange(0, 10000, variant(0, "control", "blue", 1))));
     }
 
     private AssignmentPlanCacheProperties properties() {

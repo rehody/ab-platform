@@ -3,11 +3,12 @@ package io.github.rehody.abplatform.repository.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -19,14 +20,29 @@ class ExperimentAggregateMapperTest {
 
     @Test
     void withVariants_shouldCopyVariantsAndPreserveOtherExperimentFields() {
-        Experiment experiment = new Experiment(UUID.randomUUID(), "flag-a", List.of(), ExperimentState.RUNNING, 5L);
+        Experiment experiment = new Experiment(
+                UUID.randomUUID(),
+                "flag-a",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.RUNNING,
+                5L,
+                null,
+                null);
         List<ExperimentVariant> variants = new ArrayList<>(List.of(new ExperimentVariant(
-                UUID.randomUUID(), "control", new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE)));
+                UUID.randomUUID(),
+                "control",
+                new FeatureValue(true, FeatureValueType.BOOL),
+                0,
+                null,
+                ExperimentVariantType.CONTROL)));
 
         Experiment result = experimentAggregateMapper.withVariants(experiment, variants);
 
         assertThat(result.id()).isEqualTo(experiment.id());
         assertThat(result.flagKey()).isEqualTo("flag-a");
+        assertThat(result.domainKey()).isEqualTo("CHECKOUT");
         assertThat(result.variants()).containsExactlyElementsOf(variants);
         assertThat(result.variants()).isNotSameAs(variants);
         assertThat(result.state()).isEqualTo(ExperimentState.RUNNING);
@@ -35,7 +51,16 @@ class ExperimentAggregateMapperTest {
 
     @Test
     void withVariants_shouldReturnEmptyVariantsWhenInputVariantsNull() {
-        Experiment experiment = new Experiment(UUID.randomUUID(), "flag-b", List.of(), ExperimentState.DRAFT, 1L);
+        Experiment experiment = new Experiment(
+                UUID.randomUUID(),
+                "flag-b",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.DRAFT,
+                1L,
+                null,
+                null);
 
         Experiment result = experimentAggregateMapper.withVariants(experiment, null);
 
@@ -44,7 +69,16 @@ class ExperimentAggregateMapperTest {
 
     @Test
     void withVariants_shouldReturnEmptyVariantsWhenInputVariantsEmpty() {
-        Experiment experiment = new Experiment(UUID.randomUUID(), "flag-c", List.of(), ExperimentState.APPROVED, 2L);
+        Experiment experiment = new Experiment(
+                UUID.randomUUID(),
+                "flag-c",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.APPROVED,
+                2L,
+                null,
+                null);
 
         Experiment result = experimentAggregateMapper.withVariants(experiment, List.of());
 

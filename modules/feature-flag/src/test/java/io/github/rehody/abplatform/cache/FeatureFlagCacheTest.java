@@ -10,6 +10,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import io.github.rehody.abplatform.model.FeatureFlag;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
 import java.time.Duration;
@@ -90,32 +91,32 @@ class FeatureFlagCacheTest {
 
     @Test
     void getOrLoad_shouldReturnLoadedValueAndReuseL1CacheOnSecondCall() {
-        CachedFeatureFlag cachedFeatureFlag =
-                new CachedFeatureFlag(UUID.randomUUID(), "flag-a", new FeatureValue(true, FeatureValueType.BOOL), 0L);
+        FeatureFlag featureFlag =
+                new FeatureFlag(UUID.randomUUID(), "flag-a", new FeatureValue(true, FeatureValueType.BOOL), 0L);
         AtomicInteger loaderCalls = new AtomicInteger();
-        Supplier<Optional<CachedFeatureFlag>> loader = () -> {
+        Supplier<Optional<FeatureFlag>> loader = () -> {
             loaderCalls.incrementAndGet();
-            return Optional.of(cachedFeatureFlag);
+            return Optional.of(featureFlag);
         };
 
-        Optional<CachedFeatureFlag> first = cache.getOrLoad("flag-a", loader);
-        Optional<CachedFeatureFlag> second = cache.getOrLoad("flag-a", loader);
+        Optional<FeatureFlag> first = cache.getOrLoad("flag-a", loader);
+        Optional<FeatureFlag> second = cache.getOrLoad("flag-a", loader);
 
-        assertThat(first).contains(cachedFeatureFlag);
-        assertThat(second).contains(cachedFeatureFlag);
+        assertThat(first).contains(featureFlag);
+        assertThat(second).contains(featureFlag);
         assertThat(loaderCalls.get()).isEqualTo(1);
     }
 
     @Test
     void getOrLoad_shouldCacheMissAndSkipLoaderAfterFirstMiss() {
         AtomicInteger loaderCalls = new AtomicInteger();
-        Supplier<Optional<CachedFeatureFlag>> loader = () -> {
+        Supplier<Optional<FeatureFlag>> loader = () -> {
             loaderCalls.incrementAndGet();
             return Optional.empty();
         };
 
-        Optional<CachedFeatureFlag> first = cache.getOrLoad("flag-b", loader);
-        Optional<CachedFeatureFlag> second = cache.getOrLoad("flag-b", loader);
+        Optional<FeatureFlag> first = cache.getOrLoad("flag-b", loader);
+        Optional<FeatureFlag> second = cache.getOrLoad("flag-b", loader);
 
         assertThat(first).isEmpty();
         assertThat(second).isEmpty();

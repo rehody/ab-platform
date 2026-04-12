@@ -19,14 +19,14 @@ import org.springframework.stereotype.Repository;
 public class ExperimentVariantJdbcRepository {
 
     private static final String SELECT_VARIANTS_BY_EXPERIMENT_ID_SQL = """
-        SELECT id, experiment_id, key, value, value_type, position, weight
+        SELECT id, experiment_id, key, value, value_type, position, weight, variant_type
         FROM experiment_variants
         WHERE experiment_id = :experimentId
         ORDER BY position, id
         """;
 
     private static final String SELECT_VARIANTS_BY_EXPERIMENT_IDS_SQL = """
-        SELECT id, experiment_id, key, value, value_type, position, weight
+        SELECT id, experiment_id, key, value, value_type, position, weight, variant_type
         FROM experiment_variants
         WHERE experiment_id IN (:experimentIds)
         ORDER BY experiment_id, position, id
@@ -40,7 +40,8 @@ public class ExperimentVariantJdbcRepository {
             value,
             value_type,
             position,
-            weight
+            weight,
+            variant_type
         )
         VALUES (
             :id,
@@ -49,7 +50,8 @@ public class ExperimentVariantJdbcRepository {
             :value,
             :valueType,
             :position,
-            :weight
+            :weight,
+            :variantType
         )
         """;
 
@@ -59,7 +61,8 @@ public class ExperimentVariantJdbcRepository {
             value = :value,
             value_type = :valueType,
             position = :position,
-            weight = :weight
+            weight = :weight,
+            variant_type = :variantType
         WHERE id = :id
           AND experiment_id = :experimentId
         """;
@@ -120,9 +123,9 @@ public class ExperimentVariantJdbcRepository {
             return;
         }
 
-        SqlParameterSource[] batchParams = toVariantBatchParams(experimentId, variants);
+        SqlParameterSource[] batchParams = mapToVariantBatchParams(experimentId, variants);
         int[] affectedRows = namedParameterJdbcTemplate.batchUpdate(INSERT_VARIANT_SQL, batchParams);
-        assertBatchSingleRows(affectedRows, "inserted", experimentId, toVariantIds(variants));
+        assertBatchSingleRows(affectedRows, "inserted", experimentId, mapToVariantIds(variants));
     }
 
     public void batchUpdate(UUID experimentId, List<ExperimentVariant> variants) {
@@ -130,9 +133,9 @@ public class ExperimentVariantJdbcRepository {
             return;
         }
 
-        SqlParameterSource[] batchParams = toVariantBatchParams(experimentId, variants);
+        SqlParameterSource[] batchParams = mapToVariantBatchParams(experimentId, variants);
         int[] affectedRows = namedParameterJdbcTemplate.batchUpdate(UPDATE_VARIANT_SQL, batchParams);
-        assertBatchSingleRows(affectedRows, "updated", experimentId, toVariantIds(variants));
+        assertBatchSingleRows(affectedRows, "updated", experimentId, mapToVariantIds(variants));
     }
 
     public void batchDelete(UUID experimentId, List<UUID> variantIds) {
@@ -158,7 +161,7 @@ public class ExperimentVariantJdbcRepository {
         }
     }
 
-    private SqlParameterSource[] toVariantBatchParams(UUID experimentId, List<ExperimentVariant> variants) {
+    private SqlParameterSource[] mapToVariantBatchParams(UUID experimentId, List<ExperimentVariant> variants) {
         return variants.stream()
                 .map(variant -> new MapSqlParameterSource()
                         .addValue("id", variant.id())
@@ -167,11 +170,12 @@ public class ExperimentVariantJdbcRepository {
                         .addValue("value", variant.value().value())
                         .addValue("valueType", variant.value().type().name())
                         .addValue("position", variant.position())
-                        .addValue("weight", variant.weight()))
+                        .addValue("weight", variant.weight())
+                        .addValue("variantType", variant.type().name()))
                 .toArray(SqlParameterSource[]::new);
     }
 
-    private List<UUID> toVariantIds(List<ExperimentVariant> variants) {
+    private List<UUID> mapToVariantIds(List<ExperimentVariant> variants) {
         return variants.stream().map(ExperimentVariant::id).toList();
     }
 

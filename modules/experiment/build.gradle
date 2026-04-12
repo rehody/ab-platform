@@ -6,6 +6,8 @@ dependencies {
     implementation project(':shared:caching')
     implementation project(':shared:common')
     implementation project(':shared:contracts')
+    implementation project(':shared:locking')
+    implementation project(':modules:feature-flag')
 
     testImplementation libs.spring.boot.starter.test
     testImplementation project(':shared:testing')

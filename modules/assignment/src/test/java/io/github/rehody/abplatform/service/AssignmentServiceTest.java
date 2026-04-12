@@ -6,26 +6,24 @@ import static io.github.rehody.abplatform.support.AssignmentFixtures.runningExpe
 import static io.github.rehody.abplatform.support.AssignmentFixtures.stringValue;
 import static io.github.rehody.abplatform.support.AssignmentFixtures.variant;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.github.rehody.abplatform.dto.request.AssignmentRequest;
-import io.github.rehody.abplatform.dto.response.AssignmentResponse;
-import io.github.rehody.abplatform.dto.response.FeatureFlagResponse;
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.model.AssignmentEvent;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentVariant;
+import io.github.rehody.abplatform.model.FeatureFlag;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
+import io.github.rehody.abplatform.repository.AssignmentEventRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -33,7 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AssignmentServiceTest {
 
     @Mock
-    private ExperimentService experimentService;
+    private ExperimentQueryService experimentQueryService;
 
     @Mock
     private FeatureFlagService featureFlagService;
@@ -44,62 +42,102 @@ class AssignmentServiceTest {
     @Mock
     private ExperimentAssignmentPolicy experimentAssignmentPolicy;
 
+    @Mock
+    private AssignmentEventRepository assignmentEventRepository;
+
     private AssignmentService assignmentService;
 
     @BeforeEach
     void setUp() {
         assignmentService = new AssignmentService(
-                experimentService, featureFlagService, experimentVariantResolver, experimentAssignmentPolicy);
+                experimentQueryService,
+                featureFlagService,
+                experimentVariantResolver,
+                experimentAssignmentPolicy,
+                assignmentEventRepository);
     }
 
     @Test
     void resolve_shouldReturnDefaultFlagValueWhenExperimentMissing() {
         UUID userId = UUID.randomUUID();
         FeatureValue defaultValue = boolValue(true);
-        AssignmentRequest request = new AssignmentRequest(userId, "flag-a");
-        when(experimentService.findByFlagKey("flag-a")).thenReturn(Optional.empty());
-        when(featureFlagService.getByKey("flag-a")).thenReturn(new FeatureFlagResponse("flag-a", defaultValue, 3L));
+        when(experimentQueryService.findByFlagKey("flag-a")).thenReturn(Optional.empty());
+        when(featureFlagService.getByKey("flag-a"))
+                .thenReturn(new FeatureFlag(UUID.randomUUID(), "flag-a", defaultValue, 3L));
 
-        AssignmentResponse response = assignmentService.resolve(request);
+        FeatureValue response = assignmentService.resolve(userId, "flag-a");
 
-        assertThat(response).isEqualTo(AssignmentResponse.of(defaultValue));
-        verify(featureFlagService).getByKey("flag-a");
-        verify(experimentAssignmentPolicy, never()).canResolveAssignment(any());
-        verify(experimentVariantResolver, never()).resolve(any(), any());
+        assertThat(response).isEqualTo(defaultValue);
     }
 
     @Test
     void resolve_shouldReturnDefaultFlagValueWhenExperimentCannotBeResolvedForAssignment() {
         UUID userId = UUID.randomUUID();
         Experiment experiment =
-                experiment("flag-b", List.of(variant(0, "control", "blue", 1)), ExperimentState.PAUSED, 2L);
+                experiment("flag-b", "CHECKOUT", List.of(variant(0, "control", "blue", 1)), ExperimentState.PAUSED, 2L);
         FeatureValue defaultValue = stringValue("gray");
-        AssignmentRequest request = new AssignmentRequest(userId, "flag-b");
-        when(experimentService.findByFlagKey("flag-b")).thenReturn(Optional.of(experiment));
+        when(experimentQueryService.findByFlagKey("flag-b")).thenReturn(Optional.of(experiment));
         when(experimentAssignmentPolicy.canResolveAssignment(experiment)).thenReturn(false);
-        when(featureFlagService.getByKey("flag-b")).thenReturn(new FeatureFlagResponse("flag-b", defaultValue, 1L));
+        when(featureFlagService.getByKey("flag-b"))
+                .thenReturn(new FeatureFlag(UUID.randomUUID(), "flag-b", defaultValue, 1L));
 
-        AssignmentResponse response = assignmentService.resolve(request);
+        FeatureValue response = assignmentService.resolve(userId, "flag-b");
 
-        assertThat(response).isEqualTo(AssignmentResponse.of(defaultValue));
-        verify(experimentAssignmentPolicy).canResolveAssignment(experiment);
-        verify(experimentVariantResolver, never()).resolve(any(), any());
+        assertThat(response).isEqualTo(defaultValue);
     }
 
     @Test
-    void resolve_shouldReturnResolvedVariantValueWhenExperimentCanBeResolved() {
+    void resolve_shouldReturnDefaultFlagValueWhenControlVariantIsSelected() {
         UUID userId = UUID.randomUUID();
-        Experiment experiment = runningExperiment("flag-c", List.of(variant(0, "control", "green", 1)), 5L);
-        ExperimentVariant variant = variant(0, "treatment", "red", 2);
-        AssignmentRequest request = new AssignmentRequest(userId, "flag-c");
-        when(experimentService.findByFlagKey("flag-c")).thenReturn(Optional.of(experiment));
+        FeatureValue defaultValue = stringValue("green");
+        Experiment experiment = runningExperiment(
+                "flag-c",
+                "CHECKOUT",
+                List.of(variant(0, "control", "green", 1), variant(1, "treatment", "red", 2)),
+                5L);
+        ExperimentVariant controlVariant = variant(0, "control", "green", 1);
+        when(experimentQueryService.findByFlagKey("flag-c")).thenReturn(Optional.of(experiment));
+        when(experimentAssignmentPolicy.canResolveAssignment(experiment)).thenReturn(true);
+        when(experimentVariantResolver.resolve(experiment, userId)).thenReturn(controlVariant);
+        when(featureFlagService.getByKey("flag-c"))
+                .thenReturn(new FeatureFlag(UUID.randomUUID(), "flag-c", defaultValue, 5L));
+
+        FeatureValue response = assignmentService.resolve(userId, "flag-c");
+
+        assertThat(response).isEqualTo(defaultValue);
+        ArgumentCaptor<AssignmentEvent> assignmentEventCaptor = ArgumentCaptor.forClass(AssignmentEvent.class);
+        verify(assignmentEventRepository).saveIfAbsent(assignmentEventCaptor.capture());
+        AssignmentEvent assignmentEvent = assignmentEventCaptor.getValue();
+        assertThat(assignmentEvent.id()).isNotNull();
+        assertThat(assignmentEvent.userId()).isEqualTo(userId);
+        assertThat(assignmentEvent.variantId()).isEqualTo(controlVariant.id());
+        assertThat(assignmentEvent.experimentId()).isEqualTo(experiment.id());
+        assertThat(assignmentEvent.timestamp()).isNotNull();
+    }
+
+    @Test
+    void resolve_shouldReturnResolvedVariantValueWhenRegularVariantIsSelected() {
+        UUID userId = UUID.randomUUID();
+        Experiment experiment = runningExperiment(
+                "flag-d",
+                "CHECKOUT",
+                List.of(variant(0, "control", "green", 1), variant(1, "treatment", "red", 2)),
+                5L);
+        ExperimentVariant variant = variant(1, "treatment", "red", 2);
+        when(experimentQueryService.findByFlagKey("flag-d")).thenReturn(Optional.of(experiment));
         when(experimentAssignmentPolicy.canResolveAssignment(experiment)).thenReturn(true);
         when(experimentVariantResolver.resolve(experiment, userId)).thenReturn(variant);
 
-        AssignmentResponse response = assignmentService.resolve(request);
+        FeatureValue response = assignmentService.resolve(userId, "flag-d");
 
-        assertThat(response).isEqualTo(AssignmentResponse.of(variant.value()));
-        verify(experimentVariantResolver).resolve(experiment, userId);
-        verify(featureFlagService, never()).getByKey(anyString());
+        assertThat(response).isEqualTo(variant.value());
+        ArgumentCaptor<AssignmentEvent> assignmentEventCaptor = ArgumentCaptor.forClass(AssignmentEvent.class);
+        verify(assignmentEventRepository).saveIfAbsent(assignmentEventCaptor.capture());
+        AssignmentEvent assignmentEvent = assignmentEventCaptor.getValue();
+        assertThat(assignmentEvent.id()).isNotNull();
+        assertThat(assignmentEvent.userId()).isEqualTo(userId);
+        assertThat(assignmentEvent.variantId()).isEqualTo(variant.id());
+        assertThat(assignmentEvent.experimentId()).isEqualTo(experiment.id());
+        assertThat(assignmentEvent.timestamp()).isNotNull();
     }
 }

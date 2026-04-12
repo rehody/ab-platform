@@ -131,14 +131,14 @@ class TwoLevelCacheTest {
 
     @Test
     void getOrLoad_shouldThrowIllegalArgumentExceptionAndRejectNullKey() {
-        assertThatThrownBy(() -> twoLevelCache.getOrLoad(null, Optional::<String>empty))
+        assertThatThrownBy(() -> twoLevelCache.getOrLoad(null, Optional::empty))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Cache key cannot be null or blank");
     }
 
     @Test
     void getOrLoad_shouldThrowIllegalArgumentExceptionAndRejectBlankKey() {
-        assertThatThrownBy(() -> twoLevelCache.getOrLoad("   ", Optional::<String>empty))
+        assertThatThrownBy(() -> twoLevelCache.getOrLoad("   ", Optional::empty))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Cache key cannot be null or blank");
     }

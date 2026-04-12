@@ -59,7 +59,7 @@ class RedisCacheStoreTest {
     }
 
     @Test
-    void writeValue_shouldNormalizePrefixAndClampSpreadWhenConfigurationOutOfRange() throws Exception {
+    void writeValue_shouldNormalizePrefixAndClampSpreadWhenConfigurationOutOfRange() {
         RedisCacheStore<String> storeWithCustomConfig = new RedisCacheStore<>(
                 redissonClient,
                 cacheCodec,
@@ -78,7 +78,7 @@ class RedisCacheStoreTest {
     }
 
     @Test
-    void writeValue_shouldKeepPrefixAndUseExistingTrailingColonWhenAlreadyNormalized() throws Exception {
+    void writeValue_shouldKeepPrefixAndUseExistingTrailingColonWhenAlreadyNormalized() {
         RedisCacheStore<String> storeWithNormalizedPrefix = new RedisCacheStore<>(
                 redissonClient,
                 cacheCodec,
@@ -93,7 +93,7 @@ class RedisCacheStoreTest {
     }
 
     @Test
-    void writeValue_shouldUseDefaultPrefixAndHandleNullPrefixConfiguration() throws Exception {
+    void writeValue_shouldUseDefaultPrefixAndHandleNullPrefixConfiguration() {
         RedisCacheStore<String> storeWithNullPrefix = new RedisCacheStore<>(
                 redissonClient,
                 cacheCodec,
@@ -126,7 +126,7 @@ class RedisCacheStoreTest {
     }
 
     @Test
-    void readValue_shouldReturnDecodedValueAndDeserializePayload() throws Exception {
+    void readValue_shouldReturnDecodedValueAndDeserializePayload() {
         when(valueBucket.get()).thenReturn("encoded");
         when(cacheCodec.read("encoded")).thenReturn("decoded");
 
@@ -136,9 +136,9 @@ class RedisCacheStoreTest {
     }
 
     @Test
-    void readValue_shouldReturnEmptyAndDeleteBrokenPayloadWhenDeserializationFails() throws Exception {
+    void readValue_shouldReturnEmptyAndDeleteBrokenPayloadWhenDeserializationFails() {
         when(valueBucket.get()).thenReturn("broken");
-        when(cacheCodec.read("broken")).thenThrow(new Exception("decode-error"));
+        when(cacheCodec.read("broken")).thenThrow(new RuntimeException("decode-error"));
 
         Optional<String> response = redisCacheStore.readValue("flag-e");
 
@@ -174,8 +174,8 @@ class RedisCacheStoreTest {
     }
 
     @Test
-    void writeValue_shouldSkipWriteAndHandleSerializationFailure() throws Exception {
-        when(cacheCodec.write("value")).thenThrow(new Exception("encode-error"));
+    void writeValue_shouldSkipWriteAndHandleSerializationFailure() {
+        when(cacheCodec.write("value")).thenThrow(new RuntimeException("encode-error"));
 
         redisCacheStore.writeValue("flag-i", "value");
 
@@ -183,7 +183,7 @@ class RedisCacheStoreTest {
     }
 
     @Test
-    void writeValue_shouldWriteValueAndClearMissMarker() throws Exception {
+    void writeValue_shouldWriteValueAndClearMissMarker() {
         when(cacheCodec.write("value")).thenReturn("encoded");
 
         redisCacheStore.writeValue("flag-j", "value");
@@ -218,7 +218,7 @@ class RedisCacheStoreTest {
 
     @Test
     void subscribeAndUnsubscribeInvalidation_shouldManageTopicListener() {
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"unchecked", "rawtypes"})
         ArgumentCaptor<MessageListener<String>> listenerCaptor = ArgumentCaptor.forClass((Class) MessageListener.class);
         AtomicReference<String> receivedKey = new AtomicReference<>();
         when(topic.addListener(eq(String.class), listenerCaptor.capture())).thenReturn(15);

@@ -1,5 +1,6 @@
 package io.github.rehody.abplatform.repository.rowmapper;
 
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import java.math.BigDecimal;
@@ -20,6 +21,7 @@ public class ExperimentVariantRowMapper implements RowMapper<ExperimentVariant> 
                 new FeatureValue(
                         rs.getObject("value"), FeatureValue.FeatureValueType.valueOf(rs.getString("value_type"))),
                 rs.getInt("position"),
-                rs.getObject("weight", BigDecimal.class));
+                rs.getObject("weight", BigDecimal.class),
+                ExperimentVariantType.valueOf(rs.getString("variant_type")));
     }
 }

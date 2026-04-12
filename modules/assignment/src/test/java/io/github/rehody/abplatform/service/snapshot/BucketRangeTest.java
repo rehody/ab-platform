@@ -1,15 +1,17 @@
 package io.github.rehody.abplatform.service.snapshot;
 
+import static io.github.rehody.abplatform.support.AssignmentFixtures.variant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.rehody.abplatform.model.ExperimentVariant;
 import org.junit.jupiter.api.Test;
 
 class BucketRangeTest {
 
     @Test
     void contains_shouldUseInclusiveLowerBoundAndExclusiveUpperBound() {
-        var variant = io.github.rehody.abplatform.support.AssignmentFixtures.variant(0, "control", "blue", 1);
+        ExperimentVariant variant = variant(0, "control", "blue", 1);
         BucketRange bucketRange = new BucketRange(10, 20, variant);
 
         assertThat(bucketRange.contains(10)).isTrue();

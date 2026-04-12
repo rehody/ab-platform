@@ -18,9 +18,10 @@ public record ErrorResponse(
         INTERNAL_ERROR,
         VALIDATION_ERROR,
         NOT_FOUND,
-        FORBIDDEN,
         BAD_REQUEST,
-        CONFLICT
+        CONFLICT,
+        UNAUTHORIZED,
+        FORBIDDEN
     }
 
     public record Violation(String field, String message) {}

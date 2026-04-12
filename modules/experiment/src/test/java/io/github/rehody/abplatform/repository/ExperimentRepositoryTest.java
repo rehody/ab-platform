@@ -7,7 +7,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
@@ -15,7 +17,6 @@ import io.github.rehody.abplatform.repository.jdbc.ExperimentJdbcRepository;
 import io.github.rehody.abplatform.repository.jdbc.ExperimentVariantJdbcRepository;
 import io.github.rehody.abplatform.repository.mapper.ExperimentAggregateMapper;
 import io.github.rehody.abplatform.repository.sync.ExperimentVariantSynchronizer;
-import io.github.rehody.abplatform.repository.validation.ExperimentVariantPreparer;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -42,9 +43,6 @@ class ExperimentRepositoryTest {
     @Mock
     private ExperimentVariantSynchronizer experimentVariantSynchronizer;
 
-    @Mock
-    private ExperimentVariantPreparer experimentVariantPreparer;
-
     private ExperimentRepository experimentRepository;
 
     @BeforeEach
@@ -53,28 +51,23 @@ class ExperimentRepositoryTest {
                 experimentJdbcRepository,
                 experimentVariantJdbcRepository,
                 experimentAggregateMapper,
-                experimentVariantSynchronizer,
-                experimentVariantPreparer);
+                experimentVariantSynchronizer);
     }
 
     @Test
-    void save_shouldPrepareVariantsInsertExperimentAndBatchInsertVariants() {
+    void save_shouldInsertExperimentAndBatchInsertVariants() {
         Experiment experiment = experiment("flag-a", 0L);
-        List<ExperimentVariant> preparedVariants = variants();
-        when(experimentVariantPreparer.prepare(experiment.id(), experiment.variants()))
-                .thenReturn(preparedVariants);
 
         experimentRepository.save(experiment);
 
-        verify(experimentVariantPreparer).prepare(experiment.id(), experiment.variants());
         verify(experimentJdbcRepository).insert(experiment);
-        verify(experimentVariantJdbcRepository).batchInsert(experiment.id(), preparedVariants);
+        verify(experimentVariantJdbcRepository).batchInsert(experiment.id(), experiment.variants());
     }
 
     @Test
     void findById_shouldReturnMappedAggregateWhenExperimentExists() {
-        Experiment experiment = experiment("flag-b", 2L);
-        Experiment mapped = experiment("flag-b", 2L);
+        Experiment experiment = experiment("flag-b", "CHECKOUT", 2L);
+        Experiment mapped = experiment("flag-b", "CHECKOUT", 2L);
         List<ExperimentVariant> variants = variants();
         when(experimentJdbcRepository.findById(experiment.id())).thenReturn(Optional.of(experiment));
         when(experimentVariantJdbcRepository.findByExperimentId(experiment.id()))
@@ -94,13 +87,12 @@ class ExperimentRepositoryTest {
         Optional<Experiment> result = experimentRepository.findById(id);
 
         assertThat(result).isEmpty();
-        verify(experimentVariantJdbcRepository, never()).findByExperimentId(any());
     }
 
     @Test
     void findByFlagKey_shouldReturnMappedAggregateWhenExperimentExists() {
-        Experiment experiment = experiment("flag-c", 3L);
-        Experiment mapped = experiment("flag-c", 3L);
+        Experiment experiment = experiment("flag-c", "CHECKOUT", 3L);
+        Experiment mapped = experiment("flag-c", "CHECKOUT", 3L);
         List<ExperimentVariant> variants = variants();
         when(experimentJdbcRepository.findByFlagKey("flag-c")).thenReturn(Optional.of(experiment));
         when(experimentVariantJdbcRepository.findByExperimentId(experiment.id()))
@@ -119,15 +111,14 @@ class ExperimentRepositoryTest {
         List<Experiment> result = experimentRepository.findAll();
 
         assertThat(result).isEmpty();
-        verify(experimentVariantJdbcRepository, never()).findByExperimentIds(any());
     }
 
     @Test
     void findAll_shouldMapVariantsForEachExperimentAndDefaultToEmptyVariants() {
-        Experiment first = experiment("flag-d", 1L);
-        Experiment second = experiment("flag-e", 2L);
-        Experiment mappedFirst = experiment("flag-d", 1L);
-        Experiment mappedSecond = experiment("flag-e", 2L);
+        Experiment first = experiment("flag-d", "CHECKOUT", 1L);
+        Experiment second = experiment("flag-e", "PRICING", 2L);
+        Experiment mappedFirst = experiment("flag-d", "CHECKOUT", 1L);
+        Experiment mappedSecond = experiment("flag-e", "PRICING", 2L);
         List<ExperimentVariant> firstVariants = variants();
         when(experimentJdbcRepository.findAll()).thenReturn(List.of(first, second));
         when(experimentVariantJdbcRepository.findByExperimentIds(List.of(first.id(), second.id())))
@@ -141,6 +132,21 @@ class ExperimentRepositoryTest {
     }
 
     @Test
+    void findRunning_shouldMapVariantsForRunningExperiments() {
+        Experiment running = experiment("flag-running", "CHECKOUT", 1L);
+        Experiment mappedRunning = experiment("flag-running", "CHECKOUT", 1L);
+        List<ExperimentVariant> runningVariants = variants();
+        when(experimentJdbcRepository.findByState(ExperimentState.RUNNING)).thenReturn(List.of(running));
+        when(experimentVariantJdbcRepository.findByExperimentIds(List.of(running.id())))
+                .thenReturn(Map.of(running.id(), runningVariants));
+        when(experimentAggregateMapper.withVariants(running, runningVariants)).thenReturn(mappedRunning);
+
+        List<Experiment> result = experimentRepository.findRunning();
+
+        assertThat(result).containsExactly(mappedRunning);
+    }
+
+    @Test
     void existsById_shouldDelegateToJdbcRepository() {
         UUID id = UUID.randomUUID();
         when(experimentJdbcRepository.existsById(id)).thenReturn(true);
@@ -150,7 +156,7 @@ class ExperimentRepositoryTest {
 
     @Test
     void update_shouldReturnUpdatedOutcomeWithNewVersionWhenJdbcUpdateSucceeds() {
-        Experiment experiment = experiment("flag-f", 5L);
+        Experiment experiment = experiment("flag-f", "CHECKOUT", 5L);
         when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.of(6L));
 
         ExperimentRepository.UpdateOutcome result = experimentRepository.update(experiment);
@@ -160,8 +166,44 @@ class ExperimentRepositoryTest {
     }
 
     @Test
+    void updateWithVariants_shouldSyncVariantsAndReturnUpdatedOutcomeWithNewVersionWhenJdbcUpdateSucceeds() {
+        Experiment experiment = experiment("flag-f", "CHECKOUT", 5L);
+        when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.of(6L));
+
+        ExperimentRepository.UpdateOutcome result = experimentRepository.updateWithVariants(experiment);
+
+        assertThat(result.status()).isEqualTo(ExperimentRepository.UpdateStatus.UPDATED);
+        assertThat(result.version()).isEqualTo(6L);
+        verify(experimentVariantSynchronizer).sync(experiment.id(), experiment.variants());
+    }
+
+    @Test
+    void updateWithVariants_shouldReturnVersionConflictWhenExperimentExistsButVersionDiffers() {
+        Experiment experiment = experiment("flag-f", "CHECKOUT", 5L);
+        when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.empty());
+        when(experimentJdbcRepository.findVersionById(experiment.id())).thenReturn(Optional.of(6L));
+
+        ExperimentRepository.UpdateOutcome result = experimentRepository.updateWithVariants(experiment);
+
+        assertThat(result.status()).isEqualTo(ExperimentRepository.UpdateStatus.VERSION_CONFLICT);
+        verify(experimentVariantSynchronizer, never()).sync(any(), any());
+    }
+
+    @Test
+    void updateWithVariants_shouldReturnNotFoundWhenExperimentMissing() {
+        Experiment experiment = experiment("flag-f", "CHECKOUT", 5L);
+        when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.empty());
+        when(experimentJdbcRepository.findVersionById(experiment.id())).thenReturn(Optional.empty());
+
+        ExperimentRepository.UpdateOutcome result = experimentRepository.updateWithVariants(experiment);
+
+        assertThat(result.status()).isEqualTo(ExperimentRepository.UpdateStatus.NOT_FOUND);
+        verify(experimentVariantSynchronizer, never()).sync(any(), any());
+    }
+
+    @Test
     void update_shouldReturnVersionConflictWhenExperimentExistsButVersionDiffers() {
-        Experiment experiment = experiment("flag-g", 6L);
+        Experiment experiment = experiment("flag-g", "CHECKOUT", 6L);
         when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.empty());
         when(experimentJdbcRepository.findVersionById(experiment.id())).thenReturn(Optional.of(7L));
 
@@ -173,7 +215,7 @@ class ExperimentRepositoryTest {
 
     @Test
     void update_shouldReturnNotFoundWhenExperimentMissing() {
-        Experiment experiment = experiment("flag-h", 6L);
+        Experiment experiment = experiment("flag-h", "CHECKOUT", 6L);
         when(experimentJdbcRepository.update(experiment)).thenReturn(Optional.empty());
         when(experimentJdbcRepository.findVersionById(experiment.id())).thenReturn(Optional.empty());
 
@@ -218,22 +260,19 @@ class ExperimentRepositoryTest {
     void replaceVariants_shouldPrepareIncrementVersionSyncAndReturnUpdated() {
         UUID experimentId = UUID.randomUUID();
         List<ExperimentVariant> variants = variants();
-        List<ExperimentVariant> preparedVariants = variants();
-        when(experimentVariantPreparer.prepare(experimentId, variants)).thenReturn(preparedVariants);
         when(experimentJdbcRepository.incrementVersion(experimentId, 3L)).thenReturn(1);
 
         ExperimentRepository.ReplaceVariantsResult result =
                 experimentRepository.replaceVariants(experimentId, 3L, variants);
 
         assertThat(result).isEqualTo(ExperimentRepository.ReplaceVariantsResult.UPDATED);
-        verify(experimentVariantSynchronizer).sync(experimentId, preparedVariants);
+        verify(experimentVariantSynchronizer).sync(experimentId, variants);
     }
 
     @Test
     void replaceVariants_shouldReturnVersionConflictWhenExperimentExistsButVersionDiffers() {
         UUID experimentId = UUID.randomUUID();
         List<ExperimentVariant> variants = variants();
-        when(experimentVariantPreparer.prepare(experimentId, variants)).thenReturn(variants);
         when(experimentJdbcRepository.incrementVersion(experimentId, 4L)).thenReturn(0);
         when(experimentJdbcRepository.findVersionById(experimentId)).thenReturn(Optional.of(5L));
 
@@ -248,7 +287,6 @@ class ExperimentRepositoryTest {
     void replaceVariants_shouldReturnNotFoundWhenExperimentMissing() {
         UUID experimentId = UUID.randomUUID();
         List<ExperimentVariant> variants = variants();
-        when(experimentVariantPreparer.prepare(experimentId, variants)).thenReturn(variants);
         when(experimentJdbcRepository.incrementVersion(experimentId, 4L)).thenReturn(0);
         when(experimentJdbcRepository.findVersionById(experimentId)).thenReturn(Optional.empty());
 
@@ -275,11 +313,37 @@ class ExperimentRepositoryTest {
     }
 
     private Experiment experiment(String flagKey, long version) {
-        return new Experiment(UUID.randomUUID(), flagKey, variants(), ExperimentState.RUNNING, version);
+        return experiment(flagKey, "CHECKOUT", version);
+    }
+
+    private Experiment experiment(String flagKey, String domainKey, long version) {
+        return new Experiment(
+                UUID.randomUUID(),
+                flagKey,
+                domainKey,
+                ExperimentRolloutPlan.initial(),
+                variants(),
+                ExperimentState.RUNNING,
+                version,
+                null,
+                null);
     }
 
     private List<ExperimentVariant> variants() {
-        return List.of(new ExperimentVariant(
-                UUID.randomUUID(), "control", new FeatureValue(true, FeatureValueType.BOOL), 0, BigDecimal.ONE));
+        return List.of(
+                new ExperimentVariant(
+                        UUID.randomUUID(),
+                        "control",
+                        new FeatureValue(true, FeatureValueType.BOOL),
+                        0,
+                        null,
+                        ExperimentVariantType.CONTROL),
+                new ExperimentVariant(
+                        UUID.randomUUID(),
+                        "variant-a",
+                        new FeatureValue(false, FeatureValueType.BOOL),
+                        1,
+                        BigDecimal.ONE,
+                        ExperimentVariantType.REGULAR));
     }
 }

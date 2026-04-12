@@ -2,24 +2,57 @@ package io.github.rehody.abplatform.model;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.exception.ExperimentStateTransitionException;
+import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 public record Experiment(
-        UUID id, String flagKey, List<ExperimentVariant> variants, ExperimentState state, long version) {
+        UUID id,
+        String flagKey,
+        String domainKey,
+        ExperimentRolloutPlan rolloutPlan,
+        List<ExperimentVariant> variants,
+        ExperimentState state,
+        long version,
+        Instant startedAt,
+        Instant completedAt) {
+
+    public Experiment {
+        variants = List.copyOf(variants);
+    }
 
     public boolean isRunning() {
         return state == ExperimentState.RUNNING;
     }
 
-    public Experiment withVariants(List<ExperimentVariant> variants) {
-        return new Experiment(id, flagKey, List.copyOf(variants), state, version);
+    public boolean isApproved() {
+        return state == ExperimentState.APPROVED;
+    }
+
+    public boolean isCompleted() {
+        return state == ExperimentState.COMPLETED;
+    }
+
+    public boolean isPaused() {
+        return state == ExperimentState.PAUSED;
     }
 
     public Experiment withVersion(long version) {
-        return new Experiment(id, flagKey, List.copyOf(variants), state, version);
+        return new Experiment(id, flagKey, domainKey, rolloutPlan, variants, state, version, startedAt, completedAt);
+    }
+
+    public Experiment withStartedAt(Instant startedAt) {
+        return new Experiment(id, flagKey, domainKey, rolloutPlan, variants, state, version, startedAt, completedAt);
+    }
+
+    public Experiment withCompletedAt(Instant completedAt) {
+        return new Experiment(id, flagKey, domainKey, rolloutPlan, variants, state, version, startedAt, completedAt);
+    }
+
+    public Experiment withRolloutPlan(ExperimentRolloutPlan rolloutPlan) {
+        return new Experiment(id, flagKey, domainKey, rolloutPlan, variants, state, version, startedAt, completedAt);
     }
 
     public Experiment submitForReview() {
@@ -67,6 +100,7 @@ public record Experiment(
                     .formatted(action, state, allowedStates));
         }
 
-        return new Experiment(id, flagKey, List.copyOf(variants), targetState, version);
+        return new Experiment(
+                id, flagKey, domainKey, rolloutPlan, variants, targetState, version, startedAt, completedAt);
     }
 }

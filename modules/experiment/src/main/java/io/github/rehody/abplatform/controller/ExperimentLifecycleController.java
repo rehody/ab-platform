@@ -2,8 +2,13 @@ package io.github.rehody.abplatform.controller;
 
 import io.github.rehody.abplatform.dto.request.ExperimentStateTransitionRequest;
 import io.github.rehody.abplatform.dto.response.ExperimentResponse;
+import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.audit.AuditActor;
+import io.github.rehody.abplatform.security.PlatformPermission;
+import io.github.rehody.abplatform.security.RequiresPlatformPermission;
 import io.github.rehody.abplatform.service.ExperimentLifecycleService;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,50 +25,74 @@ public class ExperimentLifecycleController {
     private final ExperimentLifecycleService experimentLifecycleService;
 
     @PostMapping("/{id}/submit-for-review")
+    @RequiresPlatformPermission(PlatformPermission.SUBMIT_EXPERIMENT_FOR_REVIEW)
     public ExperimentResponse submitForReview(
-            @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
-        return experimentLifecycleService.submitForReview(id, request);
+            Principal principal, @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
+        Experiment experiment =
+                experimentLifecycleService.submitForReview(id, request.version(), AuditActor.user(principal.getName()));
+        return ExperimentResponse.from(experiment);
     }
 
     @PostMapping("/{id}/approve")
+    @RequiresPlatformPermission(PlatformPermission.APPROVE_EXPERIMENT)
     public ExperimentResponse approve(
-            @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
-        return experimentLifecycleService.approve(id, request);
+            Principal principal, @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
+        Experiment experiment =
+                experimentLifecycleService.approve(id, request.version(), AuditActor.user(principal.getName()));
+        return ExperimentResponse.from(experiment);
     }
 
     @PostMapping("/{id}/reject")
+    @RequiresPlatformPermission(PlatformPermission.REJECT_EXPERIMENT)
     public ExperimentResponse reject(
-            @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
-        return experimentLifecycleService.reject(id, request);
+            Principal principal, @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
+        Experiment experiment =
+                experimentLifecycleService.reject(id, request.version(), AuditActor.user(principal.getName()));
+        return ExperimentResponse.from(experiment);
     }
 
     @PostMapping("/{id}/start")
+    @RequiresPlatformPermission(PlatformPermission.START_EXPERIMENT)
     public ExperimentResponse start(
-            @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
-        return experimentLifecycleService.start(id, request);
+            Principal principal, @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
+        Experiment experiment =
+                experimentLifecycleService.start(id, request.version(), AuditActor.user(principal.getName()));
+        return ExperimentResponse.from(experiment);
     }
 
     @PostMapping("/{id}/pause")
+    @RequiresPlatformPermission(PlatformPermission.PAUSE_EXPERIMENT)
     public ExperimentResponse pause(
-            @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
-        return experimentLifecycleService.pause(id, request);
+            Principal principal, @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
+        Experiment experiment =
+                experimentLifecycleService.pause(id, request.version(), AuditActor.user(principal.getName()));
+        return ExperimentResponse.from(experiment);
     }
 
     @PostMapping("/{id}/resume")
+    @RequiresPlatformPermission(PlatformPermission.RESUME_EXPERIMENT)
     public ExperimentResponse resume(
-            @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
-        return experimentLifecycleService.resume(id, request);
+            Principal principal, @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
+        Experiment experiment =
+                experimentLifecycleService.resume(id, request.version(), AuditActor.user(principal.getName()));
+        return ExperimentResponse.from(experiment);
     }
 
     @PostMapping("/{id}/complete")
+    @RequiresPlatformPermission(PlatformPermission.COMPLETE_EXPERIMENT)
     public ExperimentResponse complete(
-            @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
-        return experimentLifecycleService.complete(id, request);
+            Principal principal, @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
+        Experiment experiment =
+                experimentLifecycleService.complete(id, request.version(), AuditActor.user(principal.getName()));
+        return ExperimentResponse.from(experiment);
     }
 
     @PostMapping("/{id}/archive")
+    @RequiresPlatformPermission(PlatformPermission.ARCHIVE_EXPERIMENT)
     public ExperimentResponse archive(
-            @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
-        return experimentLifecycleService.archive(id, request);
+            Principal principal, @PathVariable UUID id, @Valid @RequestBody ExperimentStateTransitionRequest request) {
+        Experiment experiment =
+                experimentLifecycleService.archive(id, request.version(), AuditActor.user(principal.getName()));
+        return ExperimentResponse.from(experiment);
     }
 }

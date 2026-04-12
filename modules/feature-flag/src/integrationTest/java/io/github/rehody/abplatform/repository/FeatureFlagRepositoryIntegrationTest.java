@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 @Import({FeatureFlagRepository.class})
 class FeatureFlagRepositoryIntegrationTest extends AbstractIntegrationDatabaseTest {
 

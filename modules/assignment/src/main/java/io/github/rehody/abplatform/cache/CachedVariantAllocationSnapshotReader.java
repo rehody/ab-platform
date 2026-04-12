@@ -24,6 +24,10 @@ public class CachedVariantAllocationSnapshotReader implements VariantAllocationS
     }
 
     private String cacheKey(Experiment experiment) {
-        return "%s:%d".formatted(experiment.id(), experiment.version());
+        return "%s:%d:%d"
+                .formatted(
+                        experiment.id(),
+                        experiment.version(),
+                        experiment.rolloutPlan().regularRolloutPercentage());
     }
 }

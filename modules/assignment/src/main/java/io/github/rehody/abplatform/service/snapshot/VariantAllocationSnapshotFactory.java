@@ -8,6 +8,7 @@ import io.github.rehody.abplatform.service.allocation.BucketAllocation;
 import io.github.rehody.abplatform.service.allocation.VariantBucketAllocator;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -17,18 +18,47 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class VariantAllocationSnapshotFactory {
 
-    private final AssignmentVariantsPreparer assignmentVariantsPreparer;
     private final VariantBucketAllocator variantBucketAllocator;
 
     public VariantAllocationSnapshot create(Experiment experiment) {
-        List<ExperimentVariant> orderedVariants = assignmentVariantsPreparer.prepare(experiment);
-        validateAllocationInputs(experiment.id(), orderedVariants);
-        List<BucketAllocation> allocations = variantBucketAllocator.allocate(experiment.id(), orderedVariants);
+        List<ExperimentVariant> variants = sortVariants(experiment.variants());
+        ExperimentVariant controlVariant = findControlVariant(experiment.id(), variants);
+        List<ExperimentVariant> regularVariants = selectRegularVariants(variants);
+
+        int regularBucketPool = experiment.rolloutPlan().regularBucketPoolSize(BUCKET_POOL_SIZE);
+        int controlBucketPool = experiment.rolloutPlan().controlBucketPoolSize(BUCKET_POOL_SIZE);
+
+        validateRegularBucketPool(experiment.id(), regularVariants, regularBucketPool);
+
+        List<BucketAllocation> allocations = buildAllocations(
+                experiment.id(), controlVariant, controlBucketPool, regularVariants, regularBucketPool);
+
         List<BucketRange> bucketRanges = createBucketRanges(allocations);
-
         validateFullBucketCoverage(experiment.id(), bucketRanges);
-
         return new VariantAllocationSnapshot(bucketRanges);
+    }
+
+    private List<BucketAllocation> buildAllocations(
+            UUID experimentId,
+            ExperimentVariant controlVariant,
+            int controlBucketPool,
+            List<ExperimentVariant> regularVariants,
+            int regularBucketPool) {
+
+        List<BucketAllocation> allocations = new ArrayList<>();
+
+        if (controlBucketPool > 0) {
+            allocations.add(new BucketAllocation(
+                    controlVariant.position(), controlVariant, controlBucketPool, BigDecimal.ZERO));
+        }
+
+        List<BucketAllocation> allocated =
+                variantBucketAllocator.allocate(experimentId, regularVariants, regularBucketPool);
+        allocations.addAll(allocated);
+
+        return allocations.stream()
+                .sorted(Comparator.comparingInt(BucketAllocation::position))
+                .toList();
     }
 
     private List<BucketRange> createBucketRanges(List<BucketAllocation> allocations) {
@@ -44,24 +74,39 @@ public class VariantAllocationSnapshotFactory {
         return List.copyOf(bucketRanges);
     }
 
-    private void validateAllocationInputs(UUID experimentId, List<ExperimentVariant> variants) {
-        BigDecimal totalWeight = variants.stream()
-                .map(variant -> validatePositiveWeight(experimentId, variant))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        if (totalWeight.signum() <= 0) {
-            throw new IllegalStateException(
-                    "Total assignment weight must be positive for experiment %s".formatted(experimentId));
-        }
+    private List<ExperimentVariant> sortVariants(List<ExperimentVariant> variants) {
+        return variants.stream()
+                .sorted(Comparator.comparingInt(ExperimentVariant::position))
+                .toList();
     }
 
-    private BigDecimal validatePositiveWeight(UUID experimentId, ExperimentVariant variant) {
-        BigDecimal weight = variant.weight();
-        if (weight == null || weight.signum() <= 0) {
-            throw new IllegalStateException("Invalid assignment weight for experiment %s, variant %s: %s"
-                    .formatted(experimentId, variant.id(), weight));
+    private ExperimentVariant findControlVariant(UUID experimentId, List<ExperimentVariant> variants) {
+        List<ExperimentVariant> controlVariants =
+                variants.stream().filter(ExperimentVariant::isControl).toList();
+
+        if (controlVariants.size() != 1) {
+            throw new IllegalStateException(
+                    "Running experiment %s must contain exactly one CONTROL variant".formatted(experimentId));
         }
-        return weight;
+
+        return controlVariants.getFirst();
+    }
+
+    private List<ExperimentVariant> selectRegularVariants(List<ExperimentVariant> variants) {
+        return variants.stream().filter(ExperimentVariant::isRegular).toList();
+    }
+
+    private void validateRegularBucketPool(
+            UUID experimentId, List<ExperimentVariant> regularVariants, int regularBucketPool) {
+        if (regularVariants.isEmpty()) {
+            throw new IllegalStateException(
+                    "Running experiment %s must contain at least one REGULAR variant".formatted(experimentId));
+        }
+
+        if (regularBucketPool <= 0) {
+            throw new IllegalStateException(
+                    "Regular bucket pool must be positive for experiment %s".formatted(experimentId));
+        }
     }
 
     private void validateFullBucketCoverage(UUID experimentId, List<BucketRange> bucketRanges) {

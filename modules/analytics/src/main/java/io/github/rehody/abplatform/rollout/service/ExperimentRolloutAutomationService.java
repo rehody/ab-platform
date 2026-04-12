@@ -1,0 +1,32 @@
+package io.github.rehody.abplatform.rollout.service;
+
+import io.github.rehody.abplatform.evaluation.model.ExperimentMetricEvaluationReport;
+import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.audit.AuditActor;
+import io.github.rehody.abplatform.rollout.enums.ExperimentRolloutDecision;
+import io.github.rehody.abplatform.rollout.policy.ExperimentRolloutPolicy;
+import io.github.rehody.abplatform.service.ExperimentRuntimeService;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class ExperimentRolloutAutomationService {
+
+    private static final AuditActor SYSTEM_ACTOR = AuditActor.system("rollout-automation");
+
+    private final ExperimentRolloutPolicy experimentRolloutPolicy;
+    private final ExperimentRuntimeService experimentRuntimeService;
+
+    public void apply(Experiment experiment, List<ExperimentMetricEvaluationReport> evaluationReports) {
+        ExperimentRolloutDecision decision = experimentRolloutPolicy.decide(experiment, evaluationReports);
+
+        switch (decision) {
+            case ADVANCE -> experimentRuntimeService.autoAdvanceRollout(experiment.id(), SYSTEM_ACTOR);
+            case ROLLBACK -> experimentRuntimeService.autoRollbackRollout(experiment.id(), SYSTEM_ACTOR);
+            case PAUSE -> experimentRuntimeService.pauseOnNegativeAfterRollback(experiment.id(), SYSTEM_ACTOR);
+            case HOLD -> {}
+        }
+    }
+}

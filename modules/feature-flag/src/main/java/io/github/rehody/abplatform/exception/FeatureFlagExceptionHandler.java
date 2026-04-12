@@ -33,6 +33,13 @@ public class FeatureFlagExceptionHandler {
                 HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
     }
 
+    @ExceptionHandler(FeatureFlagUpdateBlockedException.class)
+    public ResponseEntity<ErrorResponse> handleUpdateBlocked(
+            FeatureFlagUpdateBlockedException ex, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
+    }
+
     @ExceptionHandler(LockObtainingException.class)
     public ResponseEntity<ErrorResponse> handleLockAcquisition(LockObtainingException ex, HttpServletRequest request) {
         return buildResponse(
@@ -50,7 +57,7 @@ public class FeatureFlagExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
         List<Violation> violations = ex.getBindingResult().getFieldErrors().stream()
-                .map(this::toViolation)
+                .map(this::mapToViolation)
                 .toList();
 
         return buildResponse(
@@ -97,7 +104,7 @@ public class FeatureFlagExceptionHandler {
                 List.of());
     }
 
-    private Violation toViolation(FieldError error) {
+    private Violation mapToViolation(FieldError error) {
         return new Violation(error.getField(), Objects.toString(error.getDefaultMessage(), error.getCode()));
     }
 

@@ -1,8 +1,14 @@
 package io.github.rehody.abplatform.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.redisson.Redisson;
+import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -33,9 +39,21 @@ class RedissonConfigTest {
     }
 
     @Test
-    void buildConfig_shouldUseBuiltAddressWhenConfigurationProvided() {
-        Config config = ReflectionTestUtils.invokeMethod(redissonConfig, "buildConfig", "localhost", 6379, "");
+    void redissonClient_shouldCreateClientAndUseAddressWhenConfigurationProvided() {
+        RedissonClient redissonClient = mock(RedissonClient.class);
+        Config[] capturedConfig = new Config[1];
 
-        assertThat(config.useSingleServer().getAddress()).isEqualTo("redis://localhost:6379");
+        try (MockedStatic<Redisson> redisson = mockStatic(Redisson.class)) {
+            redisson.when(() -> Redisson.create(any(Config.class))).thenAnswer(invocation -> {
+                capturedConfig[0] = invocation.getArgument(0);
+                return redissonClient;
+            });
+
+            RedissonClient result = redissonConfig.redissonClient("localhost", 6379, "");
+
+            assertThat(result).isSameAs(redissonClient);
+            assertThat(capturedConfig[0]).isNotNull();
+            assertThat(capturedConfig[0].useSingleServer().getAddress()).isEqualTo("redis://localhost:6379");
+        }
     }
 }

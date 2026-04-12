@@ -7,6 +7,7 @@ import io.github.rehody.abplatform.model.FeatureFlag;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Objects;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +34,7 @@ class FeatureFlagRowMapperTest {
 
         FeatureFlag featureFlag = rowMapper.mapRow(resultSet, 0);
 
-        assertThat(featureFlag.id()).isEqualTo(id);
+        assertThat(Objects.requireNonNull(featureFlag).id()).isEqualTo(id);
         assertThat(featureFlag.key()).isEqualTo("checkout-redesign");
         assertThat(featureFlag.defaultValue().value()).isEqualTo("variant-a");
         assertThat(featureFlag.defaultValue().type()).isEqualTo(FeatureValueType.STRING);

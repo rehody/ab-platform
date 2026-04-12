@@ -12,9 +12,13 @@ public class ExperimentAggregateMapper {
         return new Experiment(
                 experiment.id(),
                 experiment.flagKey(),
+                experiment.domainKey(),
+                experiment.rolloutPlan(),
                 copyVariants(variants),
                 experiment.state(),
-                experiment.version());
+                experiment.version(),
+                experiment.startedAt(),
+                experiment.completedAt());
     }
 
     private List<ExperimentVariant> copyVariants(List<ExperimentVariant> variants) {

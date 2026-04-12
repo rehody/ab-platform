@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.exception.ExperimentStateTransitionException;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -82,6 +82,36 @@ class ExperimentTest {
     }
 
     @Test
+    void complete_shouldTransitionRunningToCompleted() {
+        Experiment updated = experiment(ExperimentState.RUNNING).complete();
+
+        assertThat(updated.state()).isEqualTo(ExperimentState.COMPLETED);
+    }
+
+    @Test
+    void statePredicatesAndWithers_shouldReflectExperimentState() {
+        Experiment running = experiment(ExperimentState.RUNNING);
+        Experiment completed = experiment(ExperimentState.COMPLETED);
+        Experiment paused = experiment(ExperimentState.PAUSED);
+        Experiment archived = experiment(ExperimentState.ARCHIVED);
+        ExperimentRolloutPlan rolloutPlan = ExperimentRolloutPlan.of(15, true, false);
+
+        assertThat(running.isRunning()).isTrue();
+        assertThat(running.isApproved()).isFalse();
+        assertThat(completed.isCompleted()).isTrue();
+        assertThat(paused.isPaused()).isTrue();
+        assertThat(archived.state()).isEqualTo(ExperimentState.ARCHIVED);
+        assertThat(running.withVersion(7L).version()).isEqualTo(7L);
+        assertThat(running.withStartedAt(java.time.Instant.parse("2026-04-06T10:15:30Z"))
+                        .startedAt())
+                .isEqualTo(java.time.Instant.parse("2026-04-06T10:15:30Z"));
+        assertThat(running.withCompletedAt(java.time.Instant.parse("2026-04-06T11:15:30Z"))
+                        .completedAt())
+                .isEqualTo(java.time.Instant.parse("2026-04-06T11:15:30Z"));
+        assertThat(running.withRolloutPlan(rolloutPlan).rolloutPlan()).isEqualTo(rolloutPlan);
+    }
+
+    @Test
     void transition_shouldThrowWhenCurrentStateIsInvalid() {
         assertThatThrownBy(() -> experiment(ExperimentState.DRAFT).approve())
                 .isInstanceOf(ExperimentStateTransitionException.class)
@@ -92,13 +122,18 @@ class ExperimentTest {
         return new Experiment(
                 UUID.randomUUID(),
                 "flag-a",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
                 List.of(new ExperimentVariant(
                         UUID.randomUUID(),
                         "control",
                         new FeatureValue(true, FeatureValueType.BOOL),
                         0,
-                        BigDecimal.ONE)),
+                        null,
+                        ExperimentVariantType.CONTROL)),
                 state,
-                3L);
+                3L,
+                null,
+                null);
     }
 }

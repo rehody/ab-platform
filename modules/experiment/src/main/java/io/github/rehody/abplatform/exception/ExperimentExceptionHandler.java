@@ -6,6 +6,7 @@ import io.github.rehody.abplatform.dto.response.ErrorResponse.Violation;
 import io.github.rehody.abplatform.util.lock.LockObtainingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -53,11 +54,49 @@ public class ExperimentExceptionHandler {
                 HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
     }
 
+    @ExceptionHandler(ExperimentRolloutException.class)
+    public ResponseEntity<ErrorResponse> handleRolloutFailure(
+            ExperimentRolloutException ex, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), request.getRequestURI(), List.of());
+    }
+
+    @ExceptionHandler(ExperimentActivationConflictException.class)
+    public ResponseEntity<ErrorResponse> handleActivationConflict(
+            ExperimentActivationConflictException ex, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                ErrorCode.CONFLICT,
+                ex.getMessage(),
+                request.getRequestURI(),
+                ex.conflictingMetricKeys().stream()
+                        .map(metricKey -> new Violation("metricKeys", metricKey))
+                        .toList());
+    }
+
+    @ExceptionHandler(ExperimentBlockingConflictException.class)
+    public ResponseEntity<ErrorResponse> handleBlockingConflict(
+            ExperimentBlockingConflictException ex, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                ErrorCode.CONFLICT,
+                ex.getMessage(),
+                request.getRequestURI(),
+                mapToBlockingConflictViolations(ex.conflicts()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(
+            IllegalArgumentException ex, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.BAD_REQUEST, ErrorCode.BAD_REQUEST, ex.getMessage(), request.getRequestURI(), List.of());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
         List<Violation> violations = ex.getBindingResult().getFieldErrors().stream()
-                .map(this::toViolation)
+                .map(this::mapToViolation)
                 .toList();
 
         return buildResponse(
@@ -104,8 +143,32 @@ public class ExperimentExceptionHandler {
                 List.of());
     }
 
-    private Violation toViolation(FieldError error) {
+    private Violation mapToViolation(FieldError error) {
         return new Violation(error.getField(), Objects.toString(error.getDefaultMessage(), error.getCode()));
+    }
+
+    private List<Violation> mapToBlockingConflictViolations(List<ExperimentBlockingConflictDetails> conflicts) {
+        List<Violation> violations = new ArrayList<>();
+
+        for (int conflictIndex = 0; conflictIndex < conflicts.size(); conflictIndex++) {
+            ExperimentBlockingConflictDetails conflict = conflicts.get(conflictIndex);
+            String prefix = "conflicts[" + conflictIndex + "]";
+
+            violations.add(new Violation(
+                    prefix + ".experimentId", conflict.experimentId().toString()));
+            violations.add(new Violation(prefix + ".state", conflict.state().name()));
+            violations.add(new Violation(prefix + ".flagKey", conflict.flagKey()));
+            violations.add(new Violation(prefix + ".domainKey", conflict.domainKey()));
+            violations.add(new Violation(prefix + ".severity", conflict.severity()));
+
+            for (int typeIndex = 0; typeIndex < conflict.conflictTypes().size(); typeIndex++) {
+                violations.add(new Violation(
+                        prefix + ".conflictTypes[" + typeIndex + "]",
+                        conflict.conflictTypes().get(typeIndex)));
+            }
+        }
+
+        return List.copyOf(violations);
     }
 
     private ResponseEntity<ErrorResponse> buildResponse(

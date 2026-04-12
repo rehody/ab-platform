@@ -10,4 +10,5 @@ include(
         "modules:feature-flag",
         "modules:experiment",
         "modules:assignment",
+        "modules:analytics",
 )

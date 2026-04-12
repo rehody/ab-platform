@@ -9,16 +9,15 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.github.rehody.abplatform.cache.CachedFeatureFlag;
 import io.github.rehody.abplatform.cache.FeatureFlagCache;
-import io.github.rehody.abplatform.dto.request.FeatureFlagCreateRequest;
-import io.github.rehody.abplatform.dto.request.FeatureFlagUpdateRequest;
-import io.github.rehody.abplatform.dto.response.FeatureFlagResponse;
 import io.github.rehody.abplatform.exception.FeatureFlagAlreadyExistsException;
 import io.github.rehody.abplatform.exception.FeatureFlagNotFoundException;
+import io.github.rehody.abplatform.exception.FeatureFlagUpdateBlockedException;
 import io.github.rehody.abplatform.model.FeatureFlag;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
+import io.github.rehody.abplatform.model.audit.AuditActor;
+import io.github.rehody.abplatform.policy.FeatureFlagUpdatePolicy;
 import io.github.rehody.abplatform.repository.FeatureFlagRepository;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
 import io.github.rehody.abplatform.util.lock.LockNamespace;
@@ -39,6 +38,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @ExtendWith(MockitoExtension.class)
 class FeatureFlagServiceTest {
 
+    private static final AuditActor ACTOR = AuditActor.user(UUID.fromString("11111111-1111-1111-1111-111111111111"));
+
     @Mock
     private FeatureFlagRepository featureFlagRepository;
 
@@ -48,14 +49,24 @@ class FeatureFlagServiceTest {
     @Mock
     private FeatureFlagCache featureFlagCache;
 
-    private ServiceActionExecutor serviceActionExecutor;
+    @Mock
+    private FeatureFlagUpdatePolicy featureFlagUpdatePolicy;
+
+    @Mock
+    private AuditService auditService;
+
     private FeatureFlagService featureFlagService;
 
     @BeforeEach
     void setUp() {
-        serviceActionExecutor = new ServiceActionExecutor();
-        featureFlagService =
-                new FeatureFlagService(featureFlagRepository, lockExecutor, serviceActionExecutor, featureFlagCache);
+        ActionExecutorService actionExecutorService = new ActionExecutorService();
+        featureFlagService = new FeatureFlagService(
+                featureFlagRepository,
+                featureFlagUpdatePolicy,
+                lockExecutor,
+                actionExecutorService,
+                featureFlagCache,
+                auditService);
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(2)).get());
@@ -70,11 +81,10 @@ class FeatureFlagServiceTest {
 
     @Test
     void create_shouldThrowFeatureFlagAlreadyExistsExceptionAndSkipSaveWhenKeyExists() {
-        FeatureFlagCreateRequest request =
-                new FeatureFlagCreateRequest("flag-a", new FeatureValue(true, FeatureValueType.BOOL));
+        FeatureValue defaultValue = new FeatureValue(true, FeatureValueType.BOOL);
         when(featureFlagRepository.existsByKey("flag-a")).thenReturn(true);
 
-        assertThatThrownBy(() -> featureFlagService.create(request))
+        assertThatThrownBy(() -> featureFlagService.create(ACTOR, "flag-a", defaultValue))
                 .isInstanceOf(FeatureFlagAlreadyExistsException.class)
                 .hasMessage("Feature flag 'flag-a' already exists");
 
@@ -84,40 +94,35 @@ class FeatureFlagServiceTest {
 
     @Test
     void create_shouldSaveFeatureFlagAndInvalidateCacheWhenSynchronizationInactive() {
-        FeatureFlagCreateRequest request =
-                new FeatureFlagCreateRequest("flag-b", new FeatureValue("v1", FeatureValueType.STRING));
+        FeatureValue defaultValue = new FeatureValue("v1", FeatureValueType.STRING);
         when(featureFlagRepository.existsByKey("flag-b")).thenReturn(false);
 
-        FeatureFlagResponse response = featureFlagService.create(request);
+        FeatureFlag response = featureFlagService.create(ACTOR, "flag-b", defaultValue);
 
         ArgumentCaptor<FeatureFlag> featureFlagCaptor = ArgumentCaptor.forClass(FeatureFlag.class);
-        ArgumentCaptor<LockNamespace> namespaceCaptor = ArgumentCaptor.forClass(LockNamespace.class);
 
         verify(featureFlagRepository).save(featureFlagCaptor.capture());
         verify(featureFlagCache).invalidate("flag-b");
-        verify(lockExecutor).withLock(namespaceCaptor.capture(), eq("flag-b"), any(Supplier.class));
 
         FeatureFlag savedFeatureFlag = featureFlagCaptor.getValue();
         assertThat(savedFeatureFlag.id()).isNotNull();
         assertThat(savedFeatureFlag.key()).isEqualTo("flag-b");
-        assertThat(savedFeatureFlag.defaultValue()).isEqualTo(request.defaultValue());
+        assertThat(savedFeatureFlag.defaultValue()).isEqualTo(defaultValue);
         assertThat(savedFeatureFlag.version()).isZero();
-        assertThat(namespaceCaptor.getValue().value()).isEqualTo("feature-flag");
 
         assertThat(response.key()).isEqualTo("flag-b");
-        assertThat(response.defaultValue()).isEqualTo(request.defaultValue());
+        assertThat(response.defaultValue()).isEqualTo(defaultValue);
         assertThat(response.version()).isZero();
     }
 
     @Test
     void create_shouldRegisterAfterCommitActionAndInvalidateCacheAfterCommitWhenSynchronizationActive() {
-        FeatureFlagCreateRequest request =
-                new FeatureFlagCreateRequest("flag-c", new FeatureValue(10, FeatureValueType.NUMBER));
+        FeatureValue defaultValue = new FeatureValue(10, FeatureValueType.NUMBER);
         when(featureFlagRepository.existsByKey("flag-c")).thenReturn(false);
 
         TransactionSynchronizationManager.initSynchronization();
 
-        FeatureFlagResponse response = featureFlagService.create(request);
+        FeatureFlag response = featureFlagService.create(ACTOR, "flag-c", defaultValue);
 
         verify(featureFlagCache, never()).invalidate("flag-c");
         assertThat(response.key()).isEqualTo("flag-c");
@@ -132,13 +137,13 @@ class FeatureFlagServiceTest {
     @Test
     void update_shouldUpdateAndReturnFeatureFlagResponseWhenFeatureFlagExists() {
         FeatureValue defaultValue = new FeatureValue(false, FeatureValueType.BOOL);
-        FeatureFlagUpdateRequest request = new FeatureFlagUpdateRequest(defaultValue, 3L);
         FeatureFlag persisted = new FeatureFlag(UUID.randomUUID(), "flag-d", defaultValue, 42L);
 
+        when(featureFlagUpdatePolicy.canUpdateDefaultValue("flag-d")).thenReturn(true);
         when(featureFlagRepository.update("flag-d", defaultValue, 3L)).thenReturn(1);
         when(featureFlagRepository.findByKey("flag-d")).thenReturn(Optional.of(persisted));
 
-        FeatureFlagResponse response = featureFlagService.update("flag-d", request);
+        FeatureFlag response = featureFlagService.update(ACTOR, "flag-d", defaultValue, 3L);
 
         verify(featureFlagRepository).update("flag-d", defaultValue, 3L);
         verify(featureFlagCache).invalidate("flag-d");
@@ -150,12 +155,14 @@ class FeatureFlagServiceTest {
     @Test
     void update_shouldThrowFeatureFlagNotFoundExceptionAndSkipCacheInvalidationWhenFeatureFlagMissing() {
         FeatureValue defaultValue = new FeatureValue(false, FeatureValueType.BOOL);
-        FeatureFlagUpdateRequest request = new FeatureFlagUpdateRequest(defaultValue, 5L);
+        FeatureFlag existing = new FeatureFlag(UUID.randomUUID(), "flag-e", defaultValue, 4L);
 
+        when(featureFlagUpdatePolicy.canUpdateDefaultValue("flag-e")).thenReturn(true);
+        when(featureFlagRepository.findByKey("flag-e")).thenReturn(Optional.of(existing));
         when(featureFlagRepository.update("flag-e", defaultValue, 5L)).thenReturn(0);
         when(featureFlagRepository.existsByKey("flag-e")).thenReturn(false);
 
-        assertThatThrownBy(() -> featureFlagService.update("flag-e", request))
+        assertThatThrownBy(() -> featureFlagService.update(ACTOR, "flag-e", defaultValue, 5L))
                 .isInstanceOf(FeatureFlagNotFoundException.class)
                 .hasMessage("Feature flag 'flag-e' not found");
 
@@ -166,17 +173,35 @@ class FeatureFlagServiceTest {
     @Test
     void update_shouldThrowOptimisticLockingFailureExceptionWhenVersionMismatch() {
         FeatureValue defaultValue = new FeatureValue(false, FeatureValueType.BOOL);
-        FeatureFlagUpdateRequest request = new FeatureFlagUpdateRequest(defaultValue, 2L);
+        FeatureFlag existing = new FeatureFlag(UUID.randomUUID(), "flag-e", defaultValue, 4L);
 
+        when(featureFlagUpdatePolicy.canUpdateDefaultValue("flag-e")).thenReturn(true);
+        when(featureFlagRepository.findByKey("flag-e")).thenReturn(Optional.of(existing));
         when(featureFlagRepository.existsByKey("flag-e")).thenReturn(true);
         when(featureFlagRepository.update("flag-e", defaultValue, 2L)).thenReturn(0);
 
-        assertThatThrownBy(() -> featureFlagService.update("flag-e", request))
+        assertThatThrownBy(() -> featureFlagService.update(ACTOR, "flag-e", defaultValue, 2L))
                 .isInstanceOf(OptimisticLockingFailureException.class)
                 .hasMessage("Feature flag 'flag-e' version mismatch. Expected version 2");
 
         verify(featureFlagRepository).update("flag-e", defaultValue, 2L);
         verify(featureFlagCache, never()).invalidate("flag-e");
+    }
+
+    @Test
+    void update_shouldThrowFeatureFlagUpdateBlockedExceptionWhenExperimentExistsForFlag() {
+        FeatureValue defaultValue = new FeatureValue(false, FeatureValueType.BOOL);
+        FeatureFlag existing = new FeatureFlag(UUID.randomUUID(), "flag-i", defaultValue, 4L);
+
+        when(featureFlagRepository.findByKey("flag-i")).thenReturn(Optional.of(existing));
+        when(featureFlagUpdatePolicy.canUpdateDefaultValue("flag-i")).thenReturn(false);
+
+        assertThatThrownBy(() -> featureFlagService.update(ACTOR, "flag-i", defaultValue, 1L))
+                .isInstanceOf(FeatureFlagUpdateBlockedException.class)
+                .hasMessage("Feature flag 'flag-i' default value cannot be updated while an experiment exists");
+
+        verify(featureFlagRepository, never()).update(any(), any(), any(Long.class));
+        verify(featureFlagCache, never()).invalidate(any());
     }
 
     @Test
@@ -187,30 +212,28 @@ class FeatureFlagServiceTest {
 
         when(featureFlagRepository.findByKey(key)).thenReturn(Optional.of(persisted));
         when(featureFlagCache.getOrLoad(eq(key), any(Supplier.class))).thenAnswer(invocation -> {
-            Supplier<Optional<CachedFeatureFlag>> loader = invocation.getArgument(1);
+            Supplier<Optional<FeatureFlag>> loader = invocation.getArgument(1);
             return loader.get();
         });
 
-        FeatureFlagResponse response = featureFlagService.getByKey(key);
+        FeatureFlag response = featureFlagService.getByKey(key);
 
         assertThat(response.key()).isEqualTo(key);
         assertThat(response.defaultValue()).isEqualTo(persisted.defaultValue());
         assertThat(response.version()).isEqualTo(8L);
-        verify(featureFlagRepository).findByKey(key);
     }
 
     @Test
-    void getByKey_shouldReturnCachedResponseAndSkipRepositoryWhenCacheHit() {
+    void getByKey_shouldReturnCachedResponseWhenCacheHit() {
         String key = "flag-g";
-        CachedFeatureFlag cachedFeatureFlag =
-                new CachedFeatureFlag(UUID.randomUUID(), key, new FeatureValue(true, FeatureValueType.BOOL), 12L);
+        FeatureFlag featureFlag =
+                new FeatureFlag(UUID.randomUUID(), key, new FeatureValue(true, FeatureValueType.BOOL), 12L);
 
-        when(featureFlagCache.getOrLoad(eq(key), any(Supplier.class))).thenReturn(Optional.of(cachedFeatureFlag));
+        when(featureFlagCache.getOrLoad(eq(key), any(Supplier.class))).thenReturn(Optional.of(featureFlag));
 
-        FeatureFlagResponse response = featureFlagService.getByKey(key);
+        FeatureFlag response = featureFlagService.getByKey(key);
 
-        assertThat(response).isEqualTo(cachedFeatureFlag.toResponse());
-        verify(featureFlagRepository, never()).findByKey(any());
+        assertThat(response).isEqualTo(featureFlag);
     }
 
     @Test

@@ -11,13 +11,7 @@ public class FeatureValueValidator implements ConstraintValidator<ValidFeatureVa
         if (featureValue == null) {
             return true;
         }
-        if (featureValue.type() == null || featureValue.value() == null) {
-            return false;
-        }
-        return switch (featureValue.type()) {
-            case BOOL -> featureValue.value() instanceof Boolean;
-            case STRING -> featureValue.value() instanceof String;
-            case NUMBER -> featureValue.value() instanceof Number;
-        };
+
+        return featureValue.hasMatchingType();
     }
 }

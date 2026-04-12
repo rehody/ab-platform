@@ -1,0 +1,265 @@
+package io.github.rehody.abplatform.service;
+
+import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.exception.ExperimentAlreadyExistsException;
+import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
+import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
+import io.github.rehody.abplatform.model.ExperimentVariant;
+import io.github.rehody.abplatform.model.FeatureFlag;
+import io.github.rehody.abplatform.model.audit.AuditAction;
+import io.github.rehody.abplatform.model.audit.AuditActor;
+import io.github.rehody.abplatform.model.audit.AuditDetails;
+import io.github.rehody.abplatform.model.audit.AuditTarget;
+import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
+import io.github.rehody.abplatform.policy.ExperimentTimestampPolicy;
+import io.github.rehody.abplatform.policy.ExperimentVariantPolicy;
+import io.github.rehody.abplatform.repository.ExperimentRepository;
+import io.github.rehody.abplatform.repository.ExperimentRepository.UpdateOutcome;
+import io.github.rehody.abplatform.repository.jdbc.ExperimentDomainJdbcRepository;
+import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class ExperimentDraftService {
+
+    private final ExperimentRepository experimentRepository;
+    private final ExperimentCommandSupport experimentCommandSupport;
+    private final ExperimentAssignmentPolicy experimentAssignmentPolicy;
+    private final ExperimentTimestampPolicy experimentTimestampPolicy;
+    private final FeatureFlagService featureFlagService;
+    private final ExperimentVariantPolicy experimentVariantPolicy;
+    private final ExperimentVariantPreparer experimentVariantPreparer;
+    private final ExperimentDomainJdbcRepository experimentDomainJdbcRepository;
+    private final AuditService auditService;
+
+    @Transactional
+    public Experiment create(
+            AuditActor actor,
+            String flagKey,
+            String domainKey,
+            List<ExperimentVariant> variants,
+            ExperimentState state) {
+        return experimentCommandSupport.withExperimentLock(flagKey, () -> {
+            ensureExperimentNotExists(flagKey);
+            ensureDomainExists(domainKey);
+
+            FeatureFlag featureFlag = featureFlagService.getByKey(flagKey);
+
+            UUID experimentId = UUID.randomUUID();
+            ExperimentRolloutPlan rolloutPlan = ExperimentRolloutPlan.initial();
+            List<ExperimentVariant> preparedVariants = prepareVariants(experimentId, variants);
+            validateVariantsForFlagDefault(experimentId, preparedVariants, featureFlag);
+
+            Experiment experiment =
+                    buildExperiment(experimentId, flagKey, domainKey, rolloutPlan, preparedVariants, state);
+
+            experimentAssignmentPolicy.validateAssignmentInvariants(experiment);
+            experimentRepository.save(experiment);
+            writeCreateAudit(actor, experiment);
+            experimentCommandSupport.invalidateCacheAfterCommit(flagKey);
+
+            return experiment;
+        });
+    }
+
+    private Experiment buildExperiment(
+            UUID experimentId,
+            String flagKey,
+            String domainKey,
+            ExperimentRolloutPlan rolloutPlan,
+            List<ExperimentVariant> variants,
+            ExperimentState state) {
+        Experiment experiment =
+                new Experiment(experimentId, flagKey, domainKey, rolloutPlan, variants, state, 0L, null, null);
+        return experimentTimestampPolicy.initializeTimestamps(experiment, Instant.now());
+    }
+
+    private void ensureExperimentNotExists(String flagKey) {
+        if (experimentRepository.existsByFlagKey(flagKey)) {
+            throw new ExperimentAlreadyExistsException(
+                    "Experiment with flag key '%s' already exists".formatted(flagKey));
+        }
+    }
+
+    @Transactional
+    public Experiment update(
+            AuditActor actor,
+            UUID id,
+            String flagKey,
+            String domainKey,
+            List<ExperimentVariant> variants,
+            long version) {
+        Experiment currentExperiment = experimentCommandSupport.getById(id);
+        Experiment updatedExperiment = resolveUpdatedExperiment(currentExperiment, flagKey, domainKey, variants);
+
+        return experimentCommandSupport.withExperimentLocks(
+                List.of(currentExperiment.flagKey(), updatedExperiment.flagKey()),
+                () -> updateUnderLock(actor, currentExperiment, updatedExperiment, version));
+    }
+
+    private long updateWithVariants(Experiment experiment, long version) {
+        UpdateOutcome outcome = experimentRepository.updateWithVariants(experiment);
+        return switch (outcome.status()) {
+            case NOT_FOUND ->
+                throw new ExperimentNotFoundException("Experiment '%s' not found".formatted(experiment.id()));
+            case VERSION_CONFLICT ->
+                throw new OptimisticLockingFailureException(
+                        "Experiment '%s' version mismatch. Expected version %d".formatted(experiment.id(), version));
+            case UPDATED -> outcome.version();
+        };
+    }
+
+    private Experiment updateUnderLock(
+            AuditActor actor, Experiment currentExperiment, Experiment updatedExperiment, long version) {
+        validateUpdatedExperiment(currentExperiment.id(), updatedExperiment);
+
+        Experiment experimentToUpdate = updatedExperiment.withVersion(version);
+        long updatedVersion = updateWithVariants(experimentToUpdate, version);
+
+        Experiment persistedExperiment = updatedExperiment.withVersion(updatedVersion);
+        writeUpdateAudit(actor, currentExperiment, persistedExperiment);
+        invalidateRelevantCaches(currentExperiment.flagKey(), updatedExperiment.flagKey());
+        return persistedExperiment;
+    }
+
+    private Experiment resolveUpdatedExperiment(
+            Experiment currentExperiment, String flagKey, String domainKey, List<ExperimentVariant> variants) {
+        String resolvedFlagKey = resolveFlagKey(currentExperiment, flagKey);
+        String resolvedDomainKey = resolveDomainKey(currentExperiment, domainKey);
+        List<ExperimentVariant> preparedVariants = prepareVariants(currentExperiment.id(), variants);
+        return buildUpdatedExperiment(currentExperiment, resolvedFlagKey, resolvedDomainKey, preparedVariants);
+    }
+
+    private void validateUpdatedExperiment(UUID experimentId, Experiment updatedExperiment) {
+        ensureDomainExists(updatedExperiment.domainKey());
+        ensureFlagKeyAvailable(experimentId, updatedExperiment.flagKey());
+
+        FeatureFlag featureFlag = featureFlagService.getByKey(updatedExperiment.flagKey());
+        validateVariantsForFlagDefault(experimentId, updatedExperiment.variants(), featureFlag);
+        experimentAssignmentPolicy.validateAssignmentInvariants(updatedExperiment);
+    }
+
+    private Experiment buildUpdatedExperiment(
+            Experiment currentExperiment, String flagKey, String domainKey, List<ExperimentVariant> variants) {
+        return new Experiment(
+                currentExperiment.id(),
+                flagKey,
+                domainKey,
+                currentExperiment.rolloutPlan(),
+                variants,
+                currentExperiment.state(),
+                currentExperiment.version(),
+                currentExperiment.startedAt(),
+                currentExperiment.completedAt());
+    }
+
+    private String resolveFlagKey(Experiment experiment, String flagKey) {
+        if (flagKey != null) {
+            return flagKey;
+        }
+        return experiment.flagKey();
+    }
+
+    private String resolveDomainKey(Experiment experiment, String domainKey) {
+        if (domainKey != null) {
+            return domainKey;
+        }
+        return experiment.domainKey();
+    }
+
+    private void ensureFlagKeyAvailable(UUID experimentId, String flagKey) {
+        experimentRepository
+                .findByFlagKey(flagKey)
+                .filter(existingExperiment -> !existingExperiment.id().equals(experimentId))
+                .ifPresent(_ -> {
+                    throw new ExperimentAlreadyExistsException(
+                            "Experiment with flag key '%s' already exists".formatted(flagKey));
+                });
+    }
+
+    private void ensureDomainExists(String domainKey) {
+        if (!experimentDomainJdbcRepository.existsByKey(domainKey)) {
+            throw new IllegalArgumentException("Unknown experiment domainKey '%s'".formatted(domainKey));
+        }
+    }
+
+    private void invalidateRelevantCaches(String currentFlagKey, String updatedFlagKey) {
+        experimentCommandSupport.invalidateCacheAfterCommit(currentFlagKey);
+        if (!currentFlagKey.equals(updatedFlagKey)) {
+            experimentCommandSupport.invalidateCacheAfterCommit(updatedFlagKey);
+        }
+    }
+
+    private void validateVariantsForFlagDefault(
+            UUID experimentId, List<ExperimentVariant> variants, FeatureFlag featureFlag) {
+        experimentVariantPolicy.validateVariantConfiguration(experimentId, variants, featureFlag.defaultValue());
+    }
+
+    private List<ExperimentVariant> prepareVariants(UUID experimentId, List<ExperimentVariant> variants) {
+        return experimentVariantPreparer.prepare(experimentId, variants);
+    }
+
+    private AuditDetails buildCreateDetails(Experiment experiment) {
+        return AuditDetails.entry("state", experiment.state().toString())
+                .with("flagKey", experiment.flagKey())
+                .with("domainKey", experiment.domainKey());
+    }
+
+    private AuditDetails buildUpdateDetails(Experiment currentExperiment, Experiment updatedExperiment) {
+        AuditDetails details = AuditDetails.empty();
+
+        if (!currentExperiment.flagKey().equals(updatedExperiment.flagKey())) {
+            details = details.with(
+                    "flagKey", "%s -> %s".formatted(currentExperiment.flagKey(), updatedExperiment.flagKey()));
+        }
+
+        if (!currentExperiment.domainKey().equals(updatedExperiment.domainKey())) {
+            details = details.with(
+                    "domainKey", "%s -> %s".formatted(currentExperiment.domainKey(), updatedExperiment.domainKey()));
+        }
+
+        List<String> currentVariantSummary =
+                currentExperiment.variants().stream().map(this::describeVariant).toList();
+        List<String> updatedVariantSummary =
+                updatedExperiment.variants().stream().map(this::describeVariant).toList();
+        if (!currentVariantSummary.equals(updatedVariantSummary)) {
+            details = details.with("variants", "%s -> %s".formatted(currentVariantSummary, updatedVariantSummary));
+        }
+
+        return details;
+    }
+
+    private String describeVariant(ExperimentVariant variant) {
+        return "%s{type=%s, value=%s, position=%d, weight=%s}"
+                .formatted(
+                        variant.key(),
+                        variant.type(),
+                        variant.value(),
+                        variant.position(),
+                        Objects.toString(variant.weight(), "null"));
+    }
+
+    private void writeCreateAudit(AuditActor actor, Experiment experiment) {
+        auditService.write(
+                actor,
+                AuditAction.EXPERIMENT_CREATED,
+                AuditTarget.experiment(experiment.id()),
+                buildCreateDetails(experiment));
+    }
+
+    private void writeUpdateAudit(AuditActor actor, Experiment currentExperiment, Experiment updatedExperiment) {
+        auditService.write(
+                actor,
+                AuditAction.EXPERIMENT_UPDATED,
+                AuditTarget.experiment(updatedExperiment.id()),
+                buildUpdateDetails(currentExperiment, updatedExperiment));
+    }
+}

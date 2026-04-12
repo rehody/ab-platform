@@ -1,7 +1,9 @@
 package io.github.rehody.abplatform.support;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
+import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
@@ -13,17 +15,27 @@ public final class AssignmentFixtures {
 
     private AssignmentFixtures() {}
 
-    public static Experiment runningExperiment(String flagKey, List<ExperimentVariant> variants, long version) {
-        return experiment(flagKey, variants, ExperimentState.RUNNING, version);
+    public static Experiment runningExperiment(
+            String flagKey, String domainKey, List<ExperimentVariant> variants, long version) {
+        return experiment(flagKey, domainKey, variants, ExperimentState.RUNNING, version);
     }
 
     public static Experiment experiment(
-            String flagKey, List<ExperimentVariant> variants, ExperimentState state, long version) {
-        return new Experiment(UUID.randomUUID(), flagKey, List.copyOf(variants), state, version);
+            String flagKey, String domainKey, List<ExperimentVariant> variants, ExperimentState state, long version) {
+        return new Experiment(
+                UUID.randomUUID(),
+                flagKey,
+                domainKey,
+                ExperimentRolloutPlan.initial(),
+                List.copyOf(variants),
+                state,
+                version,
+                null,
+                null);
     }
 
     public static ExperimentVariant variant(int position, String key, String value, BigDecimal weight) {
-        return new ExperimentVariant(UUID.randomUUID(), key, stringValue(value), position, weight);
+        return new ExperimentVariant(UUID.randomUUID(), key, stringValue(value), position, weight, variantType(key));
     }
 
     public static ExperimentVariant variant(int position, String key, String value, int weight) {
@@ -36,5 +48,13 @@ public final class AssignmentFixtures {
 
     public static FeatureValue boolValue(boolean value) {
         return new FeatureValue(value, FeatureValueType.BOOL);
+    }
+
+    private static ExperimentVariantType variantType(String key) {
+        if ("control".equals(key)) {
+            return ExperimentVariantType.CONTROL;
+        }
+
+        return ExperimentVariantType.REGULAR;
     }
 }
