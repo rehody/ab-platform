@@ -1,0 +1,1678 @@
+openapi: 3.1.0
+info:
+  title: AB Platform API
+  version: 0.1.0
+  description: |
+    API платформы экспериментов и rollout.
+
+    Аутентификация для защищенных endpoint-ов идет через bearer JWT от доверенной внутренней системы.
+    Платформа валидирует подпись и issuer токена, извлекает из него только `actorId`,
+    а роли и permissions резолвит внутри себя.
+servers:
+  - url: http://localhost:8080
+    description: Local development
+tags:
+  - name: Experiments
+  - name: ExperimentLifecycle
+  - name: Rollout
+  - name: Audit
+  - name: Conflicts
+  - name: MetricBindings
+  - name: Reports
+  - name: Evaluations
+  - name: Risks
+  - name: MetricDefinitions
+  - name: FeatureFlags
+  - name: Assignments
+  - name: Events
+security:
+  - bearerAuth: [ ]
+paths:
+  /api/v1/experiments:
+    get:
+      tags: [ Experiments ]
+      operationId: getExperiments
+      summary: Get all experiments
+      description: Requires platform permission `VIEW_EXPERIMENTS`.
+      responses:
+        '200':
+          description: Experiments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExperimentResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+    post:
+      tags: [ Experiments ]
+      operationId: createExperiment
+      summary: Create experiment
+      description: Requires platform permission `CREATE_EXPERIMENT`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentCreateRequest'
+      responses:
+        '201':
+          description: Experiment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/experiments/{id}:
+    get:
+      tags: [ Experiments ]
+      operationId: getExperiment
+      summary: Get experiment by id
+      description: Requires platform permission `VIEW_EXPERIMENTS`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentId'
+      responses:
+        '200':
+          description: Experiment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    patch:
+      tags: [ Experiments ]
+      operationId: updateExperiment
+      summary: Update experiment draft
+      description: Requires platform permission `UPDATE_EXPERIMENT_DRAFT`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentUpdateRequest'
+      responses:
+        '200':
+          description: Experiment updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/experiments/{id}/submit-for-review:
+    post:
+      tags: [ ExperimentLifecycle ]
+      operationId: submitExperimentForReview
+      summary: Submit experiment for review
+      description: Requires platform permission `SUBMIT_EXPERIMENT_FOR_REVIEW`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentStateTransitionRequest'
+      responses:
+        '200':
+          description: Experiment submitted for review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/experiments/{id}/approve:
+    post:
+      tags: [ ExperimentLifecycle ]
+      operationId: approveExperiment
+      summary: Approve experiment
+      description: Requires platform permission `APPROVE_EXPERIMENT`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentStateTransitionRequest'
+      responses:
+        '200':
+          description: Experiment approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/experiments/{id}/reject:
+    post:
+      tags: [ ExperimentLifecycle ]
+      operationId: rejectExperiment
+      summary: Reject experiment
+      description: Requires platform permission `REJECT_EXPERIMENT`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentStateTransitionRequest'
+      responses:
+        '200':
+          description: Experiment rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/experiments/{id}/start:
+    post:
+      tags: [ ExperimentLifecycle ]
+      operationId: startExperiment
+      summary: Start experiment
+      description: Requires platform permission `START_EXPERIMENT`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentStateTransitionRequest'
+      responses:
+        '200':
+          description: Experiment started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/experiments/{id}/pause:
+    post:
+      tags: [ ExperimentLifecycle ]
+      operationId: pauseExperiment
+      summary: Pause experiment
+      description: Requires platform permission `PAUSE_EXPERIMENT`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentStateTransitionRequest'
+      responses:
+        '200':
+          description: Experiment paused
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/experiments/{id}/resume:
+    post:
+      tags: [ ExperimentLifecycle ]
+      operationId: resumeExperiment
+      summary: Resume experiment
+      description: Requires platform permission `RESUME_EXPERIMENT`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentStateTransitionRequest'
+      responses:
+        '200':
+          description: Experiment resumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/experiments/{id}/complete:
+    post:
+      tags: [ ExperimentLifecycle ]
+      operationId: completeExperiment
+      summary: Complete experiment
+      description: Requires platform permission `COMPLETE_EXPERIMENT`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentStateTransitionRequest'
+      responses:
+        '200':
+          description: Experiment completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/experiments/{id}/archive:
+    post:
+      tags: [ ExperimentLifecycle ]
+      operationId: archiveExperiment
+      summary: Archive experiment
+      description: Requires platform permission `ARCHIVE_EXPERIMENT`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentStateTransitionRequest'
+      responses:
+        '200':
+          description: Experiment archived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/experiments/{id}/rollout:
+    get:
+      tags: [ Rollout ]
+      operationId: getExperimentRollout
+      summary: Get rollout state
+      description: Requires platform permission `VIEW_ROLLOUT_STATE`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentId'
+      responses:
+        '200':
+          description: Rollout state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentRolloutResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/v1/experiments/{id}/rollout/advance:
+    post:
+      tags: [ Rollout ]
+      operationId: advanceExperimentRollout
+      summary: Advance rollout manually
+      description: Requires platform permission `ADVANCE_EXPERIMENT_ROLLOUT`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentRolloutActionRequest'
+      responses:
+        '200':
+          description: Rollout advanced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentRolloutResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/experiments/{id}/rollout/rollback:
+    post:
+      tags: [ Rollout ]
+      operationId: rollbackExperimentRollout
+      summary: Roll back rollout manually
+      description: Requires platform permission `ROLLBACK_EXPERIMENT_ROLLOUT`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentRolloutActionRequest'
+      responses:
+        '200':
+          description: Rollout rolled back
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentRolloutResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/experiments/{id}/history:
+    get:
+      tags: [ Audit ]
+      operationId: getExperimentHistory
+      summary: Get audit history for experiment
+      description: |
+        Requires platform permission `VIEW_EXPERIMENT_HISTORY`.
+        Events are returned in descending time order.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentId'
+      responses:
+        '200':
+          description: Audit history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExperimentAuditEventResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/v1/experiments/{id}/conflicts:
+    get:
+      tags: [ Conflicts ]
+      operationId: getExperimentConflicts
+      summary: Get experiment conflicts
+      description: Requires platform permission `VIEW_CONFLICTS`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentId'
+      responses:
+        '200':
+          description: Conflict summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentConflictListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/v1/experiments/{experimentId}/metrics:
+    get:
+      tags: [ MetricBindings ]
+      operationId: getExperimentMetricBindings
+      summary: Get metric bindings for experiment
+      description: Requires platform permission `VIEW_EXPERIMENT_METRIC_BINDINGS`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentIdNamed'
+      responses:
+        '200':
+          description: Metric bindings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentMetricsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    put:
+      tags: [ MetricBindings ]
+      operationId: updateExperimentMetricBindings
+      summary: Update metric bindings for experiment
+      description: Requires platform permission `UPDATE_EXPERIMENT_METRIC_BINDINGS`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentIdNamed'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentMetricsUpdateRequest'
+      responses:
+        '200':
+          description: Metric bindings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentMetricsResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/reports/experiments/{experimentId}/metrics/{metricKey}:
+    get:
+      tags: [ Reports ]
+      operationId: getExperimentMetricReport
+      summary: Get experiment metric report
+      description: |
+        Requires platform permission `VIEW_REPORTS`.
+        Response shape depends on metric type.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentIdNamed'
+        - $ref: '#/components/parameters/MetricKey'
+      responses:
+        '200':
+          description: Metric report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentMetricReportResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/v1/reports/experiments/{experimentId}/metrics/{metricKey}/evaluation:
+    get:
+      tags: [ Evaluations ]
+      operationId: getExperimentMetricEvaluation
+      summary: Get experiment metric evaluation
+      description: Requires platform permission `VIEW_REPORTS`.
+      parameters:
+        - $ref: '#/components/parameters/ExperimentIdNamed'
+        - $ref: '#/components/parameters/MetricKey'
+      responses:
+        '200':
+          description: Evaluation report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentMetricEvaluationResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/v1/experiment-risks/{riskId}/resolve:
+    post:
+      tags: [ Risks ]
+      operationId: resolveExperimentRisk
+      summary: Resolve experiment risk
+      description: Requires platform permission `RESOLVE_EXPERIMENT_RISK`.
+      parameters:
+        - $ref: '#/components/parameters/RiskId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentMetricRiskResolutionRequest'
+      responses:
+        '200':
+          description: Risk resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentMetricRiskResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/metrics:
+    get:
+      tags: [ MetricDefinitions ]
+      operationId: getMetricDefinitions
+      summary: Get all metric definitions
+      description: Requires platform permission `VIEW_METRIC_DEFINITIONS`.
+      responses:
+        '200':
+          description: Metric definitions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MetricDefinitionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+    post:
+      tags: [ MetricDefinitions ]
+      operationId: createMetricDefinition
+      summary: Create metric definition
+      description: Requires platform permission `CREATE_METRIC_DEFINITION`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetricDefinitionCreateRequest'
+      responses:
+        '201':
+          description: Metric definition created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricDefinitionResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/metrics/{key}:
+    get:
+      tags: [ MetricDefinitions ]
+      operationId: getMetricDefinition
+      summary: Get metric definition by key
+      description: Requires platform permission `VIEW_METRIC_DEFINITIONS`.
+      parameters:
+        - $ref: '#/components/parameters/MetricDefinitionKey'
+      responses:
+        '200':
+          description: Metric definition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricDefinitionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    put:
+      tags: [ MetricDefinitions ]
+      operationId: updateMetricDefinition
+      summary: Update metric definition
+      description: Requires platform permission `UPDATE_METRIC_DEFINITION`.
+      parameters:
+        - $ref: '#/components/parameters/MetricDefinitionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetricDefinitionUpdateRequest'
+      responses:
+        '200':
+          description: Metric definition updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricDefinitionResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/flags:
+    post:
+      tags: [ FeatureFlags ]
+      operationId: createFeatureFlag
+      summary: Create feature flag
+      description: Requires platform permission `CREATE_FEATURE_FLAG`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeatureFlagCreateRequest'
+      responses:
+        '201':
+          description: Feature flag created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/flags/{key}:
+    get:
+      tags: [ FeatureFlags ]
+      operationId: getFeatureFlag
+      summary: Get feature flag by key
+      description: Requires platform permission `VIEW_FEATURE_FLAGS`.
+      parameters:
+        - $ref: '#/components/parameters/FeatureFlagKey'
+      responses:
+        '200':
+          description: Feature flag
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    put:
+      tags: [ FeatureFlags ]
+      operationId: updateFeatureFlag
+      summary: Update feature flag
+      description: Requires platform permission `UPDATE_FEATURE_FLAG`.
+      parameters:
+        - $ref: '#/components/parameters/FeatureFlagKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeatureFlagUpdateRequest'
+      responses:
+        '200':
+          description: Feature flag updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/assignments/resolve:
+    post:
+      tags: [ Assignments ]
+      operationId: resolveAssignment
+      summary: Resolve feature assignment for user
+      description: Public integration endpoint.
+      security: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentRequest'
+      responses:
+        '200':
+          description: Assignment resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssignmentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /events/metrics:
+    post:
+      tags: [ Events ]
+      operationId: createMetricEvent
+      summary: Create metric event
+      description: Public integration endpoint.
+      security: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetricEventCreateRequest'
+      responses:
+        '200':
+          description: Metric event created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricEventResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Trusted internal JWT.
+        Required claims: `iss`, `actorId`, `exp`.
+        The token carries only identity via `actorId`.
+        Platform roles and permissions are resolved internally and are not read from JWT claims.
+  parameters:
+    ExperimentId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ExperimentIdNamed:
+      name: experimentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    RiskId:
+      name: riskId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MetricKey:
+      name: metricKey
+      in: path
+      required: true
+      schema:
+        type: string
+    MetricDefinitionKey:
+      name: key
+      in: path
+      required: true
+      schema:
+        type: string
+    FeatureFlagKey:
+      name: key
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    UnauthorizedError:
+      description: Missing or invalid bearer token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ForbiddenError:
+      description: Authenticated actor does not have required permission
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ConflictError:
+      description: State or version conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [ status, errorCode, message, timestamp, path, violations ]
+      properties:
+        status:
+          type: integer
+          format: int32
+        errorCode:
+          $ref: '#/components/schemas/ErrorCode'
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Violation'
+    ErrorCode:
+      type: string
+      enum:
+        - INTERNAL_ERROR
+        - VALIDATION_ERROR
+        - NOT_FOUND
+        - BAD_REQUEST
+        - CONFLICT
+        - UNAUTHORIZED
+        - FORBIDDEN
+    Violation:
+      type: object
+      required: [ field, message ]
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+
+    FeatureValue:
+      type: object
+      required: [ value, type ]
+      properties:
+        value:
+          oneOf:
+            - type: string
+            - type: number
+            - type: boolean
+        type:
+          $ref: '#/components/schemas/FeatureValueType'
+    FeatureValueType:
+      type: string
+      enum: [ NUMBER, STRING, BOOL ]
+
+    ExperimentVariant:
+      type: object
+      required: [ key, value, position, type ]
+      properties:
+        id:
+          type: string
+          format: uuid
+          nullable: true
+        key:
+          type: string
+        value:
+          $ref: '#/components/schemas/FeatureValue'
+        position:
+          type: integer
+          format: int32
+        weight:
+          type: number
+          nullable: true
+          description: Null for CONTROL variant, positive for REGULAR variant.
+        type:
+          $ref: '#/components/schemas/ExperimentVariantType'
+    ExperimentVariantType:
+      type: string
+      enum: [ REGULAR, CONTROL ]
+
+    ExperimentRolloutPlan:
+      type: object
+      required: [ regularRolloutPercentage, afterRollback, stillNegativeAfterRollback ]
+      properties:
+        regularRolloutPercentage:
+          type: integer
+          format: int32
+          enum: [ 5, 15, 30, 50, 75, 100 ]
+        afterRollback:
+          type: boolean
+        stillNegativeAfterRollback:
+          type: boolean
+    ExperimentState:
+      type: string
+      enum: [ DRAFT, IN_REVIEW, REJECTED, APPROVED, RUNNING, PAUSED, COMPLETED, ARCHIVED ]
+
+    ExperimentCreateRequest:
+      type: object
+      required: [ flagKey, domainKey, variants, state ]
+      properties:
+        flagKey:
+          type: string
+        domainKey:
+          type: string
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExperimentVariant'
+        state:
+          $ref: '#/components/schemas/ExperimentState'
+    ExperimentUpdateRequest:
+      type: object
+      required: [ variants, version ]
+      properties:
+        flagKey:
+          type: string
+          nullable: true
+        domainKey:
+          type: string
+          nullable: true
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExperimentVariant'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+    ExperimentStateTransitionRequest:
+      type: object
+      required: [ version ]
+      properties:
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+    ExperimentRolloutActionRequest:
+      type: object
+      required: [ version ]
+      properties:
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+    ExperimentResponse:
+      type: object
+      required: [ flagKey, domainKey, rolloutPlan, variants, state, version ]
+      properties:
+        flagKey:
+          type: string
+        domainKey:
+          type: string
+        rolloutPlan:
+          $ref: '#/components/schemas/ExperimentRolloutPlan'
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExperimentVariant'
+        state:
+          $ref: '#/components/schemas/ExperimentState'
+        version:
+          type: integer
+          format: int64
+    ExperimentRolloutResponse:
+      type: object
+      required: [ rolloutPlan, availableActions, version ]
+      properties:
+        rolloutPlan:
+          $ref: '#/components/schemas/ExperimentRolloutView'
+        availableActions:
+          $ref: '#/components/schemas/ExperimentRolloutAvailableActions'
+        version:
+          type: integer
+          format: int64
+    ExperimentRolloutView:
+      type: object
+      required: [ currentStepPercentage, afterRollback, stillNegativeAfterRollback ]
+      properties:
+        currentStepPercentage:
+          type: integer
+          format: int32
+          enum: [ 5, 15, 30, 50, 75, 100 ]
+        afterRollback:
+          type: boolean
+        stillNegativeAfterRollback:
+          type: boolean
+    ExperimentRolloutAvailableActions:
+      type: object
+      required: [ canAdvance, canRollback ]
+      properties:
+        canAdvance:
+          type: boolean
+        canRollback:
+          type: boolean
+
+    AuditAction:
+      type: string
+      enum:
+        - EXPERIMENT_CREATED
+        - EXPERIMENT_UPDATED
+        - EXPERIMENT_SUBMITTED_FOR_REVIEW
+        - EXPERIMENT_APPROVED
+        - EXPERIMENT_REJECTED
+        - EXPERIMENT_STARTED
+        - EXPERIMENT_PAUSED
+        - EXPERIMENT_RESUMED
+        - EXPERIMENT_COMPLETED
+        - EXPERIMENT_ARCHIVED
+        - EXPERIMENT_ROLLOUT_ADVANCED_MANUAL
+        - EXPERIMENT_ROLLOUT_ROLLED_BACK_MANUAL
+        - EXPERIMENT_ROLLOUT_ADVANCED_AUTO
+        - EXPERIMENT_ROLLOUT_ROLLED_BACK_AUTO
+        - EXPERIMENT_PAUSED_AUTO_AFTER_ROLLOUT_ROLLBACK
+        - EXPERIMENT_METRIC_BINDINGS_UPDATED
+        - EXPERIMENT_RISK_RESOLVED
+        - METRIC_DEFINITION_CREATED
+        - METRIC_DEFINITION_UPDATED
+        - FEATURE_FLAG_CREATED
+        - FEATURE_FLAG_UPDATED
+    AuditActorType:
+      type: string
+      enum: [ USER, SYSTEM ]
+    ExperimentAuditActorResponse:
+      type: object
+      required: [ type ]
+      properties:
+        type:
+          $ref: '#/components/schemas/AuditActorType'
+        userId:
+          type: string
+          format: uuid
+          nullable: true
+        systemName:
+          type: string
+          nullable: true
+    ExperimentAuditEventResponse:
+      type: object
+      required: [ action, actor, timestamp, details ]
+      properties:
+        action:
+          $ref: '#/components/schemas/AuditAction'
+        actor:
+          $ref: '#/components/schemas/ExperimentAuditActorResponse'
+        timestamp:
+          type: string
+          format: date-time
+        details:
+          type: object
+          additionalProperties:
+            type: string
+
+    ConflictSeverity:
+      type: string
+      enum: [ NONE, WARNING, BLOCKING ]
+    ExperimentConflictType:
+      type: string
+      enum: [ SAME_FLAG, DOMAIN_OVERLAP ]
+    ExperimentConflictResponse:
+      type: object
+      required: [ experimentId, state, flagKey, domainKey, conflictTypes, severity ]
+      properties:
+        experimentId:
+          type: string
+          format: uuid
+        state:
+          $ref: '#/components/schemas/ExperimentState'
+        flagKey:
+          type: string
+        domainKey:
+          type: string
+        conflictTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExperimentConflictType'
+        severity:
+          $ref: '#/components/schemas/ConflictSeverity'
+    ExperimentConflictListResponse:
+      type: object
+      required: [ status, conflicts ]
+      properties:
+        status:
+          $ref: '#/components/schemas/ConflictSeverity'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExperimentConflictResponse'
+
+    ExperimentMetricsUpdateRequest:
+      type: object
+      required: [ metricKeys ]
+      properties:
+        metricKeys:
+          type: array
+          items:
+            type: string
+    ExperimentMetricsResponse:
+      type: object
+      required: [ experimentId, metricKeys ]
+      properties:
+        experimentId:
+          type: string
+          format: uuid
+        metricKeys:
+          type: array
+          items:
+            type: string
+
+    MetricType:
+      type: string
+      enum: [ UNIQUE, COUNTABLE ]
+    MetricDirection:
+      type: string
+      enum: [ MORE_IS_BETTER, LESS_IS_BETTER ]
+    MetricSeverity:
+      type: string
+      enum: [ LOW, MEDIUM, HIGH, EXTREME ]
+    MetricDefinitionCreateRequest:
+      type: object
+      required: [ key, name, type, direction, severity, deviationThreshold ]
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/MetricType'
+        direction:
+          $ref: '#/components/schemas/MetricDirection'
+        severity:
+          $ref: '#/components/schemas/MetricSeverity'
+        deviationThreshold:
+          type: number
+          exclusiveMinimum: 0
+    MetricDefinitionUpdateRequest:
+      type: object
+      required: [ name, type, direction, severity, deviationThreshold ]
+      properties:
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/MetricType'
+        direction:
+          $ref: '#/components/schemas/MetricDirection'
+        severity:
+          $ref: '#/components/schemas/MetricSeverity'
+        deviationThreshold:
+          type: number
+          exclusiveMinimum: 0
+    MetricDefinitionResponse:
+      type: object
+      required: [ id, key, name, type, direction, severity, deviationThreshold ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        key:
+          type: string
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/MetricType'
+        direction:
+          $ref: '#/components/schemas/MetricDirection'
+        severity:
+          $ref: '#/components/schemas/MetricSeverity'
+        deviationThreshold:
+          type: number
+
+    TrafficStatus:
+      type: string
+      enum: [ NORMAL, WARNING, INSUFFICIENT_DATA ]
+    MetricComparisonStatus:
+      type: string
+      enum: [ NORMAL, NEGATIVE_DEVIATION, INSUFFICIENT_DATA ]
+    ExperimentMetricRiskStatus:
+      type: string
+      enum: [ OPEN, RESOLVED ]
+    ExperimentMetricRiskResolutionRequest:
+      type: object
+      properties:
+        comment:
+          type: string
+          nullable: true
+    ExperimentMetricRiskResponse:
+      type: object
+      required:
+        [ id, experimentId, metricKey, variantId, status, openedAt, lastEvaluatedAt, lastBadDeviation, worstBadDeviation ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        experimentId:
+          type: string
+          format: uuid
+        metricKey:
+          type: string
+        variantId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/ExperimentMetricRiskStatus'
+        openedAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        resolutionComment:
+          type: string
+          nullable: true
+        lastEvaluatedAt:
+          type: string
+          format: date-time
+        lastBadDeviation:
+          type: number
+        worstBadDeviation:
+          type: number
+        autoPausedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    ExperimentMetricReportMeta:
+      type: object
+      required:
+        [ experimentId, flagKey, metricKey, metricType, experimentState, experimentStartedAt, trackedFrom, trackedTo ]
+      properties:
+        experimentId:
+          type: string
+          format: uuid
+        flagKey:
+          type: string
+        metricKey:
+          type: string
+        metricType:
+          $ref: '#/components/schemas/MetricType'
+        experimentState:
+          $ref: '#/components/schemas/ExperimentState'
+        experimentStartedAt:
+          type: string
+          format: date-time
+          nullable: true
+        experimentCompletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        trackedFrom:
+          type: string
+          format: date-time
+        trackedTo:
+          type: string
+          format: date-time
+    CountableVariantSummary:
+      type: object
+      required:
+        [ variantId, key, position, participants, participantsWithMetricEvent, totalMetricEvents, participantConversionRate, eventsPerParticipant ]
+      properties:
+        variantId:
+          type: string
+          format: uuid
+        key:
+          type: string
+        position:
+          type: integer
+          format: int32
+        participants:
+          type: integer
+          format: int32
+        participantsWithMetricEvent:
+          type: integer
+          format: int32
+        totalMetricEvents:
+          type: integer
+          format: int32
+        participantConversionRate:
+          type: number
+        eventsPerParticipant:
+          type: number
+    UniqueVariantSummary:
+      type: object
+      required: [ variantId, key, position, participants, participantsWithMetricEvent, conversionRate ]
+      properties:
+        variantId:
+          type: string
+          format: uuid
+        key:
+          type: string
+        position:
+          type: integer
+          format: int32
+        participants:
+          type: integer
+          format: int32
+        participantsWithMetricEvent:
+          type: integer
+          format: int32
+        conversionRate:
+          type: number
+    CountableMetricReportResponse:
+      type: object
+      required:
+        [ meta, totalParticipants, participantsWithMetricEvent, totalMetricEvents, participantConversionRate, eventsPerParticipant, variants ]
+      properties:
+        meta:
+          $ref: '#/components/schemas/ExperimentMetricReportMeta'
+        totalParticipants:
+          type: integer
+          format: int32
+        participantsWithMetricEvent:
+          type: integer
+          format: int32
+        totalMetricEvents:
+          type: integer
+          format: int32
+        participantConversionRate:
+          type: number
+        eventsPerParticipant:
+          type: number
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/CountableVariantSummary'
+    UniqueMetricReportResponse:
+      type: object
+      required: [ meta, totalParticipants, participantsWithMetricEvent, conversionRate, variants ]
+      properties:
+        meta:
+          $ref: '#/components/schemas/ExperimentMetricReportMeta'
+        totalParticipants:
+          type: integer
+          format: int32
+        participantsWithMetricEvent:
+          type: integer
+          format: int32
+        conversionRate:
+          type: number
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/UniqueVariantSummary'
+    ExperimentMetricReportResponse:
+      oneOf:
+        - $ref: '#/components/schemas/CountableMetricReportResponse'
+        - $ref: '#/components/schemas/UniqueMetricReportResponse'
+
+    ExperimentMetricEvaluationMetaResponse:
+      type: object
+      required:
+        [ experimentId, flagKey, metricKey, metricDirection, metricSeverity, deviationThreshold, experimentState, trackedFrom, trackedTo ]
+      properties:
+        experimentId:
+          type: string
+          format: uuid
+        flagKey:
+          type: string
+        metricKey:
+          type: string
+        metricDirection:
+          $ref: '#/components/schemas/MetricDirection'
+        metricSeverity:
+          $ref: '#/components/schemas/MetricSeverity'
+        deviationThreshold:
+          type: number
+        experimentState:
+          $ref: '#/components/schemas/ExperimentState'
+        experimentStartedAt:
+          type: string
+          format: date-time
+          nullable: true
+        experimentCompletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        trackedFrom:
+          type: string
+          format: date-time
+        trackedTo:
+          type: string
+          format: date-time
+    VariantTrafficShareResponse:
+      type: object
+      required: [ variantId, key, position, participants, expectedShare, actualShare, shareDelta ]
+      properties:
+        variantId:
+          type: string
+          format: uuid
+        key:
+          type: string
+        position:
+          type: integer
+          format: int32
+        participants:
+          type: integer
+          format: int32
+        expectedShare:
+          type: number
+        actualShare:
+          type: number
+        shareDelta:
+          type: number
+    TrafficEvaluationResponse:
+      type: object
+      required: [ status, totalParticipants, variants ]
+      properties:
+        status:
+          $ref: '#/components/schemas/TrafficStatus'
+        totalParticipants:
+          type: integer
+          format: int32
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariantTrafficShareResponse'
+    VariantMetricAggregateResponse:
+      type: object
+      required: [ variantId, key, position, participants, totalMetricEvents, eventsPerParticipant ]
+      properties:
+        variantId:
+          type: string
+          format: uuid
+        key:
+          type: string
+        position:
+          type: integer
+          format: int32
+        participants:
+          type: integer
+          format: int32
+        totalMetricEvents:
+          type: integer
+          format: int32
+        eventsPerParticipant:
+          type: number
+    VariantComparisonResponse:
+      type: object
+      required:
+        [ variantId, key, position, status, sufficientData, zeroControl, controlEventsPerParticipant, standardEventsPerParticipant, absoluteDifference, relativeDeviation ]
+      properties:
+        variantId:
+          type: string
+          format: uuid
+        key:
+          type: string
+        position:
+          type: integer
+          format: int32
+        status:
+          $ref: '#/components/schemas/MetricComparisonStatus'
+        sufficientData:
+          type: boolean
+        zeroControl:
+          type: boolean
+        controlEventsPerParticipant:
+          type: number
+        standardEventsPerParticipant:
+          type: number
+        absoluteDifference:
+          type: number
+        relativeDeviation:
+          type: number
+        risk:
+          $ref: '#/components/schemas/ExperimentMetricRiskResponse'
+          nullable: true
+    ExperimentMetricEvaluationResponse:
+      type: object
+      required: [ meta, traffic, variants, comparisons ]
+      properties:
+        meta:
+          $ref: '#/components/schemas/ExperimentMetricEvaluationMetaResponse'
+        traffic:
+          $ref: '#/components/schemas/TrafficEvaluationResponse'
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariantMetricAggregateResponse'
+        comparisons:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariantComparisonResponse'
+
+    FeatureFlagCreateRequest:
+      type: object
+      required: [ key, defaultValue ]
+      properties:
+        key:
+          type: string
+        defaultValue:
+          $ref: '#/components/schemas/FeatureValue'
+    FeatureFlagUpdateRequest:
+      type: object
+      required: [ defaultValue, version ]
+      properties:
+        defaultValue:
+          $ref: '#/components/schemas/FeatureValue'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+    FeatureFlagResponse:
+      type: object
+      required: [ key, defaultValue, version ]
+      properties:
+        key:
+          type: string
+        defaultValue:
+          $ref: '#/components/schemas/FeatureValue'
+        version:
+          type: integer
+          format: int64
+
+    AssignmentRequest:
+      type: object
+      required: [ userId, flagKey ]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        flagKey:
+          type: string
+    AssignmentResponse:
+      type: object
+      required: [ value ]
+      properties:
+        value:
+          $ref: '#/components/schemas/FeatureValue'
+
+    MetricEventCreateRequest:
+      type: object
+      required: [ userId, metricKey ]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        metricKey:
+          type: string
+    MetricEventResponse:
+      type: object
+      required: [ eventId ]
+      properties:
+        eventId:
+          type: string
+          format: uuid

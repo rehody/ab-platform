@@ -10,6 +10,7 @@ redisson = "4.3.0"
 caffeine = "3.2.2"
 guava = "33.5.0-jre"
 jackson = "3.0.0"
+springdoc = "3.0.2"
 testcontainers = "1.21.3"
 redis-testcontainers = "2.2.4"
 junit-platform = "6.0.3"
@@ -29,6 +30,7 @@ spring-boot-starter-data-jdbc-test = { module = "org.springframework.boot:spring
 spring-boot-starter-data-redis-test = { module = "org.springframework.boot:spring-boot-starter-data-redis-test", version.ref = "spring-boot" }
 spring-boot-starter-flyway = { module = "org.springframework.boot:spring-boot-starter-flyway", version.ref = "spring-boot" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
+spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator", version.ref = "spring-boot" }
 spring-context = { module = "org.springframework:spring-context", version.ref = "spring-framework" }
 spring-jdbc = { module = "org.springframework:spring-jdbc", version.ref = "spring-framework" }
 spring-tx = { module = "org.springframework:spring-tx", version.ref = "spring-framework" }
@@ -42,6 +44,7 @@ lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson" }
+springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
 
 # Distributed locking
 redisson = { module = "org.redisson:redisson", version.ref = "redisson" }
