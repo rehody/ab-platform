@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.repository.rowmapper.ExperimentRowMapper;
 import java.time.Instant;
 import java.util.List;
@@ -55,7 +56,15 @@ class ExperimentJdbcRepositoryTest {
     @Test
     void insert_shouldWriteAllParametersAndExecuteInsertUpdate() {
         Experiment experiment = new Experiment(
-                UUID.randomUUID(), "flag-a", "CHECKOUT", List.of(), ExperimentState.DRAFT, 0L, null, null);
+                UUID.randomUUID(),
+                "flag-a",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.DRAFT,
+                0L,
+                null,
+                null);
         when(jdbcClient.sql(anyString())).thenReturn(statementSpec);
         when(statementSpec.param(anyString(), any())).thenReturn(statementSpec);
         when(statementSpec.update()).thenReturn(1);
@@ -66,6 +75,9 @@ class ExperimentJdbcRepositoryTest {
         verify(statementSpec).param("id", experiment.id());
         verify(statementSpec).param("flagKey", "flag-a");
         verify(statementSpec).param("domainKey", "CHECKOUT");
+        verify(statementSpec).param("regularRolloutPercentage", 5);
+        verify(statementSpec).param("afterRollback", false);
+        verify(statementSpec).param("stillNegativeAfterRollback", false);
         verify(statementSpec).param("state", "DRAFT");
         verify(statementSpec).param("version", 0L);
         verify(statementSpec).param("startedAt", null);
@@ -79,6 +91,7 @@ class ExperimentJdbcRepositoryTest {
                 UUID.randomUUID(),
                 "flag-b",
                 "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
                 List.of(),
                 ExperimentState.RUNNING,
                 3L,
@@ -92,13 +105,22 @@ class ExperimentJdbcRepositoryTest {
         Optional<Experiment> response = experimentJdbcRepository.findById(experiment.id());
 
         assertThat(response).contains(experiment);
-        verify(jdbcClient).sql(contains("SELECT id, flag_key, domain_key, state, version, started_at, completed_at"));
+        verify(jdbcClient)
+                .sql(contains("SELECT id,\n       flag_key,\n       domain_key,\n       regular_rollout_percentage"));
     }
 
     @Test
     void findByFlagKey_shouldReturnMappedExperimentWhenRepositoryContainsRecord() {
         Experiment experiment = new Experiment(
-                UUID.randomUUID(), "flag-c", "CHECKOUT", List.of(), ExperimentState.APPROVED, 4L, null, null);
+                UUID.randomUUID(),
+                "flag-c",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.APPROVED,
+                4L,
+                null,
+                null);
         when(jdbcClient.sql(anyString())).thenReturn(statementSpec);
         when(statementSpec.param("flagKey", "flag-c")).thenReturn(statementSpec);
         when(statementSpec.query(experimentRowMapper)).thenReturn(mappedQuerySpec);
@@ -112,7 +134,15 @@ class ExperimentJdbcRepositoryTest {
     @Test
     void findRunningByFlagKey_shouldReturnMappedRunningExperimentWhenRepositoryContainsRecord() {
         Experiment experiment = new Experiment(
-                UUID.randomUUID(), "flag-running", "CHECKOUT", List.of(), ExperimentState.RUNNING, 4L, null, null);
+                UUID.randomUUID(),
+                "flag-running",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.RUNNING,
+                4L,
+                null,
+                null);
         when(jdbcClient.sql(anyString())).thenReturn(statementSpec);
         when(statementSpec.param("flagKey", "flag-running")).thenReturn(statementSpec);
         when(statementSpec.param("runningState", ExperimentState.RUNNING.name()))
@@ -128,7 +158,15 @@ class ExperimentJdbcRepositoryTest {
     @Test
     void findAll_shouldReturnMappedExperiments() {
         List<Experiment> experiments = List.of(new Experiment(
-                UUID.randomUUID(), "flag-d", "CHECKOUT", List.of(), ExperimentState.PAUSED, 5L, null, null));
+                UUID.randomUUID(),
+                "flag-d",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.PAUSED,
+                5L,
+                null,
+                null));
         when(jdbcClient.sql(anyString())).thenReturn(statementSpec);
         when(statementSpec.query(experimentRowMapper)).thenReturn(mappedQuerySpec);
         when(mappedQuerySpec.list()).thenReturn(experiments);
@@ -139,7 +177,15 @@ class ExperimentJdbcRepositoryTest {
     @Test
     void findByState_shouldReturnMappedExperiments() {
         List<Experiment> experiments = List.of(new Experiment(
-                UUID.randomUUID(), "flag-running", "CHECKOUT", List.of(), ExperimentState.RUNNING, 5L, null, null));
+                UUID.randomUUID(),
+                "flag-running",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.RUNNING,
+                5L,
+                null,
+                null));
         when(jdbcClient.sql(anyString())).thenReturn(statementSpec);
         when(statementSpec.param("state", ExperimentState.RUNNING.name())).thenReturn(statementSpec);
         when(statementSpec.query(experimentRowMapper)).thenReturn(mappedQuerySpec);
@@ -176,6 +222,7 @@ class ExperimentJdbcRepositoryTest {
                 UUID.randomUUID(),
                 "flag-f",
                 "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
                 List.of(),
                 ExperimentState.ARCHIVED,
                 7L,
@@ -192,6 +239,9 @@ class ExperimentJdbcRepositoryTest {
         verify(statementSpec).param("id", experiment.id());
         verify(statementSpec).param("flagKey", "flag-f");
         verify(statementSpec).param("domainKey", "CHECKOUT");
+        verify(statementSpec).param("regularRolloutPercentage", 5);
+        verify(statementSpec).param("afterRollback", false);
+        verify(statementSpec).param("stillNegativeAfterRollback", false);
         verify(statementSpec).param("state", "ARCHIVED");
         verify(statementSpec).param("startedAt", experiment.startedAt());
         verify(statementSpec).param("completedAt", experiment.completedAt());

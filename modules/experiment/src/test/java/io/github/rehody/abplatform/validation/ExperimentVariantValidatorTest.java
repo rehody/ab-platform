@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 class ExperimentVariantValidatorTest {
 
-    private final ExperimentVariantValidator validator = new ExperimentVariantValidator();
+    private final ExperimentVariantConstraintValidator validator = new ExperimentVariantConstraintValidator();
 
     @Test
     void isValid_shouldReturnTrueAndAllowNullVariant() {
@@ -106,7 +106,7 @@ class ExperimentVariantValidatorTest {
 
     @Test
     void isValid_shouldReturnFalseAndRejectNullWeight() {
-        ExperimentVariant variant = controlVariant("variant-a", validValue());
+        ExperimentVariant variant = regularVariant("variant-a", validValue());
         ExperimentVariant invalidVariant = new ExperimentVariant(
                 variant.id(), variant.key(), variant.value(), variant.position(), null, variant.type());
 
@@ -116,7 +116,7 @@ class ExperimentVariantValidatorTest {
     @Test
     void isValid_shouldReturnFalseAndRejectNonPositiveWeight() {
         ExperimentVariant variant = new ExperimentVariant(
-                UUID.randomUUID(), "control", validValue(), 0, BigDecimal.ZERO, ExperimentVariantType.CONTROL);
+                UUID.randomUUID(), "variant-a", validValue(), 0, BigDecimal.ZERO, ExperimentVariantType.REGULAR);
 
         assertThat(validator.isValid(variant, null)).isFalse();
     }
@@ -126,7 +126,7 @@ class ExperimentVariantValidatorTest {
     }
 
     private ExperimentVariant controlVariant(String key, FeatureValue value) {
-        return new ExperimentVariant(UUID.randomUUID(), key, value, 0, BigDecimal.ONE, ExperimentVariantType.CONTROL);
+        return new ExperimentVariant(UUID.randomUUID(), key, value, 0, null, ExperimentVariantType.CONTROL);
     }
 
     private ExperimentVariant regularVariant(String key, FeatureValue value) {

@@ -16,6 +16,7 @@ import io.github.rehody.abplatform.exception.FeatureFlagNotFoundException;
 import io.github.rehody.abplatform.model.FeatureFlag;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
+import io.github.rehody.abplatform.model.audit.AuditActor;
 import io.github.rehody.abplatform.service.FeatureFlagService;
 import io.github.rehody.abplatform.util.lock.LockObtainingException;
 import jakarta.validation.ConstraintViolation;
@@ -37,6 +38,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @ExtendWith(MockitoExtension.class)
 class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
 
+    private static final String ACTOR_ID = "11111111-1111-1111-1111-111111111111";
+
     @Mock
     private FeatureFlagService featureFlagService;
 
@@ -51,9 +54,13 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
     @Test
     void create_shouldReturnCreatedAndBodyWhenRequestIsValid() throws Exception {
         FeatureValue defaultValue = new FeatureValue(true, FeatureValueType.BOOL);
-        when(featureFlagService.create("flag-a", defaultValue)).thenReturn(featureFlag("flag-a", defaultValue, 0L));
+        when(featureFlagService.create(AuditActor.user(ACTOR_ID), "flag-a", defaultValue))
+                .thenReturn(featureFlag("flag-a", defaultValue, 0L));
 
-        mockMvc.perform(post("/api/v1/flags").contentType(APPLICATION_JSON).content("""
+        mockMvc.perform(post("/api/v1/flags")
+                        .principal(() -> ACTOR_ID)
+                        .contentType(APPLICATION_JSON)
+                        .content("""
                                 {"key":"flag-a","defaultValue":{"value":true,"type":"BOOL"}}
                                 """))
                 .andExpect(status().isCreated())
@@ -62,15 +69,17 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.defaultValue.type").value("BOOL"))
                 .andExpect(jsonPath("$.version").value(0));
 
-        verify(featureFlagService).create("flag-a", defaultValue);
+        verify(featureFlagService).create(AuditActor.user(ACTOR_ID), "flag-a", defaultValue);
     }
 
     @Test
     void update_shouldReturnOkAndBodyWhenRequestIsValid() throws Exception {
         FeatureValue defaultValue = new FeatureValue("variant-a", FeatureValueType.STRING);
-        when(featureFlagService.update("flag-b", defaultValue, 2L)).thenReturn(featureFlag("flag-b", defaultValue, 3L));
+        when(featureFlagService.update(AuditActor.user(ACTOR_ID), "flag-b", defaultValue, 2L))
+                .thenReturn(featureFlag("flag-b", defaultValue, 3L));
 
         mockMvc.perform(put("/api/v1/flags/flag-b")
+                        .principal(() -> ACTOR_ID)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"defaultValue":{"value":"variant-a","type":"STRING"},"version":2}
@@ -81,7 +90,7 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.defaultValue.type").value("STRING"))
                 .andExpect(jsonPath("$.version").value(3));
 
-        verify(featureFlagService).update("flag-b", defaultValue, 2L);
+        verify(featureFlagService).update(AuditActor.user(ACTOR_ID), "flag-b", defaultValue, 2L);
     }
 
     @Test
@@ -112,10 +121,13 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
     void create_shouldReturnConflictAndErrorResponseWhenFeatureFlagAlreadyExists() throws Exception {
         FeatureValue defaultValue = new FeatureValue(true, FeatureValueType.BOOL);
 
-        when(featureFlagService.create("flag-d", defaultValue))
+        when(featureFlagService.create(AuditActor.user(ACTOR_ID), "flag-d", defaultValue))
                 .thenThrow(new FeatureFlagAlreadyExistsException("Feature flag 'flag-d' already exists"));
 
-        mockMvc.perform(post("/api/v1/flags").contentType(APPLICATION_JSON).content("""
+        mockMvc.perform(post("/api/v1/flags")
+                        .principal(() -> ACTOR_ID)
+                        .contentType(APPLICATION_JSON)
+                        .content("""
                                 {"key":"flag-d","defaultValue":{"value":true,"type":"BOOL"}}
                                 """))
                 .andExpect(status().isConflict())
@@ -124,17 +136,18 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.message").value("Feature flag 'flag-d' already exists"))
                 .andExpect(jsonPath("$.path").value("/api/v1/flags"));
 
-        verify(featureFlagService).create("flag-d", defaultValue);
+        verify(featureFlagService).create(AuditActor.user(ACTOR_ID), "flag-d", defaultValue);
     }
 
     @Test
     void update_shouldReturnConflictAndErrorResponseWhenLockCannotBeObtained() throws Exception {
         FeatureValue defaultValue = new FeatureValue(true, FeatureValueType.BOOL);
 
-        when(featureFlagService.update("flag-e", defaultValue, 1L))
+        when(featureFlagService.update(AuditActor.user(ACTOR_ID), "flag-e", defaultValue, 1L))
                 .thenThrow(new LockObtainingException("Lock timeout"));
 
         mockMvc.perform(put("/api/v1/flags/flag-e")
+                        .principal(() -> ACTOR_ID)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"defaultValue":{"value":true,"type":"BOOL"},"version":1}
@@ -145,7 +158,7 @@ class FeatureFlagControllerWebMvcTest extends AbstractWebMvcTest {
                 .andExpect(jsonPath("$.message").value("Feature flag is busy"))
                 .andExpect(jsonPath("$.path").value("/api/v1/flags/flag-e"));
 
-        verify(featureFlagService).update("flag-e", defaultValue, 1L);
+        verify(featureFlagService).update(AuditActor.user(ACTOR_ID), "flag-e", defaultValue, 1L);
     }
 
     @Test

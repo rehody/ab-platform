@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -130,6 +131,15 @@ class ExperimentTimestampPolicyTest {
     }
 
     private Experiment experiment(ExperimentState state, Instant startedAt, Instant completedAt) {
-        return new Experiment(UUID.randomUUID(), "flag-a", "CHECKOUT", List.of(), state, 0L, startedAt, completedAt);
+        return new Experiment(
+                UUID.randomUUID(),
+                "flag-a",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                state,
+                0L,
+                startedAt,
+                completedAt);
     }
 }

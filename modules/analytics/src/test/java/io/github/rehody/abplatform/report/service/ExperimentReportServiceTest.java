@@ -16,6 +16,7 @@ import io.github.rehody.abplatform.metric.enums.MetricType;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.metric.service.MetricDefinitionService;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
@@ -33,7 +34,7 @@ import io.github.rehody.abplatform.report.repository.UniqueMetricEventReportRepo
 import io.github.rehody.abplatform.report.repository.aggregate.AssignmentVariantAggregate;
 import io.github.rehody.abplatform.report.repository.aggregate.CountableMetricVariantAggregate;
 import io.github.rehody.abplatform.report.repository.aggregate.UniqueMetricVariantAggregate;
-import io.github.rehody.abplatform.service.ExperimentService;
+import io.github.rehody.abplatform.service.ExperimentQueryService;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -54,7 +55,7 @@ class ExperimentReportServiceTest {
     private ExperimentMetricReportCache experimentMetricReportCache;
 
     @Mock
-    private ExperimentService experimentService;
+    private ExperimentQueryService experimentQueryService;
 
     @Mock
     private MetricDefinitionService metricDefinitionService;
@@ -86,7 +87,7 @@ class ExperimentReportServiceTest {
         experimentReportService = new ExperimentReportService(
                 experimentMetricReportCache,
                 experimentMetricReportCacheKeyFactory,
-                experimentService,
+                experimentQueryService,
                 metricDefinitionService,
                 assignmentEventReportRepository,
                 uniqueMetricEventReportRepository,
@@ -128,7 +129,7 @@ class ExperimentReportServiceTest {
             loaded.ifPresent(cachedValue::set);
             return loaded;
         });
-        when(experimentService.getById(experiment.id())).thenReturn(experiment);
+        when(experimentQueryService.getById(experiment.id())).thenReturn(experiment);
         when(metricDefinitionService.getByKey("orders")).thenReturn(metricDefinition);
         when(experimentReportWindowFactory.create(eq(experiment), any())).thenReturn(reportWindow);
         when(assignmentEventReportRepository.findParticipantCountsByVariant(experiment.id(), reportWindow))
@@ -165,7 +166,7 @@ class ExperimentReportServiceTest {
         when(experimentMetricReportCache.getOrLoad(eq(cacheKey), any()))
                 .thenAnswer(
                         invocation -> ((Supplier<Optional<ExperimentMetricReport>>) invocation.getArgument(1)).get());
-        when(experimentService.getById(experiment.id())).thenReturn(experiment);
+        when(experimentQueryService.getById(experiment.id())).thenReturn(experiment);
         when(metricDefinitionService.getByKey("signup")).thenReturn(metricDefinition);
         when(experimentReportWindowFactory.create(eq(experiment), any())).thenReturn(reportWindow);
         when(assignmentEventReportRepository.findParticipantCountsByVariant(experiment.id(), reportWindow))
@@ -204,6 +205,7 @@ class ExperimentReportServiceTest {
                 experimentId,
                 "flag-orders",
                 "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
                 List.of(
                         new ExperimentVariant(
                                 UUID.randomUUID(),

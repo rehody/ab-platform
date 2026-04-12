@@ -1,5 +1,6 @@
 package io.github.rehody.abplatform.controller;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -36,6 +37,7 @@ import io.github.rehody.abplatform.metric.enums.MetricSeverity;
 import io.github.rehody.abplatform.metric.enums.MetricType;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.metric.service.MetricDefinitionService;
+import io.github.rehody.abplatform.model.audit.AuditActor;
 import io.github.rehody.abplatform.report.controller.ExperimentReportController;
 import io.github.rehody.abplatform.report.model.CountableMetricReport;
 import io.github.rehody.abplatform.report.model.ExperimentMetricReportMeta;
@@ -56,6 +58,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @ExtendWith(MockitoExtension.class)
 class AnalyticsControllersWebMvcTest extends AbstractWebMvcTest {
+
+    private static final String ACTOR_ID = "11111111-1111-1111-1111-111111111111";
 
     @Mock
     private MetricDefinitionService metricDefinitionService;
@@ -104,6 +108,7 @@ class AnalyticsControllersWebMvcTest extends AbstractWebMvcTest {
     void metricDefinitionController_shouldCreateMetric() throws Exception {
         MetricDefinition metricDefinition = countableMetricDefinition();
         when(metricDefinitionService.create(
+                        any(AuditActor.class),
                         eq("orders"),
                         eq("Orders"),
                         eq(MetricType.COUNTABLE),
@@ -113,7 +118,9 @@ class AnalyticsControllersWebMvcTest extends AbstractWebMvcTest {
                 .thenReturn(metricDefinition);
 
         metricDefinitionMockMvc
-                .perform(post("/api/v1/metrics").contentType(APPLICATION_JSON).content("""
+                .perform(post("/api/v1/metrics")
+                        .contentType(APPLICATION_JSON)
+                        .content("""
                                 {
                                   "key":"orders",
                                   "name":"Orders",
@@ -122,7 +129,8 @@ class AnalyticsControllersWebMvcTest extends AbstractWebMvcTest {
                                   "severity":"HIGH",
                                   "deviationThreshold":0.10
                                 }
-                                """))
+                                """)
+                        .principal(() -> ACTOR_ID))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.key").value("orders"))
                 .andExpect(jsonPath("$.type").value("COUNTABLE"));
@@ -132,6 +140,7 @@ class AnalyticsControllersWebMvcTest extends AbstractWebMvcTest {
     void metricDefinitionController_shouldUpdateAndReadMetrics() throws Exception {
         MetricDefinition metricDefinition = uniqueMetricDefinition();
         when(metricDefinitionService.update(
+                        any(AuditActor.class),
                         eq("orders"),
                         eq("Orders 2"),
                         eq(MetricType.UNIQUE),
@@ -153,7 +162,8 @@ class AnalyticsControllersWebMvcTest extends AbstractWebMvcTest {
                                   "severity":"MEDIUM",
                                   "deviationThreshold":0.15
                                 }
-                                """))
+                                """)
+                        .principal(() -> ACTOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.type").value("UNIQUE"));
 
@@ -186,7 +196,8 @@ class AnalyticsControllersWebMvcTest extends AbstractWebMvcTest {
     @Test
     void bindingController_shouldUpdateAndReadBindings() throws Exception {
         UUID experimentId = UUID.randomUUID();
-        when(experimentMetricBindingService.updateMetricKeys(experimentId, List.of("orders", "revenue")))
+        when(experimentMetricBindingService.updateMetricKeys(
+                        any(AuditActor.class), eq(experimentId), eq(List.of("orders", "revenue"))))
                 .thenReturn(List.of("orders", "revenue"));
         when(experimentMetricBindingService.getMetricKeys(experimentId)).thenReturn(List.of("orders"));
 
@@ -195,7 +206,8 @@ class AnalyticsControllersWebMvcTest extends AbstractWebMvcTest {
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"metricKeys":["orders","revenue"]}
-                                """))
+                                """)
+                        .principal(() -> ACTOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.experimentId").value(experimentId.toString()))
                 .andExpect(jsonPath("$.metricKeys[1]").value("revenue"));
@@ -215,13 +227,13 @@ class AnalyticsControllersWebMvcTest extends AbstractWebMvcTest {
                 .thenReturn(uniqueMetricReport(experimentId));
 
         experimentReportMockMvc
-                .perform(get("/reports/experiments/{experimentId}/metrics/{metricKey}", experimentId, "orders"))
+                .perform(get("/api/v1/reports/experiments/{experimentId}/metrics/{metricKey}", experimentId, "orders"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.meta.metricKey").value("orders"))
                 .andExpect(jsonPath("$.totalMetricEvents").value(22));
 
         experimentReportMockMvc
-                .perform(get("/reports/experiments/{experimentId}/metrics/{metricKey}", experimentId, "signup"))
+                .perform(get("/api/v1/reports/experiments/{experimentId}/metrics/{metricKey}", experimentId, "signup"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.meta.metricType").value("UNIQUE"))
                 .andExpect(jsonPath("$.conversionRate").value(0.4));

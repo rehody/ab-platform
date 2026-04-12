@@ -20,6 +20,7 @@ import io.github.rehody.abplatform.metric.enums.MetricSeverity;
 import io.github.rehody.abplatform.metric.enums.MetricType;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
@@ -35,7 +36,7 @@ import io.github.rehody.abplatform.report.repository.CountableMetricEventReportR
 import io.github.rehody.abplatform.report.repository.aggregate.AssignmentVariantAggregate;
 import io.github.rehody.abplatform.report.repository.aggregate.CountableMetricVariantAggregate;
 import io.github.rehody.abplatform.risk.service.ExperimentMetricRiskService;
-import io.github.rehody.abplatform.service.ExperimentService;
+import io.github.rehody.abplatform.service.ExperimentQueryService;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -56,7 +57,7 @@ class ExperimentMetricEvaluationServiceTest {
     private ExperimentMetricReportCache experimentMetricReportCache;
 
     @Mock
-    private ExperimentService experimentService;
+    private ExperimentQueryService experimentQueryService;
 
     @Mock
     private ExperimentMetricEvaluationPolicy experimentMetricEvaluationPolicy;
@@ -89,7 +90,7 @@ class ExperimentMetricEvaluationServiceTest {
         experimentMetricEvaluationService = new ExperimentMetricEvaluationService(
                 experimentMetricReportCache,
                 experimentMetricReportCacheKeyFactory,
-                experimentService,
+                experimentQueryService,
                 experimentMetricEvaluationPolicy,
                 assignmentEventReportRepository,
                 countableMetricEventReportRepository,
@@ -108,7 +109,7 @@ class ExperimentMetricEvaluationServiceTest {
         String cacheKey =
                 experimentMetricReportCacheKeyFactory.forExperimentMetric(experiment.id(), metricDefinition.key());
 
-        when(experimentService.getById(experiment.id())).thenReturn(experiment);
+        when(experimentQueryService.getById(experiment.id())).thenReturn(experiment);
         when(experimentMetricEvaluationPolicy.getMetricDefinitionForEvaluation(experiment.id(), metricDefinition.key()))
                 .thenReturn(metricDefinition);
         when(experimentMetricReportCache.getOrLoad(eq(cacheKey), any())).thenReturn(Optional.of(countableMetricReport));
@@ -134,7 +135,7 @@ class ExperimentMetricEvaluationServiceTest {
         String cacheKey =
                 experimentMetricReportCacheKeyFactory.forExperimentMetric(experiment.id(), metricDefinition.key());
 
-        when(experimentService.getById(experiment.id())).thenReturn(experiment);
+        when(experimentQueryService.getById(experiment.id())).thenReturn(experiment);
         when(experimentMetricEvaluationPolicy.getMetricDefinitionForEvaluation(experiment.id(), metricDefinition.key()))
                 .thenReturn(metricDefinition);
         when(experimentMetricReportCache.getOrLoad(eq(cacheKey), any())).thenReturn(Optional.of(countableMetricReport));
@@ -162,7 +163,7 @@ class ExperimentMetricEvaluationServiceTest {
                 experimentMetricReportCacheKeyFactory.forExperimentMetric(experiment.id(), metricDefinition.key());
         AtomicReference<ExperimentMetricReport> cachedReport = new AtomicReference<>();
 
-        when(experimentService.getById(experiment.id())).thenReturn(experiment);
+        when(experimentQueryService.getById(experiment.id())).thenReturn(experiment);
         when(experimentMetricEvaluationPolicy.getMetricDefinitionForEvaluation(experiment.id(), metricDefinition.key()))
                 .thenReturn(metricDefinition);
         when(experimentMetricReportCache.getOrLoad(eq(cacheKey), any())).thenAnswer(invocation -> {
@@ -235,7 +236,7 @@ class ExperimentMetricEvaluationServiceTest {
                 new BigDecimal("0.2955"),
                 List.of());
 
-        when(experimentService.getById(experiment.id())).thenReturn(experiment);
+        when(experimentQueryService.getById(experiment.id())).thenReturn(experiment);
         when(experimentMetricEvaluationPolicy.getMetricDefinitionForEvaluation(experiment.id(), metricDefinition.key()))
                 .thenReturn(metricDefinition);
         when(experimentMetricReportCache.getOrLoad(eq(cacheKey), any())).thenReturn(Optional.of(uniqueMetricReport));
@@ -285,6 +286,7 @@ class ExperimentMetricEvaluationServiceTest {
                 experimentId,
                 "flag-orders",
                 "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
                 List.of(
                         new ExperimentVariant(
                                 UUID.randomUUID(),

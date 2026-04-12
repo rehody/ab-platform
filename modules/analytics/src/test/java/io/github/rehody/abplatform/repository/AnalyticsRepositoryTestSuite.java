@@ -21,6 +21,7 @@ import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.metric.repository.MetricDefinitionRepository;
 import io.github.rehody.abplatform.metric.repository.rowmapper.MetricDefinitionRowMapper;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.report.model.ExperimentReportWindow;
 import io.github.rehody.abplatform.report.repository.AssignmentEventReportRepository;
 import io.github.rehody.abplatform.report.repository.CountableMetricEventReportRepository;
@@ -356,7 +357,15 @@ class ExperimentConflictRepositoryTest {
     void shouldFindPotentialConflicts() {
         UUID experimentId = UUID.randomUUID();
         Experiment experiment = new Experiment(
-                UUID.randomUUID(), "flag-orders", "CHECKOUT", List.of(), ExperimentState.RUNNING, 3L, null, null);
+                UUID.randomUUID(),
+                "flag-orders",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.RUNNING,
+                3L,
+                null,
+                null);
         when(jdbcClient.sql(anyString())).thenReturn(statementSpec);
         when(statementSpec.param(anyString(), any())).thenReturn(statementSpec);
         when(statementSpec.query(experimentRowMapper)).thenReturn(mappedQuerySpec);

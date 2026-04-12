@@ -31,7 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AssignmentServiceTest {
 
     @Mock
-    private ExperimentService experimentService;
+    private ExperimentQueryService experimentQueryService;
 
     @Mock
     private FeatureFlagService featureFlagService;
@@ -50,7 +50,7 @@ class AssignmentServiceTest {
     @BeforeEach
     void setUp() {
         assignmentService = new AssignmentService(
-                experimentService,
+                experimentQueryService,
                 featureFlagService,
                 experimentVariantResolver,
                 experimentAssignmentPolicy,
@@ -61,7 +61,7 @@ class AssignmentServiceTest {
     void resolve_shouldReturnDefaultFlagValueWhenExperimentMissing() {
         UUID userId = UUID.randomUUID();
         FeatureValue defaultValue = boolValue(true);
-        when(experimentService.findByFlagKey("flag-a")).thenReturn(Optional.empty());
+        when(experimentQueryService.findByFlagKey("flag-a")).thenReturn(Optional.empty());
         when(featureFlagService.getByKey("flag-a"))
                 .thenReturn(new FeatureFlag(UUID.randomUUID(), "flag-a", defaultValue, 3L));
 
@@ -76,7 +76,7 @@ class AssignmentServiceTest {
         Experiment experiment =
                 experiment("flag-b", "CHECKOUT", List.of(variant(0, "control", "blue", 1)), ExperimentState.PAUSED, 2L);
         FeatureValue defaultValue = stringValue("gray");
-        when(experimentService.findByFlagKey("flag-b")).thenReturn(Optional.of(experiment));
+        when(experimentQueryService.findByFlagKey("flag-b")).thenReturn(Optional.of(experiment));
         when(experimentAssignmentPolicy.canResolveAssignment(experiment)).thenReturn(false);
         when(featureFlagService.getByKey("flag-b"))
                 .thenReturn(new FeatureFlag(UUID.randomUUID(), "flag-b", defaultValue, 1L));
@@ -96,7 +96,7 @@ class AssignmentServiceTest {
                 List.of(variant(0, "control", "green", 1), variant(1, "treatment", "red", 2)),
                 5L);
         ExperimentVariant controlVariant = variant(0, "control", "green", 1);
-        when(experimentService.findByFlagKey("flag-c")).thenReturn(Optional.of(experiment));
+        when(experimentQueryService.findByFlagKey("flag-c")).thenReturn(Optional.of(experiment));
         when(experimentAssignmentPolicy.canResolveAssignment(experiment)).thenReturn(true);
         when(experimentVariantResolver.resolve(experiment, userId)).thenReturn(controlVariant);
         when(featureFlagService.getByKey("flag-c"))
@@ -124,7 +124,7 @@ class AssignmentServiceTest {
                 List.of(variant(0, "control", "green", 1), variant(1, "treatment", "red", 2)),
                 5L);
         ExperimentVariant variant = variant(1, "treatment", "red", 2);
-        when(experimentService.findByFlagKey("flag-d")).thenReturn(Optional.of(experiment));
+        when(experimentQueryService.findByFlagKey("flag-d")).thenReturn(Optional.of(experiment));
         when(experimentAssignmentPolicy.canResolveAssignment(experiment)).thenReturn(true);
         when(experimentVariantResolver.resolve(experiment, userId)).thenReturn(variant);
 

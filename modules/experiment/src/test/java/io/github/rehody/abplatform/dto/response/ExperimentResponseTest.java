@@ -5,10 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -23,12 +23,13 @@ class ExperimentResponseTest {
                 "control",
                 new FeatureValue(true, FeatureValueType.BOOL),
                 0,
-                BigDecimal.ONE,
+                null,
                 ExperimentVariantType.CONTROL);
         Experiment experiment = new Experiment(
                 UUID.randomUUID(),
                 "checkout-redesign",
                 "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
                 List.of(variant),
                 ExperimentState.APPROVED,
                 7L,
@@ -39,6 +40,7 @@ class ExperimentResponseTest {
 
         assertThat(response.flagKey()).isEqualTo("checkout-redesign");
         assertThat(response.domainKey()).isEqualTo("CHECKOUT");
+        assertThat(response.rolloutPlan()).isEqualTo(ExperimentRolloutPlan.initial());
         assertThat(response.variants()).containsExactly(variant);
         assertThat(response.state()).isEqualTo(ExperimentState.APPROVED);
         assertThat(response.version()).isEqualTo(7L);

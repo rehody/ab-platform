@@ -7,7 +7,9 @@ import static org.mockito.Mockito.when;
 import io.github.rehody.abplatform.binding.service.ExperimentMetricBindingService;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
-import io.github.rehody.abplatform.service.ExperimentService;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
+import io.github.rehody.abplatform.rollout.service.ExperimentRolloutAutomationService;
+import io.github.rehody.abplatform.service.ExperimentQueryService;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class ExperimentMetricEvaluationBatchServiceTest {
 
     @Mock
-    private ExperimentService experimentService;
+    private ExperimentQueryService experimentQueryService;
 
     @Mock
     private ExperimentMetricBindingService experimentMetricBindingService;
@@ -28,33 +30,55 @@ class ExperimentMetricEvaluationBatchServiceTest {
     @Mock
     private ExperimentMetricEvaluationService experimentMetricEvaluationService;
 
+    @Mock
+    private ExperimentRolloutAutomationService experimentRolloutAutomationService;
+
     private ExperimentMetricEvaluationBatchService experimentMetricEvaluationBatchService;
 
     @BeforeEach
     void setUp() {
         experimentMetricEvaluationBatchService = new ExperimentMetricEvaluationBatchService(
-                experimentService, experimentMetricBindingService, experimentMetricEvaluationService);
+                experimentQueryService,
+                experimentMetricBindingService,
+                experimentMetricEvaluationService,
+                experimentRolloutAutomationService);
     }
 
     @Test
     void evaluateRunningExperiments_shouldLoadOnlyRunningExperiments() {
         Experiment experiment = new Experiment(
-                UUID.randomUUID(), "flag-a", "CHECKOUT", List.of(), ExperimentState.RUNNING, 3L, null, null);
-        when(experimentService.getRunning()).thenReturn(List.of(experiment));
+                UUID.randomUUID(),
+                "flag-a",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.RUNNING,
+                3L,
+                null,
+                null);
+        when(experimentQueryService.getRunning()).thenReturn(List.of(experiment));
         when(experimentMetricBindingService.getMetricKeys(experiment.id())).thenReturn(List.of("metric-a", "metric-b"));
 
         experimentMetricEvaluationBatchService.evaluateRunningExperiments();
 
-        verify(experimentService).getRunning();
-        verify(experimentMetricEvaluationService).evaluateAndApplyRisk(experiment, "metric-a");
-        verify(experimentMetricEvaluationService).evaluateAndApplyRisk(experiment, "metric-b");
+        verify(experimentQueryService).getRunning();
+        verify(experimentMetricEvaluationService).evaluateAndApplyRisk(experiment.id(), "metric-a");
+        verify(experimentMetricEvaluationService).evaluateAndApplyRisk(experiment.id(), "metric-b");
     }
 
     @Test
     void evaluateRunningExperiments_shouldContinueWhenMetricEvaluationFails() {
         Experiment experiment = new Experiment(
-                UUID.randomUUID(), "flag-b", "CHECKOUT", List.of(), ExperimentState.RUNNING, 5L, null, null);
-        when(experimentService.getRunning()).thenReturn(List.of(experiment));
+                UUID.randomUUID(),
+                "flag-b",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.RUNNING,
+                5L,
+                null,
+                null);
+        when(experimentQueryService.getRunning()).thenReturn(List.of(experiment));
         when(experimentMetricBindingService.getMetricKeys(experiment.id())).thenReturn(List.of("metric-a", "metric-b"));
         doThrow(new IllegalStateException("boom"))
                 .when(experimentMetricEvaluationService)
@@ -62,7 +86,7 @@ class ExperimentMetricEvaluationBatchServiceTest {
 
         experimentMetricEvaluationBatchService.evaluateRunningExperiments();
 
-        verify(experimentMetricEvaluationService).evaluateAndApplyRisk(experiment, "metric-a");
-        verify(experimentMetricEvaluationService).evaluateAndApplyRisk(experiment, "metric-b");
+        verify(experimentMetricEvaluationService).evaluateAndApplyRisk(experiment.id(), "metric-a");
+        verify(experimentMetricEvaluationService).evaluateAndApplyRisk(experiment.id(), "metric-b");
     }
 }

@@ -18,7 +18,9 @@ import io.github.rehody.abplatform.metric.enums.MetricSeverity;
 import io.github.rehody.abplatform.metric.enums.MetricType;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.metric.repository.MetricDefinitionRepository;
+import io.github.rehody.abplatform.model.audit.AuditActor;
 import io.github.rehody.abplatform.service.ActionExecutorService;
+import io.github.rehody.abplatform.service.AuditService;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
 import io.github.rehody.abplatform.util.lock.LockNamespace;
 import java.math.BigDecimal;
@@ -44,12 +46,19 @@ class MetricDefinitionServiceTest {
     @Mock
     private LockExecutor lockExecutor;
 
+    @Mock
+    private AuditService auditService;
+
     private MetricDefinitionService metricDefinitionService;
 
     @BeforeEach
     void setUp() {
         metricDefinitionService = new MetricDefinitionService(
-                metricDefinitionCache, metricDefinitionRepository, lockExecutor, new ActionExecutorService());
+                metricDefinitionCache,
+                metricDefinitionRepository,
+                lockExecutor,
+                new ActionExecutorService(),
+                auditService);
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), anyString(), any(Supplier.class)))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(2)).get());
@@ -60,6 +69,7 @@ class MetricDefinitionServiceTest {
         when(metricDefinitionRepository.existsByKey("orders")).thenReturn(false);
 
         MetricDefinition response = metricDefinitionService.create(
+                AuditActor.user(UUID.randomUUID()),
                 "orders",
                 "Orders",
                 MetricType.COUNTABLE,
@@ -77,6 +87,7 @@ class MetricDefinitionServiceTest {
         when(metricDefinitionRepository.existsByKey("orders")).thenReturn(true);
 
         assertThatThrownBy(() -> metricDefinitionService.create(
+                        AuditActor.user(UUID.randomUUID()),
                         "orders",
                         "Orders",
                         MetricType.COUNTABLE,
@@ -95,6 +106,7 @@ class MetricDefinitionServiceTest {
         when(metricDefinitionCache.getOrLoad(eq("orders"), any())).thenReturn(Optional.of(current));
 
         MetricDefinition response = metricDefinitionService.update(
+                AuditActor.user(UUID.randomUUID()),
                 "orders",
                 "Orders 2",
                 MetricType.UNIQUE,

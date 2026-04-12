@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.risk.enums.ExperimentMetricRiskStatus;
 import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
 import io.github.rehody.abplatform.service.ExperimentLifecycleService;
@@ -27,7 +28,15 @@ class ExperimentMetricAutoPauseServiceTest {
     @Test
     void pause_shouldReturnCurrentTimestampWhenLifecyclePauseSucceeds() {
         Experiment experiment = new Experiment(
-                UUID.randomUUID(), "flag-orders", "CHECKOUT", List.of(), ExperimentState.RUNNING, 4L, null, null);
+                UUID.randomUUID(),
+                "flag-orders",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.RUNNING,
+                4L,
+                null,
+                null);
         ExperimentMetricRisk risk = risk(null);
         ExperimentMetricAutoPauseService service = new ExperimentMetricAutoPauseService(experimentLifecycleService);
 
@@ -41,7 +50,15 @@ class ExperimentMetricAutoPauseServiceTest {
     void pause_shouldReturnPreviousAutoPausedAtWhenLifecyclePauseFails() {
         Instant autoPausedAt = Instant.parse("2026-04-05T11:00:00Z");
         Experiment experiment = new Experiment(
-                UUID.randomUUID(), "flag-orders", "CHECKOUT", List.of(), ExperimentState.RUNNING, 4L, null, null);
+                UUID.randomUUID(),
+                "flag-orders",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.RUNNING,
+                4L,
+                null,
+                null);
         ExperimentMetricRisk risk = risk(autoPausedAt);
         doThrow(new IllegalStateException("boom"))
                 .when(experimentLifecycleService)

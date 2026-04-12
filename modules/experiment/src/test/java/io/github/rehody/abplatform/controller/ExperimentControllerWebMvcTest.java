@@ -18,10 +18,13 @@ import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.exception.ExperimentExceptionHandler;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
-import io.github.rehody.abplatform.service.ExperimentService;
+import io.github.rehody.abplatform.model.audit.AuditActor;
+import io.github.rehody.abplatform.service.ExperimentDraftService;
+import io.github.rehody.abplatform.service.ExperimentQueryService;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -35,26 +38,35 @@ import org.springframework.test.web.servlet.MockMvc;
 @ExtendWith(MockitoExtension.class)
 class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
 
+    private static final String ACTOR_ID = "11111111-1111-1111-1111-111111111111";
+
     @Mock
-    private ExperimentService experimentService;
+    private ExperimentDraftService experimentDraftService;
+
+    @Mock
+    private ExperimentQueryService experimentQueryService;
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mockMvc = buildStandaloneMockMvc(new ExperimentController(experimentService), new ExperimentExceptionHandler());
+        mockMvc = buildStandaloneMockMvc(
+                new ExperimentController(experimentDraftService, experimentQueryService),
+                new ExperimentExceptionHandler());
     }
 
     @Test
     void create_shouldReturnCreatedAndBodyWhenRequestIsValid() throws Exception {
         Experiment response = experiment("flag-a", "CHECKOUT", 0L, ExperimentState.DRAFT);
-        when(experimentService.create(anyString(), anyString(), any(), any(ExperimentState.class)))
+        when(experimentDraftService.create(
+                        any(AuditActor.class), anyString(), anyString(), any(), any(ExperimentState.class)))
                 .thenReturn(response);
 
         mockMvc.perform(post("/api/v1/experiments")
+                        .principal(() -> ACTOR_ID)
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"flagKey":"flag-a","domainKey":"CHECKOUT","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"weight":1,"type":"CONTROL"}],"state":"DRAFT"}
+                                {"flagKey":"flag-a","domainKey":"CHECKOUT","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"type":"CONTROL"}],"state":"DRAFT"}
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.flagKey").value("flag-a"))
@@ -69,9 +81,15 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                 "control",
                 new FeatureValue(true, FeatureValueType.BOOL),
                 0,
-                BigDecimal.ONE,
+                null,
                 ExperimentVariantType.CONTROL));
-        verify(experimentService).create("flag-a", "CHECKOUT", expectedVariants, ExperimentState.DRAFT);
+        verify(experimentDraftService)
+                .create(
+                        eq(AuditActor.user(ACTOR_ID)),
+                        eq("flag-a"),
+                        eq("CHECKOUT"),
+                        eq(expectedVariants),
+                        eq(ExperimentState.DRAFT));
     }
 
     @Test
@@ -89,9 +107,11 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                         0,
                         BigDecimal.ONE,
                         ExperimentVariantType.REGULAR));
-        when(experimentService.update(eq(id), any(), any(), any(), eq(2L))).thenReturn(response);
+        when(experimentDraftService.update(eq(AuditActor.user(ACTOR_ID)), eq(id), any(), any(), any(), eq(2L)))
+                .thenReturn(response);
 
         mockMvc.perform(patch("/api/v1/experiments/{id}", id)
+                        .principal(() -> ACTOR_ID)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"domainKey":"PRICING","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":"blue","type":"STRING"},"position":0,"weight":1,"type":"REGULAR"}],"version":2}
@@ -110,14 +130,15 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                 0,
                 BigDecimal.ONE,
                 ExperimentVariantType.REGULAR));
-        verify(experimentService).update(id, null, "PRICING", expectedVariants, 2L);
+        verify(experimentDraftService)
+                .update(eq(AuditActor.user(ACTOR_ID)), eq(id), eq(null), eq("PRICING"), eq(expectedVariants), eq(2L));
     }
 
     @Test
     void get_shouldReturnOkAndBodyWhenExperimentExists() throws Exception {
         UUID id = UUID.randomUUID();
         Experiment response = experiment("flag-c", "CHECKOUT", 4L, ExperimentState.APPROVED);
-        when(experimentService.getById(id)).thenReturn(response);
+        when(experimentQueryService.getById(id)).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/experiments/{id}", id))
                 .andExpect(status().isOk())
@@ -130,7 +151,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
 
     @Test
     void getAll_shouldReturnOkAndBodyWhenExperimentsExist() throws Exception {
-        when(experimentService.getAll())
+        when(experimentQueryService.getAll())
                 .thenReturn(List.of(
                         experiment("flag-d", "CHECKOUT", 1L, ExperimentState.DRAFT),
                         experiment("flag-e", "PRICING", 2L, ExperimentState.ARCHIVED)));
@@ -174,13 +195,15 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
 
     @Test
     void create_shouldReturnBadRequestWhenDomainIsUnknown() throws Exception {
-        when(experimentService.create(anyString(), anyString(), any(), any(ExperimentState.class)))
+        when(experimentDraftService.create(
+                        any(AuditActor.class), anyString(), anyString(), any(), any(ExperimentState.class)))
                 .thenThrow(new IllegalArgumentException("Unknown experiment domainKey 'UNKNOWN'"));
 
         mockMvc.perform(post("/api/v1/experiments")
+                        .principal(() -> ACTOR_ID)
                         .contentType(APPLICATION_JSON)
                         .content("""
-                                {"flagKey":"flag-a","domainKey":"UNKNOWN","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"weight":1,"type":"CONTROL"}],"state":"DRAFT"}
+                                {"flagKey":"flag-a","domainKey":"UNKNOWN","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"control","value":{"value":true,"type":"BOOL"},"position":0,"type":"CONTROL"}],"state":"DRAFT"}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
@@ -192,7 +215,7 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
     @Test
     void get_shouldReturnNotFoundWhenExperimentMissing() throws Exception {
         UUID id = UUID.randomUUID();
-        when(experimentService.getById(id))
+        when(experimentQueryService.getById(id))
                 .thenThrow(new ExperimentNotFoundException("Experiment '%s' not found".formatted(id)));
 
         mockMvc.perform(get("/api/v1/experiments/{id}", id))
@@ -214,12 +237,21 @@ class ExperimentControllerWebMvcTest extends AbstractWebMvcTest {
                         "control",
                         new FeatureValue(true, FeatureValueType.BOOL),
                         0,
-                        BigDecimal.ONE,
+                        null,
                         ExperimentVariantType.CONTROL));
     }
 
     private Experiment experiment(
             String flagKey, String domainKey, long version, ExperimentState state, ExperimentVariant variant) {
-        return new Experiment(UUID.randomUUID(), flagKey, domainKey, List.of(variant), state, version, null, null);
+        return new Experiment(
+                UUID.randomUUID(),
+                flagKey,
+                domainKey,
+                ExperimentRolloutPlan.initial(),
+                List.of(variant),
+                state,
+                version,
+                null,
+                null);
     }
 }

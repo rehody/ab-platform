@@ -8,7 +8,8 @@ import io.github.rehody.abplatform.conflict.model.ExperimentConflict;
 import io.github.rehody.abplatform.conflict.repository.ExperimentConflictRepository;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
-import io.github.rehody.abplatform.service.ExperimentService;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
+import io.github.rehody.abplatform.service.ExperimentQueryService;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,14 +25,14 @@ class ExperimentConflictsServiceTest {
     private ExperimentConflictRepository experimentConflictRepository;
 
     @Mock
-    private ExperimentService experimentService;
+    private ExperimentQueryService experimentQueryService;
 
     private ExperimentConflictsService experimentConflictsService;
 
     @BeforeEach
     void setUp() {
         experimentConflictsService = new ExperimentConflictsService(
-                experimentConflictRepository, experimentService, new ExperimentConflictSeverityResolver());
+                experimentConflictRepository, experimentQueryService, new ExperimentConflictSeverityResolver());
     }
 
     @Test
@@ -45,7 +46,7 @@ class ExperimentConflictsServiceTest {
         Experiment approvedConflict = experiment(UUID.randomUUID(), "flag-e", "CHECKOUT", ExperimentState.APPROVED);
         Experiment pausedConflict = experiment(UUID.randomUUID(), "flag-f", "CHECKOUT", ExperimentState.PAUSED);
 
-        when(experimentService.getById(experimentId)).thenReturn(experiment);
+        when(experimentQueryService.getById(experimentId)).thenReturn(experiment);
         when(experimentConflictRepository.findAll(experimentId, "flag-a", "CHECKOUT"))
                 .thenReturn(List.of(
                         runningConflict,
@@ -70,7 +71,7 @@ class ExperimentConflictsServiceTest {
         Experiment completedConflict = experiment(UUID.randomUUID(), "flag-a", "PRICING", ExperimentState.COMPLETED);
         Experiment archivedConflict = experiment(UUID.randomUUID(), "flag-b", "CHECKOUT", ExperimentState.ARCHIVED);
 
-        when(experimentService.getById(experimentId)).thenReturn(experiment);
+        when(experimentQueryService.getById(experimentId)).thenReturn(experiment);
         when(experimentConflictRepository.findAll(experimentId, "flag-a", "CHECKOUT"))
                 .thenReturn(List.of(completedConflict, archivedConflict));
 
@@ -86,8 +87,8 @@ class ExperimentConflictsServiceTest {
         Experiment firstExperiment = experiment(firstExperimentId, "flag-a", "CHECKOUT", ExperimentState.DRAFT);
         Experiment secondExperiment = experiment(secondExperimentId, "flag-a", "PRICING", ExperimentState.DRAFT);
 
-        when(experimentService.getById(firstExperimentId)).thenReturn(firstExperiment);
-        when(experimentService.getById(secondExperimentId)).thenReturn(secondExperiment);
+        when(experimentQueryService.getById(firstExperimentId)).thenReturn(firstExperiment);
+        when(experimentQueryService.getById(secondExperimentId)).thenReturn(secondExperiment);
         when(experimentConflictRepository.findAll(firstExperimentId, "flag-a", "CHECKOUT"))
                 .thenReturn(List.of(secondExperiment));
         when(experimentConflictRepository.findAll(secondExperimentId, "flag-a", "PRICING"))
@@ -112,7 +113,7 @@ class ExperimentConflictsServiceTest {
         Experiment updatedDraft = experiment(experimentId, "flag-a", "PRICING", ExperimentState.DRAFT);
         Experiment domainConflict = experiment(UUID.randomUUID(), "flag-b", "PRICING", ExperimentState.APPROVED);
 
-        when(experimentService.getById(experimentId)).thenReturn(initialDraft, updatedDraft);
+        when(experimentQueryService.getById(experimentId)).thenReturn(initialDraft, updatedDraft);
         when(experimentConflictRepository.findAll(experimentId, "flag-a", "CHECKOUT"))
                 .thenReturn(List.of());
         when(experimentConflictRepository.findAll(experimentId, "flag-a", "PRICING"))
@@ -134,7 +135,7 @@ class ExperimentConflictsServiceTest {
         Experiment updatedDraft = experiment(experimentId, "flag-b", "CHECKOUT", ExperimentState.DRAFT);
         Experiment flagConflict = experiment(UUID.randomUUID(), "flag-b", "PRICING", ExperimentState.APPROVED);
 
-        when(experimentService.getById(experimentId)).thenReturn(initialDraft, updatedDraft);
+        when(experimentQueryService.getById(experimentId)).thenReturn(initialDraft, updatedDraft);
         when(experimentConflictRepository.findAll(experimentId, "flag-a", "CHECKOUT"))
                 .thenReturn(List.of());
         when(experimentConflictRepository.findAll(experimentId, "flag-b", "CHECKOUT"))
@@ -156,7 +157,7 @@ class ExperimentConflictsServiceTest {
         Experiment updatedDraft = experiment(experimentId, "flag-a", "PRICING", ExperimentState.DRAFT);
         Experiment domainConflict = experiment(UUID.randomUUID(), "flag-c", "PRICING", ExperimentState.PAUSED);
 
-        when(experimentService.getById(experimentId)).thenReturn(initialDraft, updatedDraft);
+        when(experimentQueryService.getById(experimentId)).thenReturn(initialDraft, updatedDraft);
         when(experimentConflictRepository.findAll(experimentId, "flag-a", "CHECKOUT"))
                 .thenReturn(List.of());
         when(experimentConflictRepository.findAll(experimentId, "flag-a", "PRICING"))
@@ -178,7 +179,7 @@ class ExperimentConflictsServiceTest {
         Experiment activeConflict = experiment(UUID.randomUUID(), "flag-a", "PRICING", ExperimentState.APPROVED);
         Experiment completedConflict = experiment(activeConflict.id(), "flag-a", "PRICING", ExperimentState.COMPLETED);
 
-        when(experimentService.getById(experimentId)).thenReturn(experiment, experiment);
+        when(experimentQueryService.getById(experimentId)).thenReturn(experiment, experiment);
         when(experimentConflictRepository.findAll(experimentId, "flag-a", "CHECKOUT"))
                 .thenReturn(List.of(activeConflict), List.of(completedConflict));
 
@@ -197,7 +198,7 @@ class ExperimentConflictsServiceTest {
         Experiment activeConflict = experiment(UUID.randomUUID(), "flag-a", "PRICING", ExperimentState.PAUSED);
         Experiment archivedConflict = experiment(activeConflict.id(), "flag-a", "PRICING", ExperimentState.ARCHIVED);
 
-        when(experimentService.getById(experimentId)).thenReturn(experiment, experiment);
+        when(experimentQueryService.getById(experimentId)).thenReturn(experiment, experiment);
         when(experimentConflictRepository.findAll(experimentId, "flag-a", "CHECKOUT"))
                 .thenReturn(List.of(activeConflict), List.of(archivedConflict));
 
@@ -251,6 +252,7 @@ class ExperimentConflictsServiceTest {
     }
 
     private Experiment experiment(UUID id, String flagKey, String domainKey, ExperimentState state) {
-        return new Experiment(id, flagKey, domainKey, List.of(), state, 0L, null, null);
+        return new Experiment(
+                id, flagKey, domainKey, ExperimentRolloutPlan.initial(), List.of(), state, 0L, null, null);
     }
 }

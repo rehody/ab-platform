@@ -14,7 +14,8 @@ import org.junit.jupiter.api.Test;
 
 class ExperimentVariantPreparerTest {
 
-    private final ExperimentVariantPreparer experimentVariantPreparer = new ExperimentVariantPreparer();
+    private final ExperimentVariantPreparer experimentVariantPreparer =
+            new ExperimentVariantPreparer(new ExperimentVariantValidator());
 
     @Test
     void prepare_shouldTrimKeysReindexPositionsAndGenerateMissingIds() {
@@ -27,7 +28,7 @@ class ExperimentVariantPreparerTest {
                                 " control ",
                                 new FeatureValue(true, FeatureValueType.BOOL),
                                 100,
-                                BigDecimal.ONE,
+                                null,
                                 ExperimentVariantType.CONTROL),
                         new ExperimentVariant(
                                 existingId,
@@ -41,7 +42,7 @@ class ExperimentVariantPreparerTest {
         assertThat(prepared.getFirst().id()).isNotNull();
         assertThat(prepared.getFirst().key()).isEqualTo("control");
         assertThat(prepared.get(0).position()).isZero();
-        assertThat(prepared.get(0).weight()).isEqualByComparingTo(BigDecimal.ONE);
+        assertThat(prepared.get(0).weight()).isNull();
         assertThat(prepared.get(1).id()).isEqualTo(existingId);
         assertThat(prepared.get(1).position()).isEqualTo(1);
         assertThat(prepared.get(1).weight()).isEqualByComparingTo(BigDecimal.ONE);
@@ -59,14 +60,14 @@ class ExperimentVariantPreparerTest {
                                         "control",
                                         new FeatureValue(true, FeatureValueType.BOOL),
                                         0,
-                                        BigDecimal.ONE,
+                                        null,
                                         ExperimentVariantType.CONTROL),
                                 new ExperimentVariant(
                                         null,
                                         " control ",
                                         new FeatureValue(false, FeatureValueType.BOOL),
                                         1,
-                                        BigDecimal.ONE,
+                                        null,
                                         ExperimentVariantType.CONTROL))))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Duplicate variant key for experiment %s: control".formatted(experimentId));

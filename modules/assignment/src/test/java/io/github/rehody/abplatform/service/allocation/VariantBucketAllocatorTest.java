@@ -22,7 +22,8 @@ class VariantBucketAllocatorTest {
                 variant(1, "variant-b", "green", 2),
                 variant(2, "variant-c", "red", 3));
 
-        List<BucketAllocation> allocations = variantBucketAllocator.allocate(UUID.randomUUID(), variants);
+        List<BucketAllocation> allocations =
+                variantBucketAllocator.allocate(UUID.randomUUID(), variants, BUCKET_POOL_SIZE);
 
         assertThat(allocations).extracting(BucketAllocation::bucketCount).containsExactly(1667, 3333, 5000);
         assertThat(allocations.stream().mapToInt(BucketAllocation::bucketCount).sum())
@@ -35,7 +36,8 @@ class VariantBucketAllocatorTest {
         List<ExperimentVariant> variants =
                 List.of(variant(0, "a", "A", 1), variant(1, "b", "B", 1), variant(2, "c", "C", 1));
 
-        List<BucketAllocation> allocations = variantBucketAllocator.allocate(UUID.randomUUID(), variants);
+        List<BucketAllocation> allocations =
+                variantBucketAllocator.allocate(UUID.randomUUID(), variants, BUCKET_POOL_SIZE);
 
         assertThat(allocations).extracting(BucketAllocation::bucketCount).containsExactly(3334, 3333, 3333);
     }
@@ -46,7 +48,8 @@ class VariantBucketAllocatorTest {
                 .mapToObj(index -> variant(index, "v-" + index, "value-" + index, 1))
                 .toList();
 
-        List<BucketAllocation> allocations = variantBucketAllocator.allocate(UUID.randomUUID(), variants);
+        List<BucketAllocation> allocations =
+                variantBucketAllocator.allocate(UUID.randomUUID(), variants, BUCKET_POOL_SIZE);
 
         assertThat(allocations).hasSize(BUCKET_POOL_SIZE);
         assertThat(allocations).allMatch(allocation -> allocation.bucketCount() == 1);
@@ -56,7 +59,8 @@ class VariantBucketAllocatorTest {
     void allocate_shouldReturnInitialAllocationsWhenWeightedSplitIsAlreadyExact() {
         List<ExperimentVariant> variants = List.of(variant(0, "control", "blue", 1), variant(1, "treatment", "red", 1));
 
-        List<BucketAllocation> allocations = variantBucketAllocator.allocate(UUID.randomUUID(), variants);
+        List<BucketAllocation> allocations =
+                variantBucketAllocator.allocate(UUID.randomUUID(), variants, BUCKET_POOL_SIZE);
 
         assertThat(allocations).extracting(BucketAllocation::bucketCount).containsExactly(5000, 5000);
     }
@@ -68,7 +72,7 @@ class VariantBucketAllocatorTest {
                 .toList();
         UUID experimentId = UUID.randomUUID();
 
-        assertThatThrownBy(() -> variantBucketAllocator.allocate(experimentId, variants))
+        assertThatThrownBy(() -> variantBucketAllocator.allocate(experimentId, variants, BUCKET_POOL_SIZE))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Experiment %s has %d variants, which exceeds bucket pool size %d"
                         .formatted(experimentId, BUCKET_POOL_SIZE + 1, BUCKET_POOL_SIZE));

@@ -16,11 +16,12 @@ import io.github.rehody.abplatform.exception.ExperimentBlockingConflictException
 import io.github.rehody.abplatform.exception.ExperimentExceptionHandler;
 import io.github.rehody.abplatform.exception.ExperimentStateTransitionException;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
+import io.github.rehody.abplatform.model.audit.AuditActor;
 import io.github.rehody.abplatform.service.ExperimentLifecycleService;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +33,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @ExtendWith(MockitoExtension.class)
 class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
+
+    private static final String ACTOR_ID = "11111111-1111-1111-1111-111111111111";
 
     @Mock
     private ExperimentLifecycleService experimentLifecycleService;
@@ -47,21 +50,21 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
     @Test
     void transitions_shouldReturnOkAndBodyForAllLifecycleEndpoints() throws Exception {
         UUID id = UUID.randomUUID();
-        when(experimentLifecycleService.submitForReview(eq(id), eq(3L)))
+        when(experimentLifecycleService.submitForReview(eq(id), eq(3L), eq(AuditActor.user(ACTOR_ID))))
                 .thenReturn(experiment("flag-a", "CHECKOUT", 4L, ExperimentState.IN_REVIEW));
-        when(experimentLifecycleService.approve(eq(id), eq(3L)))
+        when(experimentLifecycleService.approve(eq(id), eq(3L), eq(AuditActor.user(ACTOR_ID))))
                 .thenReturn(experiment("flag-a", "CHECKOUT", 5L, ExperimentState.APPROVED));
-        when(experimentLifecycleService.reject(eq(id), eq(3L)))
+        when(experimentLifecycleService.reject(eq(id), eq(3L), eq(AuditActor.user(ACTOR_ID))))
                 .thenReturn(experiment("flag-a", "CHECKOUT", 5L, ExperimentState.REJECTED));
-        when(experimentLifecycleService.start(eq(id), eq(3L)))
+        when(experimentLifecycleService.start(eq(id), eq(3L), eq(AuditActor.user(ACTOR_ID))))
                 .thenReturn(experiment("flag-a", "CHECKOUT", 6L, ExperimentState.RUNNING));
-        when(experimentLifecycleService.pause(eq(id), eq(3L)))
+        when(experimentLifecycleService.pause(eq(id), eq(3L), eq(AuditActor.user(ACTOR_ID))))
                 .thenReturn(experiment("flag-a", "CHECKOUT", 7L, ExperimentState.PAUSED));
-        when(experimentLifecycleService.resume(eq(id), eq(3L)))
+        when(experimentLifecycleService.resume(eq(id), eq(3L), eq(AuditActor.user(ACTOR_ID))))
                 .thenReturn(experiment("flag-a", "CHECKOUT", 8L, ExperimentState.RUNNING));
-        when(experimentLifecycleService.complete(eq(id), eq(3L)))
+        when(experimentLifecycleService.complete(eq(id), eq(3L), eq(AuditActor.user(ACTOR_ID))))
                 .thenReturn(experiment("flag-a", "CHECKOUT", 9L, ExperimentState.COMPLETED));
-        when(experimentLifecycleService.archive(eq(id), eq(3L)))
+        when(experimentLifecycleService.archive(eq(id), eq(3L), eq(AuditActor.user(ACTOR_ID))))
                 .thenReturn(experiment("flag-a", "CHECKOUT", 10L, ExperimentState.ARCHIVED));
 
         assertLifecycleResponse("/api/v1/experiments/{id}/submit-for-review", id, "IN_REVIEW", 4);
@@ -79,6 +82,7 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
         UUID id = UUID.randomUUID();
 
         mockMvc.perform(post("/api/v1/experiments/{id}/approve", id)
+                        .principal(() -> ACTOR_ID)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"version":-1}
@@ -92,10 +96,11 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
     @Test
     void approve_shouldReturnConflictWhenTransitionIsInvalid() throws Exception {
         UUID id = UUID.randomUUID();
-        when(experimentLifecycleService.approve(eq(id), eq(3L)))
+        when(experimentLifecycleService.approve(eq(id), eq(3L), eq(AuditActor.user(ACTOR_ID))))
                 .thenThrow(new ExperimentStateTransitionException("Cannot approve experiment in state DRAFT"));
 
         mockMvc.perform(post("/api/v1/experiments/{id}/approve", id)
+                        .principal(() -> ACTOR_ID)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"version":3}
@@ -110,13 +115,14 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
     @Test
     void approve_shouldReturnConflictWithConflictingMetricKeysWhenActivationConflicts() throws Exception {
         UUID id = UUID.randomUUID();
-        when(experimentLifecycleService.approve(eq(id), eq(3L)))
+        when(experimentLifecycleService.approve(eq(id), eq(3L), eq(AuditActor.user(ACTOR_ID))))
                 .thenThrow(new ExperimentActivationConflictException(
                         "Experiment '%s' conflicts with running experiments on metric keys: orders, revenue"
                                 .formatted(id),
                         List.of("orders", "revenue")));
 
         mockMvc.perform(post("/api/v1/experiments/{id}/approve", id)
+                        .principal(() -> ACTOR_ID)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"version":3}
@@ -159,11 +165,11 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
         String message = "Experiment '%s' has blocking conflicts with running experiments: %s"
                 .formatted(id, String.join(", ", conflictingExperimentIds));
 
-        when(experimentLifecycleService.approve(eq(id), eq(3L)))
+        when(experimentLifecycleService.approve(eq(id), eq(3L), eq(AuditActor.user(ACTOR_ID))))
                 .thenThrow(new ExperimentBlockingConflictException(message, conflicts));
-        when(experimentLifecycleService.start(eq(id), eq(3L)))
+        when(experimentLifecycleService.start(eq(id), eq(3L), eq(AuditActor.user(ACTOR_ID))))
                 .thenThrow(new ExperimentBlockingConflictException(message, conflicts));
-        when(experimentLifecycleService.resume(eq(id), eq(3L)))
+        when(experimentLifecycleService.resume(eq(id), eq(3L), eq(AuditActor.user(ACTOR_ID))))
                 .thenThrow(new ExperimentBlockingConflictException(message, conflicts));
 
         assertBlockingConflictResponse("/api/v1/experiments/{id}/approve", id, conflicts);
@@ -172,7 +178,10 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
     }
 
     private void assertLifecycleResponse(String path, UUID id, String state, int version) throws Exception {
-        mockMvc.perform(post(path, id).contentType(APPLICATION_JSON).content("""
+        mockMvc.perform(post(path, id)
+                        .principal(() -> ACTOR_ID)
+                        .contentType(APPLICATION_JSON)
+                        .content("""
                         {"version":3}
                         """))
                 .andExpect(status().isOk())
@@ -185,7 +194,10 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
 
     private void assertBlockingConflictResponse(String path, UUID id, List<ExperimentBlockingConflictDetails> conflicts)
             throws Exception {
-        mockMvc.perform(post(path, id).contentType(APPLICATION_JSON).content("""
+        mockMvc.perform(post(path, id)
+                        .principal(() -> ACTOR_ID)
+                        .contentType(APPLICATION_JSON)
+                        .content("""
                         {"version":3}
                         """))
                 .andExpect(status().isConflict())
@@ -215,12 +227,13 @@ class ExperimentLifecycleControllerWebMvcTest extends AbstractWebMvcTest {
                 UUID.randomUUID(),
                 flagKey,
                 domainKey,
+                ExperimentRolloutPlan.initial(),
                 List.of(new ExperimentVariant(
                         UUID.randomUUID(),
                         "control",
                         new FeatureValue(true, FeatureValueType.BOOL),
                         0,
-                        BigDecimal.ONE,
+                        null,
                         ExperimentVariantType.CONTROL)),
                 state,
                 version,

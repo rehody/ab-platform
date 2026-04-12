@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
@@ -317,7 +318,15 @@ class ExperimentRepositoryTest {
 
     private Experiment experiment(String flagKey, String domainKey, long version) {
         return new Experiment(
-                UUID.randomUUID(), flagKey, domainKey, variants(), ExperimentState.RUNNING, version, null, null);
+                UUID.randomUUID(),
+                flagKey,
+                domainKey,
+                ExperimentRolloutPlan.initial(),
+                variants(),
+                ExperimentState.RUNNING,
+                version,
+                null,
+                null);
     }
 
     private List<ExperimentVariant> variants() {
@@ -327,7 +336,7 @@ class ExperimentRepositoryTest {
                         "control",
                         new FeatureValue(true, FeatureValueType.BOOL),
                         0,
-                        BigDecimal.ONE,
+                        null,
                         ExperimentVariantType.CONTROL),
                 new ExperimentVariant(
                         UUID.randomUUID(),

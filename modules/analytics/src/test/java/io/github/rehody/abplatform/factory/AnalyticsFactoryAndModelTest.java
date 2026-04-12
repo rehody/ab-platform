@@ -42,6 +42,7 @@ import io.github.rehody.abplatform.metric.enums.MetricSeverity;
 import io.github.rehody.abplatform.metric.enums.MetricType;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
@@ -157,6 +158,7 @@ class AnalyticsFactoryAndModelTest {
                 running.id(),
                 running.flagKey(),
                 running.domainKey(),
+                running.rolloutPlan(),
                 running.variants(),
                 ExperimentState.COMPLETED,
                 running.version(),
@@ -170,7 +172,15 @@ class AnalyticsFactoryAndModelTest {
         assertThat(completedWindow.trackedTo()).isEqualTo(completed.completedAt());
 
         Experiment notStarted = new Experiment(
-                UUID.randomUUID(), "flag", "CHECKOUT", running.variants(), ExperimentState.DRAFT, 1L, null, null);
+                UUID.randomUUID(),
+                "flag",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                running.variants(),
+                ExperimentState.DRAFT,
+                1L,
+                null,
+                null);
         assertThatThrownBy(() -> factory.create(notStarted, now))
                 .isInstanceOf(ExperimentReportUnavailableException.class)
                 .hasMessage("Experiment '%s' report is unavailable before start".formatted(notStarted.id()));
@@ -179,6 +189,7 @@ class AnalyticsFactoryAndModelTest {
                 UUID.randomUUID(),
                 "flag",
                 "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
                 running.variants(),
                 ExperimentState.COMPLETED,
                 1L,
@@ -196,7 +207,7 @@ class AnalyticsFactoryAndModelTest {
                 new ExperimentMetricEvaluationAssembler(new ExperimentMetricEvaluationMetaFactory(), properties);
 
         ExperimentMetricEvaluationReport response = assembler.assemble(
-                runningExperiment(),
+                balancedRolloutExperiment(),
                 countableMetricDefinition(),
                 orderedVariants(),
                 Map.of(controlVariant().id(), 10, treatmentVariant().id(), 30),
@@ -286,7 +297,7 @@ class AnalyticsFactoryAndModelTest {
                 new ExperimentMetricEvaluationMetaFactory(), evaluationProperties(1, 1, "0.10"));
 
         ExperimentMetricEvaluationReport response = assembler.assemble(
-                runningExperiment(),
+                balancedRolloutExperiment(),
                 countableMetricDefinition(),
                 orderedVariants(),
                 Map.of(controlVariant().id(), 20, treatmentVariant().id(), 20),
@@ -310,7 +321,7 @@ class AnalyticsFactoryAndModelTest {
                 new ExperimentMetricEvaluationMetaFactory(), evaluationProperties(1, 1, "0.10"));
 
         ExperimentMetricEvaluationReport response = assembler.assemble(
-                runningExperiment(),
+                balancedRolloutExperiment(),
                 uniqueMetricDefinition(),
                 orderedVariants(),
                 Map.of(controlVariant().id(), 20, treatmentVariant().id(), 20),
@@ -334,7 +345,7 @@ class AnalyticsFactoryAndModelTest {
                 new ExperimentMetricEvaluationMetaFactory(), evaluationProperties(1, 1, "0.10"));
 
         ExperimentMetricEvaluationReport response = assembler.assemble(
-                runningExperiment(),
+                balancedRolloutExperiment(),
                 countableMetricDefinition(),
                 orderedVariants(),
                 Map.of(controlVariant().id(), 20, treatmentVariant().id(), 20),
@@ -516,6 +527,20 @@ class AnalyticsFactoryAndModelTest {
                 UUID.randomUUID(),
                 "flag-orders",
                 "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                orderedVariants(),
+                ExperimentState.RUNNING,
+                2L,
+                Instant.parse("2026-04-05T09:00:00Z"),
+                null);
+    }
+
+    private Experiment balancedRolloutExperiment() {
+        return new Experiment(
+                UUID.randomUUID(),
+                "flag-orders",
+                "CHECKOUT",
+                ExperimentRolloutPlan.of(50, false, false),
                 orderedVariants(),
                 ExperimentState.RUNNING,
                 2L,

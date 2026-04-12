@@ -10,6 +10,7 @@ import io.github.rehody.abplatform.conflict.service.ExperimentConflictsService;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.exception.ExperimentBlockingConflictException;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -26,7 +27,15 @@ class ExperimentConflictActivationPolicyTest {
     @Test
     void validateActivation_shouldUseConflictsServiceAndThrowStructuredBlockingConflict() {
         Experiment experiment = new Experiment(
-                UUID.randomUUID(), "flag-a", "CHECKOUT", List.of(), ExperimentState.APPROVED, 0L, null, null);
+                UUID.randomUUID(),
+                "flag-a",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.APPROVED,
+                0L,
+                null,
+                null);
         ExperimentConflict blockingConflict = new ExperimentConflict(
                 UUID.fromString("11111111-1111-1111-1111-111111111111"),
                 ExperimentState.RUNNING,
@@ -66,7 +75,15 @@ class ExperimentConflictActivationPolicyTest {
     @Test
     void validateActivation_shouldReturnWhenBlockingConflictsAbsent() {
         Experiment experiment = new Experiment(
-                UUID.randomUUID(), "flag-a", "CHECKOUT", List.of(), ExperimentState.APPROVED, 0L, null, null);
+                UUID.randomUUID(),
+                "flag-a",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.APPROVED,
+                0L,
+                null,
+                null);
         ExperimentConflictActivationPolicy policy = new ExperimentConflictActivationPolicy(experimentConflictsService);
 
         when(experimentConflictsService.getBlockingConflicts(experiment)).thenReturn(List.of());

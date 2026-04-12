@@ -19,11 +19,14 @@ import io.github.rehody.abplatform.metric.enums.MetricSeverity;
 import io.github.rehody.abplatform.metric.enums.MetricType;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
+import io.github.rehody.abplatform.model.audit.AuditActor;
 import io.github.rehody.abplatform.risk.enums.ExperimentMetricRiskStatus;
 import io.github.rehody.abplatform.risk.factory.ExperimentMetricRiskFactory;
 import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
 import io.github.rehody.abplatform.risk.policy.ExperimentMetricRiskPolicy;
 import io.github.rehody.abplatform.risk.repository.ExperimentMetricRiskRepository;
+import io.github.rehody.abplatform.service.AuditService;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
 import io.github.rehody.abplatform.util.lock.LockNamespace;
 import java.math.BigDecimal;
@@ -50,6 +53,9 @@ class ExperimentMetricRiskServiceTest {
     @Mock
     private LockExecutor lockExecutor;
 
+    @Mock
+    private AuditService auditService;
+
     private ExperimentMetricRiskService experimentMetricRiskService;
 
     @BeforeEach
@@ -59,7 +65,8 @@ class ExperimentMetricRiskServiceTest {
                 new ExperimentMetricRiskPolicy(),
                 new ExperimentMetricRiskFactory(),
                 experimentMetricAutoPauseService,
-                lockExecutor);
+                lockExecutor,
+                auditService);
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(2)).get());
@@ -75,7 +82,8 @@ class ExperimentMetricRiskServiceTest {
         when(experimentMetricRiskRepository.findById(riskId))
                 .thenReturn(java.util.Optional.of(initialRisk), java.util.Optional.of(lockedRisk));
 
-        ExperimentMetricRisk response = experimentMetricRiskService.resolve(riskId, "manual");
+        ExperimentMetricRisk response =
+                experimentMetricRiskService.resolve(AuditActor.user(UUID.randomUUID()), riskId, "manual");
 
         ArgumentCaptor<ExperimentMetricRisk> riskCaptor = ArgumentCaptor.forClass(ExperimentMetricRisk.class);
         verify(experimentMetricRiskRepository).update(riskCaptor.capture());
@@ -215,7 +223,8 @@ class ExperimentMetricRiskServiceTest {
         UUID riskId = UUID.randomUUID();
         when(experimentMetricRiskRepository.findById(riskId)).thenReturn(java.util.Optional.empty());
 
-        assertThatThrownBy(() -> experimentMetricRiskService.resolve(riskId, "manual"))
+        assertThatThrownBy(
+                        () -> experimentMetricRiskService.resolve(AuditActor.user(UUID.randomUUID()), riskId, "manual"))
                 .isInstanceOf(io.github.rehody.abplatform.risk.exception.ExperimentMetricRiskNotFoundException.class)
                 .hasMessage("Experiment metric risk '%s' not found".formatted(riskId));
     }
@@ -223,7 +232,15 @@ class ExperimentMetricRiskServiceTest {
     @Test
     void shouldNotAutoPauseWhenExperimentIsNotRunning() {
         Experiment pausedExperiment = new Experiment(
-                UUID.randomUUID(), "checkout-redesign", "CHECKOUT", List.of(), ExperimentState.PAUSED, 7L, null, null);
+                UUID.randomUUID(),
+                "checkout-redesign",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.PAUSED,
+                7L,
+                null,
+                null);
         ExperimentMetricRisk currentRisk = openRisk(null, new BigDecimal("0.10"));
         ExperimentMetricEvaluationReport report =
                 report(TrafficStatus.NORMAL, comparison(MetricComparisonStatus.NEGATIVE_DEVIATION, currentRisk));
@@ -246,7 +263,15 @@ class ExperimentMetricRiskServiceTest {
 
     private Experiment runningExperiment() {
         return new Experiment(
-                UUID.randomUUID(), "checkout-redesign", "CHECKOUT", List.of(), ExperimentState.RUNNING, 7L, null, null);
+                UUID.randomUUID(),
+                "checkout-redesign",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.RUNNING,
+                7L,
+                null,
+                null);
     }
 
     private MetricDefinition metricDefinition() {

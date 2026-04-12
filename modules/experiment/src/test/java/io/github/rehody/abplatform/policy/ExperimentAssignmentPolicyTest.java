@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verify;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,6 +57,15 @@ class ExperimentAssignmentPolicyTest {
     }
 
     private Experiment experiment(ExperimentState state) {
-        return new Experiment(UUID.randomUUID(), "flag-a", "CHECKOUT", List.of(), state, 0L, null, null);
+        return new Experiment(
+                UUID.randomUUID(),
+                "flag-a",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                state,
+                0L,
+                null,
+                null);
     }
 }

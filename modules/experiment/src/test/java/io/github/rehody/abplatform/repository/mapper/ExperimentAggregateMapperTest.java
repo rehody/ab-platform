@@ -5,10 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -21,13 +21,21 @@ class ExperimentAggregateMapperTest {
     @Test
     void withVariants_shouldCopyVariantsAndPreserveOtherExperimentFields() {
         Experiment experiment = new Experiment(
-                UUID.randomUUID(), "flag-a", "CHECKOUT", List.of(), ExperimentState.RUNNING, 5L, null, null);
+                UUID.randomUUID(),
+                "flag-a",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.RUNNING,
+                5L,
+                null,
+                null);
         List<ExperimentVariant> variants = new ArrayList<>(List.of(new ExperimentVariant(
                 UUID.randomUUID(),
                 "control",
                 new FeatureValue(true, FeatureValueType.BOOL),
                 0,
-                BigDecimal.ONE,
+                null,
                 ExperimentVariantType.CONTROL)));
 
         Experiment result = experimentAggregateMapper.withVariants(experiment, variants);
@@ -44,7 +52,15 @@ class ExperimentAggregateMapperTest {
     @Test
     void withVariants_shouldReturnEmptyVariantsWhenInputVariantsNull() {
         Experiment experiment = new Experiment(
-                UUID.randomUUID(), "flag-b", "CHECKOUT", List.of(), ExperimentState.DRAFT, 1L, null, null);
+                UUID.randomUUID(),
+                "flag-b",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.DRAFT,
+                1L,
+                null,
+                null);
 
         Experiment result = experimentAggregateMapper.withVariants(experiment, null);
 
@@ -54,7 +70,15 @@ class ExperimentAggregateMapperTest {
     @Test
     void withVariants_shouldReturnEmptyVariantsWhenInputVariantsEmpty() {
         Experiment experiment = new Experiment(
-                UUID.randomUUID(), "flag-c", "CHECKOUT", List.of(), ExperimentState.APPROVED, 2L, null, null);
+                UUID.randomUUID(),
+                "flag-c",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.APPROVED,
+                2L,
+                null,
+                null);
 
         Experiment result = experimentAggregateMapper.withVariants(experiment, List.of());
 

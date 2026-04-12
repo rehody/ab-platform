@@ -3,6 +3,7 @@ package io.github.rehody.abplatform.support;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
@@ -21,7 +22,16 @@ public final class AssignmentFixtures {
 
     public static Experiment experiment(
             String flagKey, String domainKey, List<ExperimentVariant> variants, ExperimentState state, long version) {
-        return new Experiment(UUID.randomUUID(), flagKey, domainKey, List.copyOf(variants), state, version, null, null);
+        return new Experiment(
+                UUID.randomUUID(),
+                flagKey,
+                domainKey,
+                ExperimentRolloutPlan.initial(),
+                List.copyOf(variants),
+                state,
+                version,
+                null,
+                null);
     }
 
     public static ExperimentVariant variant(int position, String key, String value, BigDecimal weight) {

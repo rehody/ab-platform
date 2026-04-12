@@ -17,6 +17,7 @@ import io.github.rehody.abplatform.metric.enums.MetricType;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.metric.service.MetricDefinitionService;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.risk.enums.ExperimentMetricRiskStatus;
 import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
 import io.github.rehody.abplatform.risk.policy.ExperimentMetricRiskPolicy;
@@ -72,7 +73,15 @@ class AnalyticsPolicyTest {
     void bindingConflictPolicy_shouldValidateActivationAndRejectConflicts() {
         UUID experimentId = UUID.randomUUID();
         Experiment experiment = new Experiment(
-                experimentId, "flag-orders", "CHECKOUT", List.of(), ExperimentState.RUNNING, 3L, null, null);
+                experimentId,
+                "flag-orders",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.RUNNING,
+                3L,
+                null,
+                null);
         when(experimentMetricBindingRepository.findMetricKeysByExperimentId(experimentId))
                 .thenReturn(List.of("orders"));
         when(experimentMetricBindingRepository.findConflictingMetricKeys(experimentId, List.of("orders")))

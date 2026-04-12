@@ -16,6 +16,7 @@ import io.github.rehody.abplatform.exception.FeatureFlagUpdateBlockedException;
 import io.github.rehody.abplatform.model.FeatureFlag;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
+import io.github.rehody.abplatform.model.audit.AuditActor;
 import io.github.rehody.abplatform.policy.FeatureFlagUpdatePolicy;
 import io.github.rehody.abplatform.repository.FeatureFlagRepository;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
@@ -37,6 +38,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @ExtendWith(MockitoExtension.class)
 class FeatureFlagServiceTest {
 
+    private static final AuditActor ACTOR = AuditActor.user(UUID.fromString("11111111-1111-1111-1111-111111111111"));
+
     @Mock
     private FeatureFlagRepository featureFlagRepository;
 
@@ -49,13 +52,21 @@ class FeatureFlagServiceTest {
     @Mock
     private FeatureFlagUpdatePolicy featureFlagUpdatePolicy;
 
+    @Mock
+    private AuditService auditService;
+
     private FeatureFlagService featureFlagService;
 
     @BeforeEach
     void setUp() {
         ActionExecutorService actionExecutorService = new ActionExecutorService();
         featureFlagService = new FeatureFlagService(
-                featureFlagRepository, featureFlagUpdatePolicy, lockExecutor, actionExecutorService, featureFlagCache);
+                featureFlagRepository,
+                featureFlagUpdatePolicy,
+                lockExecutor,
+                actionExecutorService,
+                featureFlagCache,
+                auditService);
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(2)).get());
@@ -73,7 +84,7 @@ class FeatureFlagServiceTest {
         FeatureValue defaultValue = new FeatureValue(true, FeatureValueType.BOOL);
         when(featureFlagRepository.existsByKey("flag-a")).thenReturn(true);
 
-        assertThatThrownBy(() -> featureFlagService.create("flag-a", defaultValue))
+        assertThatThrownBy(() -> featureFlagService.create(ACTOR, "flag-a", defaultValue))
                 .isInstanceOf(FeatureFlagAlreadyExistsException.class)
                 .hasMessage("Feature flag 'flag-a' already exists");
 
@@ -86,7 +97,7 @@ class FeatureFlagServiceTest {
         FeatureValue defaultValue = new FeatureValue("v1", FeatureValueType.STRING);
         when(featureFlagRepository.existsByKey("flag-b")).thenReturn(false);
 
-        FeatureFlag response = featureFlagService.create("flag-b", defaultValue);
+        FeatureFlag response = featureFlagService.create(ACTOR, "flag-b", defaultValue);
 
         ArgumentCaptor<FeatureFlag> featureFlagCaptor = ArgumentCaptor.forClass(FeatureFlag.class);
 
@@ -111,7 +122,7 @@ class FeatureFlagServiceTest {
 
         TransactionSynchronizationManager.initSynchronization();
 
-        FeatureFlag response = featureFlagService.create("flag-c", defaultValue);
+        FeatureFlag response = featureFlagService.create(ACTOR, "flag-c", defaultValue);
 
         verify(featureFlagCache, never()).invalidate("flag-c");
         assertThat(response.key()).isEqualTo("flag-c");
@@ -131,15 +142,10 @@ class FeatureFlagServiceTest {
         when(featureFlagUpdatePolicy.canUpdateDefaultValue("flag-d")).thenReturn(true);
         when(featureFlagRepository.update("flag-d", defaultValue, 3L)).thenReturn(1);
         when(featureFlagRepository.findByKey("flag-d")).thenReturn(Optional.of(persisted));
-        when(featureFlagCache.getOrLoad(eq("flag-d"), any(Supplier.class))).thenAnswer(invocation -> {
-            Supplier<Optional<FeatureFlag>> loader = invocation.getArgument(1);
-            return loader.get();
-        });
 
-        FeatureFlag response = featureFlagService.update("flag-d", defaultValue, 3L);
+        FeatureFlag response = featureFlagService.update(ACTOR, "flag-d", defaultValue, 3L);
 
         verify(featureFlagRepository).update("flag-d", defaultValue, 3L);
-        verify(featureFlagCache).getOrLoad(eq("flag-d"), any(Supplier.class));
         verify(featureFlagCache).invalidate("flag-d");
         assertThat(response.key()).isEqualTo("flag-d");
         assertThat(response.defaultValue()).isEqualTo(defaultValue);
@@ -149,12 +155,14 @@ class FeatureFlagServiceTest {
     @Test
     void update_shouldThrowFeatureFlagNotFoundExceptionAndSkipCacheInvalidationWhenFeatureFlagMissing() {
         FeatureValue defaultValue = new FeatureValue(false, FeatureValueType.BOOL);
+        FeatureFlag existing = new FeatureFlag(UUID.randomUUID(), "flag-e", defaultValue, 4L);
 
         when(featureFlagUpdatePolicy.canUpdateDefaultValue("flag-e")).thenReturn(true);
+        when(featureFlagRepository.findByKey("flag-e")).thenReturn(Optional.of(existing));
         when(featureFlagRepository.update("flag-e", defaultValue, 5L)).thenReturn(0);
         when(featureFlagRepository.existsByKey("flag-e")).thenReturn(false);
 
-        assertThatThrownBy(() -> featureFlagService.update("flag-e", defaultValue, 5L))
+        assertThatThrownBy(() -> featureFlagService.update(ACTOR, "flag-e", defaultValue, 5L))
                 .isInstanceOf(FeatureFlagNotFoundException.class)
                 .hasMessage("Feature flag 'flag-e' not found");
 
@@ -165,12 +173,14 @@ class FeatureFlagServiceTest {
     @Test
     void update_shouldThrowOptimisticLockingFailureExceptionWhenVersionMismatch() {
         FeatureValue defaultValue = new FeatureValue(false, FeatureValueType.BOOL);
+        FeatureFlag existing = new FeatureFlag(UUID.randomUUID(), "flag-e", defaultValue, 4L);
 
         when(featureFlagUpdatePolicy.canUpdateDefaultValue("flag-e")).thenReturn(true);
+        when(featureFlagRepository.findByKey("flag-e")).thenReturn(Optional.of(existing));
         when(featureFlagRepository.existsByKey("flag-e")).thenReturn(true);
         when(featureFlagRepository.update("flag-e", defaultValue, 2L)).thenReturn(0);
 
-        assertThatThrownBy(() -> featureFlagService.update("flag-e", defaultValue, 2L))
+        assertThatThrownBy(() -> featureFlagService.update(ACTOR, "flag-e", defaultValue, 2L))
                 .isInstanceOf(OptimisticLockingFailureException.class)
                 .hasMessage("Feature flag 'flag-e' version mismatch. Expected version 2");
 
@@ -181,10 +191,12 @@ class FeatureFlagServiceTest {
     @Test
     void update_shouldThrowFeatureFlagUpdateBlockedExceptionWhenExperimentExistsForFlag() {
         FeatureValue defaultValue = new FeatureValue(false, FeatureValueType.BOOL);
+        FeatureFlag existing = new FeatureFlag(UUID.randomUUID(), "flag-i", defaultValue, 4L);
 
+        when(featureFlagRepository.findByKey("flag-i")).thenReturn(Optional.of(existing));
         when(featureFlagUpdatePolicy.canUpdateDefaultValue("flag-i")).thenReturn(false);
 
-        assertThatThrownBy(() -> featureFlagService.update("flag-i", defaultValue, 1L))
+        assertThatThrownBy(() -> featureFlagService.update(ACTOR, "flag-i", defaultValue, 1L))
                 .isInstanceOf(FeatureFlagUpdateBlockedException.class)
                 .hasMessage("Feature flag 'flag-i' default value cannot be updated while an experiment exists");
 

@@ -13,10 +13,10 @@ import static org.mockito.Mockito.verify;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
-import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -133,12 +133,13 @@ class ExperimentCacheTest {
                 UUID.randomUUID(),
                 flagKey,
                 "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
                 List.of(new ExperimentVariant(
                         UUID.randomUUID(),
                         "control",
                         new FeatureValue(true, FeatureValueType.BOOL),
                         0,
-                        BigDecimal.ONE,
+                        null,
                         ExperimentVariantType.CONTROL)),
                 ExperimentState.RUNNING,
                 0L,

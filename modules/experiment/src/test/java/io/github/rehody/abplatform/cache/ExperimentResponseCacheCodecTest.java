@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.enums.ExperimentVariantType;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureValue;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
 import io.github.rehody.abplatform.util.cache.ObjectMapperCacheCodec;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -27,12 +27,13 @@ class ExperimentCacheCodecTest {
                 UUID.fromString("00000000-0000-0000-0000-000000000001"),
                 "flag-a",
                 "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
                 List.of(new ExperimentVariant(
                         UUID.fromString("11111111-1111-1111-1111-111111111111"),
                         "control",
                         new FeatureValue(true, FeatureValueType.BOOL),
                         0,
-                        BigDecimal.ONE,
+                        null,
                         ExperimentVariantType.CONTROL)),
                 ExperimentState.RUNNING,
                 6L,
@@ -44,6 +45,7 @@ class ExperimentCacheCodecTest {
         assertThat(json).contains("\"id\":\"00000000-0000-0000-0000-000000000001\"");
         assertThat(json).contains("\"flagKey\":\"flag-a\"");
         assertThat(json).contains("\"domainKey\":\"CHECKOUT\"");
+        assertThat(json).contains("\"regularRolloutPercentage\":5");
         assertThat(json).contains("\"key\":\"control\"");
         assertThat(json).contains("\"type\":\"BOOL\"");
         assertThat(json).contains("\"version\":6");
@@ -52,7 +54,7 @@ class ExperimentCacheCodecTest {
     @Test
     void read_shouldDeserializeResponseAndRestoreFields() {
         String json = """
-                {"id":"00000000-0000-0000-0000-000000000001","flagKey":"flag-b","domainKey":"CHECKOUT","variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":123,"type":"NUMBER"},"position":1,"weight":2,"type":"REGULAR"}],"state":"APPROVED","version":4,"startedAt":null,"completedAt":null}
+                {"id":"00000000-0000-0000-0000-000000000001","flagKey":"flag-b","domainKey":"CHECKOUT","rolloutPlan":{"regularRolloutPercentage":5,"afterRollback":false,"stillNegativeAfterRollback":false},"variants":[{"id":"11111111-1111-1111-1111-111111111111","key":"variant-a","value":{"value":123,"type":"NUMBER"},"position":1,"weight":2,"type":"REGULAR"}],"state":"APPROVED","version":4,"startedAt":null,"completedAt":null}
                 """;
 
         CachedExperiment cachedExperiment = codec.read(json);
@@ -60,6 +62,7 @@ class ExperimentCacheCodecTest {
         assertThat(cachedExperiment.id()).isEqualTo(UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertThat(cachedExperiment.flagKey()).isEqualTo("flag-b");
         assertThat(cachedExperiment.domainKey()).isEqualTo("CHECKOUT");
+        assertThat(cachedExperiment.rolloutPlan()).isEqualTo(ExperimentRolloutPlan.initial());
         assertThat(cachedExperiment.variants()).hasSize(1);
         assertThat(cachedExperiment.variants().getFirst().key()).isEqualTo("variant-a");
         assertThat(cachedExperiment.variants().getFirst().value().value()).isEqualTo(123);

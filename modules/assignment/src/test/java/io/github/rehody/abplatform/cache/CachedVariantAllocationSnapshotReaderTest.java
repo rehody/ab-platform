@@ -45,12 +45,12 @@ class CachedVariantAllocationSnapshotReaderTest {
         Experiment experiment = runningExperiment("flag-a", "CHECKOUT", List.of(variant(0, "control", "blue", 1)), 7L);
         VariantAllocationSnapshot snapshot =
                 new VariantAllocationSnapshot(List.of(new BucketRange(0, 10000, variant(0, "control", "blue", 1))));
-        when(assignmentPlanCache.getOrLoad(eq(experiment.id() + ":7"), any())).thenReturn(Optional.of(snapshot));
+        when(assignmentPlanCache.getOrLoad(eq(cacheKey(experiment)), any())).thenReturn(Optional.of(snapshot));
 
         VariantAllocationSnapshot result = cachedVariantAllocationSnapshotReader.get(experiment);
 
         assertThat(result).isEqualTo(snapshot);
-        verify(assignmentPlanCache).getOrLoad(eq(experiment.id() + ":7"), any());
+        verify(assignmentPlanCache).getOrLoad(eq(cacheKey(experiment)), any());
         verify(variantAllocationSnapshotFactory, never()).create(any());
     }
 
@@ -59,7 +59,7 @@ class CachedVariantAllocationSnapshotReaderTest {
         Experiment experiment = runningExperiment("flag-b", "CHECKOUT", List.of(variant(0, "control", "blue", 1)), 3L);
         VariantAllocationSnapshot snapshot =
                 new VariantAllocationSnapshot(List.of(new BucketRange(0, 10000, variant(0, "control", "blue", 1))));
-        when(assignmentPlanCache.getOrLoad(eq(experiment.id() + ":3"), any())).thenAnswer(invocation -> {
+        when(assignmentPlanCache.getOrLoad(eq(cacheKey(experiment)), any())).thenAnswer(invocation -> {
             Supplier<Optional<VariantAllocationSnapshot>> loader = invocation.getArgument(1);
             return loader.get();
         });
@@ -74,10 +74,18 @@ class CachedVariantAllocationSnapshotReaderTest {
     @Test
     void get_shouldThrowWhenCacheReturnsEmptySnapshot() {
         Experiment experiment = runningExperiment("flag-c", "CHECKOUT", List.of(variant(0, "control", "blue", 1)), 9L);
-        when(assignmentPlanCache.getOrLoad(eq(experiment.id() + ":9"), any())).thenReturn(Optional.empty());
+        when(assignmentPlanCache.getOrLoad(eq(cacheKey(experiment)), any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> cachedVariantAllocationSnapshotReader.get(experiment))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Assignment plan snapshot not found for experiment %s".formatted(experiment.id()));
+    }
+
+    private String cacheKey(Experiment experiment) {
+        return "%s:%d:%d"
+                .formatted(
+                        experiment.id(),
+                        experiment.version(),
+                        experiment.rolloutPlan().regularRolloutPercentage());
     }
 }

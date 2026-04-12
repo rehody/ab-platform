@@ -13,8 +13,11 @@ import io.github.rehody.abplatform.binding.policy.ExperimentMetricBindingPolicy;
 import io.github.rehody.abplatform.binding.repository.ExperimentMetricBindingRepository;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
+import io.github.rehody.abplatform.model.audit.AuditActor;
 import io.github.rehody.abplatform.service.ActionExecutorService;
-import io.github.rehody.abplatform.service.ExperimentService;
+import io.github.rehody.abplatform.service.AuditService;
+import io.github.rehody.abplatform.service.ExperimentQueryService;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
 import io.github.rehody.abplatform.util.lock.LockNamespace;
 import java.util.List;
@@ -36,7 +39,7 @@ class ExperimentMetricBindingServiceTest {
     private ExperimentMetricBindingRepository experimentMetricBindingRepository;
 
     @Mock
-    private ExperimentService experimentService;
+    private ExperimentQueryService experimentQueryService;
 
     @Mock
     private ExperimentMetricBindingPolicy experimentMetricBindingPolicy;
@@ -50,6 +53,9 @@ class ExperimentMetricBindingServiceTest {
     @Mock
     private LockExecutor lockExecutor;
 
+    @Mock
+    private AuditService auditService;
+
     private ExperimentMetricBindingService experimentMetricBindingService;
 
     @BeforeEach
@@ -57,12 +63,13 @@ class ExperimentMetricBindingServiceTest {
         ActionExecutorService actionExecutorService = new ActionExecutorService();
         experimentMetricBindingService = new ExperimentMetricBindingService(
                 experimentMetricBindingRepository,
-                experimentService,
+                experimentQueryService,
                 experimentMetricBindingPolicy,
                 experimentMetricBindingConflictPolicy,
                 experimentMetricBindingCacheInvalidator,
                 lockExecutor,
-                actionExecutorService);
+                actionExecutorService,
+                auditService);
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(2)).get());
@@ -81,14 +88,23 @@ class ExperimentMetricBindingServiceTest {
         List<String> requestedMetricKeys = List.of("metric-shared", "metric-new");
         List<String> normalizedMetricKeys = List.of("metric-shared", "metric-new");
         Experiment experiment = new Experiment(
-                experimentId, "checkout-redesign", "CHECKOUT", List.of(), ExperimentState.DRAFT, 2L, null, null);
-        when(experimentService.getById(experimentId)).thenReturn(experiment);
+                experimentId,
+                "checkout-redesign",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.DRAFT,
+                2L,
+                null,
+                null);
+        when(experimentQueryService.getById(experimentId)).thenReturn(experiment);
         when(experimentMetricBindingPolicy.prepareMetricKeys(requestedMetricKeys))
                 .thenReturn(normalizedMetricKeys);
         when(experimentMetricBindingRepository.findMetricKeysByExperimentId(experimentId))
                 .thenReturn(List.of("metric-old", "metric-shared"));
 
-        List<String> response = experimentMetricBindingService.updateMetricKeys(experimentId, requestedMetricKeys);
+        List<String> response = experimentMetricBindingService.updateMetricKeys(
+                AuditActor.user(UUID.randomUUID()), experimentId, requestedMetricKeys);
 
         assertThat(response).isEqualTo(normalizedMetricKeys);
         verify(experimentMetricBindingRepository).updateMetricKeys(experimentId, normalizedMetricKeys);
@@ -100,15 +116,24 @@ class ExperimentMetricBindingServiceTest {
         List<String> requestedMetricKeys = List.of("metric-shared", "metric-new");
         List<String> normalizedMetricKeys = List.of("metric-shared", "metric-new");
         Experiment experiment = new Experiment(
-                experimentId, "checkout-redesign", "CHECKOUT", List.of(), ExperimentState.DRAFT, 2L, null, null);
-        when(experimentService.getById(experimentId)).thenReturn(experiment);
+                experimentId,
+                "checkout-redesign",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.DRAFT,
+                2L,
+                null,
+                null);
+        when(experimentQueryService.getById(experimentId)).thenReturn(experiment);
         when(experimentMetricBindingPolicy.prepareMetricKeys(requestedMetricKeys))
                 .thenReturn(normalizedMetricKeys);
         when(experimentMetricBindingRepository.findMetricKeysByExperimentId(experimentId))
                 .thenReturn(List.of("metric-old", "metric-shared"));
         TransactionSynchronizationManager.initSynchronization();
 
-        experimentMetricBindingService.updateMetricKeys(experimentId, requestedMetricKeys);
+        experimentMetricBindingService.updateMetricKeys(
+                AuditActor.user(UUID.randomUUID()), experimentId, requestedMetricKeys);
 
         verify(experimentMetricBindingCacheInvalidator, never()).invalidateReports(any(), any());
 
@@ -126,15 +151,24 @@ class ExperimentMetricBindingServiceTest {
         List<String> requestedMetricKeys = List.of("metric-a");
         List<String> normalizedMetricKeys = List.of("metric-a");
         Experiment experiment = new Experiment(
-                experimentId, "checkout-redesign", "CHECKOUT", List.of(), ExperimentState.RUNNING, 4L, null, null);
+                experimentId,
+                "checkout-redesign",
+                "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
+                List.of(),
+                ExperimentState.RUNNING,
+                4L,
+                null,
+                null);
 
-        when(experimentService.getById(experimentId)).thenReturn(experiment);
+        when(experimentQueryService.getById(experimentId)).thenReturn(experiment);
         when(experimentMetricBindingPolicy.prepareMetricKeys(requestedMetricKeys))
                 .thenReturn(normalizedMetricKeys);
         when(experimentMetricBindingRepository.findMetricKeysByExperimentId(experimentId))
                 .thenReturn(List.of());
 
-        experimentMetricBindingService.updateMetricKeys(experimentId, requestedMetricKeys);
+        experimentMetricBindingService.updateMetricKeys(
+                AuditActor.user(UUID.randomUUID()), experimentId, requestedMetricKeys);
 
         verify(experimentMetricBindingConflictPolicy)
                 .validateNoRunningMetricConflicts(eq(experimentId), eq(normalizedMetricKeys));
@@ -149,6 +183,6 @@ class ExperimentMetricBindingServiceTest {
         List<String> response = experimentMetricBindingService.getMetricKeys(experimentId);
 
         assertThat(response).containsExactly("orders", "revenue");
-        verify(experimentService).ensureExistsById(experimentId);
+        verify(experimentQueryService).ensureExistsById(experimentId);
     }
 }

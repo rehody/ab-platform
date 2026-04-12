@@ -7,7 +7,6 @@ import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.enums.ExperimentVariantType;
 import io.github.rehody.abplatform.exception.ExperimentStateTransitionException;
 import io.github.rehody.abplatform.model.FeatureValue.FeatureValueType;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -120,12 +119,13 @@ class ExperimentTest {
                 UUID.randomUUID(),
                 "flag-a",
                 "CHECKOUT",
+                ExperimentRolloutPlan.initial(),
                 List.of(new ExperimentVariant(
                         UUID.randomUUID(),
                         "control",
                         new FeatureValue(true, FeatureValueType.BOOL),
                         0,
-                        BigDecimal.ONE,
+                        null,
                         ExperimentVariantType.CONTROL)),
                 state,
                 3L,

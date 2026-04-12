@@ -1,5 +1,6 @@
 package io.github.rehody.abplatform.risk.controller;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
@@ -11,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.github.rehody.abplatform.config.AbstractWebMvcTest;
 import io.github.rehody.abplatform.exception.AnalyticsExceptionHandler;
+import io.github.rehody.abplatform.model.audit.AuditActor;
 import io.github.rehody.abplatform.risk.enums.ExperimentMetricRiskStatus;
 import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
 import io.github.rehody.abplatform.risk.service.ExperimentMetricRiskService;
@@ -27,6 +29,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @ExtendWith(MockitoExtension.class)
 class ExperimentMetricRiskControllerWebMvcTest extends AbstractWebMvcTest {
 
+    private static final String ACTOR_ID = "11111111-1111-1111-1111-111111111111";
+
     @Mock
     private ExperimentMetricRiskService experimentMetricRiskService;
 
@@ -41,32 +45,35 @@ class ExperimentMetricRiskControllerWebMvcTest extends AbstractWebMvcTest {
     @Test
     void resolve_shouldAcceptOptionalBodyAndPassNullCommentToService() throws Exception {
         UUID riskId = UUID.randomUUID();
-        when(experimentMetricRiskService.resolve(eq(riskId), isNull())).thenReturn(risk(riskId, null));
+        when(experimentMetricRiskService.resolve(any(AuditActor.class), eq(riskId), isNull()))
+                .thenReturn(risk(riskId, null));
 
-        mockMvc.perform(post("/api/v1/experiment-risks/{riskId}/resolve", riskId))
+        mockMvc.perform(post("/api/v1/experiment-risks/{riskId}/resolve", riskId)
+                        .principal(() -> ACTOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(riskId.toString()))
                 .andExpect(jsonPath("$.resolutionComment").isEmpty());
 
-        verify(experimentMetricRiskService).resolve(riskId, null);
+        verify(experimentMetricRiskService).resolve(any(AuditActor.class), eq(riskId), isNull());
     }
 
     @Test
     void resolve_shouldPassCommentToServiceWhenBodyProvided() throws Exception {
         UUID riskId = UUID.randomUUID();
-        when(experimentMetricRiskService.resolve(eq(riskId), eq("manual review")))
+        when(experimentMetricRiskService.resolve(any(AuditActor.class), eq(riskId), eq("manual review")))
                 .thenReturn(risk(riskId, "manual review"));
 
         mockMvc.perform(post("/api/v1/experiment-risks/{riskId}/resolve", riskId)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"comment":"manual review"}
-                                """))
+                                """)
+                        .principal(() -> ACTOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(riskId.toString()))
                 .andExpect(jsonPath("$.resolutionComment").value("manual review"));
 
-        verify(experimentMetricRiskService).resolve(riskId, "manual review");
+        verify(experimentMetricRiskService).resolve(any(AuditActor.class), eq(riskId), eq("manual review"));
     }
 
     private ExperimentMetricRisk risk(UUID riskId, String resolutionComment) {
