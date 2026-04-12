@@ -13,8 +13,8 @@ import io.github.rehody.abplatform.binding.policy.ExperimentMetricBindingPolicy;
 import io.github.rehody.abplatform.binding.repository.ExperimentMetricBindingRepository;
 import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.service.ActionExecutorService;
 import io.github.rehody.abplatform.service.ExperimentService;
-import io.github.rehody.abplatform.service.ServiceActionExecutor;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
 import io.github.rehody.abplatform.util.lock.LockNamespace;
 import java.util.List;
@@ -54,7 +54,7 @@ class ExperimentMetricBindingServiceTest {
 
     @BeforeEach
     void setUp() {
-        ServiceActionExecutor serviceActionExecutor = new ServiceActionExecutor();
+        ActionExecutorService actionExecutorService = new ActionExecutorService();
         experimentMetricBindingService = new ExperimentMetricBindingService(
                 experimentMetricBindingRepository,
                 experimentService,
@@ -62,7 +62,7 @@ class ExperimentMetricBindingServiceTest {
                 experimentMetricBindingConflictPolicy,
                 experimentMetricBindingCacheInvalidator,
                 lockExecutor,
-                serviceActionExecutor);
+                actionExecutorService);
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(2)).get());

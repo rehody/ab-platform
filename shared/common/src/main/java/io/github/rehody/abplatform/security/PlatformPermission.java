@@ -5,6 +5,7 @@ import java.util.Set;
 
 public enum PlatformPermission {
     VIEW_EXPERIMENTS(viewerAndAbove()),
+    VIEW_EXPERIMENT_HISTORY(viewerAndAbove()),
     VIEW_ROLLOUT_STATE(viewerAndAbove()),
     VIEW_CONFLICTS(viewerAndAbove()),
     VIEW_REPORTS(viewerAndAbove()),

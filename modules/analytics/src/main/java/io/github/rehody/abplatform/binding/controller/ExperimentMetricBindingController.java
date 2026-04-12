@@ -3,9 +3,11 @@ package io.github.rehody.abplatform.binding.controller;
 import io.github.rehody.abplatform.binding.dto.request.ExperimentMetricsUpdateRequest;
 import io.github.rehody.abplatform.binding.dto.response.ExperimentMetricsResponse;
 import io.github.rehody.abplatform.binding.service.ExperimentMetricBindingService;
+import io.github.rehody.abplatform.model.audit.AuditActor;
 import io.github.rehody.abplatform.security.PlatformPermission;
 import io.github.rehody.abplatform.security.RequiresPlatformPermission;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -26,8 +28,11 @@ public class ExperimentMetricBindingController {
     @PutMapping
     @RequiresPlatformPermission(PlatformPermission.UPDATE_EXPERIMENT_METRIC_BINDINGS)
     public ExperimentMetricsResponse updateMetricKeys(
-            @PathVariable UUID experimentId, @Valid @RequestBody ExperimentMetricsUpdateRequest request) {
-        List<String> metricKeys = experimentMetricBindingService.updateMetricKeys(experimentId, request.metricKeys());
+            Principal principal,
+            @PathVariable UUID experimentId,
+            @Valid @RequestBody ExperimentMetricsUpdateRequest request) {
+        List<String> metricKeys = experimentMetricBindingService.updateMetricKeys(
+                AuditActor.user(principal.getName()), experimentId, request.metricKeys());
         return new ExperimentMetricsResponse(experimentId, metricKeys);
     }
 

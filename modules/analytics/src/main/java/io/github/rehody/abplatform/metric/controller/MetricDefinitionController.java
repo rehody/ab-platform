@@ -5,9 +5,11 @@ import io.github.rehody.abplatform.metric.dto.request.MetricDefinitionUpdateRequ
 import io.github.rehody.abplatform.metric.dto.response.MetricDefinitionResponse;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.metric.service.MetricDefinitionService;
+import io.github.rehody.abplatform.model.audit.AuditActor;
 import io.github.rehody.abplatform.security.PlatformPermission;
 import io.github.rehody.abplatform.security.RequiresPlatformPermission;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -30,8 +32,10 @@ public class MetricDefinitionController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @RequiresPlatformPermission(PlatformPermission.CREATE_METRIC_DEFINITION)
-    public MetricDefinitionResponse create(@Valid @RequestBody MetricDefinitionCreateRequest request) {
+    public MetricDefinitionResponse create(
+            Principal principal, @Valid @RequestBody MetricDefinitionCreateRequest request) {
         MetricDefinition metricDefinition = metricDefinitionService.create(
+                AuditActor.user(principal.getName()),
                 request.key(),
                 request.name(),
                 request.type(),
@@ -45,8 +49,9 @@ public class MetricDefinitionController {
     @PutMapping("/{key}")
     @RequiresPlatformPermission(PlatformPermission.UPDATE_METRIC_DEFINITION)
     public MetricDefinitionResponse update(
-            @PathVariable String key, @Valid @RequestBody MetricDefinitionUpdateRequest request) {
+            Principal principal, @PathVariable String key, @Valid @RequestBody MetricDefinitionUpdateRequest request) {
         MetricDefinition metricDefinition = metricDefinitionService.update(
+                AuditActor.user(principal.getName()),
                 key,
                 request.name(),
                 request.type(),

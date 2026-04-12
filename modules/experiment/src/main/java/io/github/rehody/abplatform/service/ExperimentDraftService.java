@@ -7,6 +7,10 @@ import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
 import io.github.rehody.abplatform.model.ExperimentVariant;
 import io.github.rehody.abplatform.model.FeatureFlag;
+import io.github.rehody.abplatform.model.audit.AuditAction;
+import io.github.rehody.abplatform.model.audit.AuditActor;
+import io.github.rehody.abplatform.model.audit.AuditDetails;
+import io.github.rehody.abplatform.model.audit.AuditTarget;
 import io.github.rehody.abplatform.policy.ExperimentAssignmentPolicy;
 import io.github.rehody.abplatform.policy.ExperimentTimestampPolicy;
 import io.github.rehody.abplatform.policy.ExperimentVariantPolicy;
@@ -15,6 +19,7 @@ import io.github.rehody.abplatform.repository.ExperimentRepository.UpdateOutcome
 import io.github.rehody.abplatform.repository.jdbc.ExperimentDomainJdbcRepository;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -33,10 +38,15 @@ public class ExperimentDraftService {
     private final ExperimentVariantPolicy experimentVariantPolicy;
     private final ExperimentVariantPreparer experimentVariantPreparer;
     private final ExperimentDomainJdbcRepository experimentDomainJdbcRepository;
+    private final AuditService auditService;
 
     @Transactional
     public Experiment create(
-            String flagKey, String domainKey, List<ExperimentVariant> variants, ExperimentState state) {
+            AuditActor actor,
+            String flagKey,
+            String domainKey,
+            List<ExperimentVariant> variants,
+            ExperimentState state) {
         return experimentCommandSupport.withExperimentLock(flagKey, () -> {
             ensureExperimentNotExists(flagKey);
             ensureDomainExists(domainKey);
@@ -53,6 +63,7 @@ public class ExperimentDraftService {
 
             experimentAssignmentPolicy.validateAssignmentInvariants(experiment);
             experimentRepository.save(experiment);
+            writeCreateAudit(actor, experiment);
             experimentCommandSupport.invalidateCacheAfterCommit(flagKey);
 
             return experiment;
@@ -80,13 +91,18 @@ public class ExperimentDraftService {
 
     @Transactional
     public Experiment update(
-            UUID id, String flagKey, String domainKey, List<ExperimentVariant> variants, long version) {
+            AuditActor actor,
+            UUID id,
+            String flagKey,
+            String domainKey,
+            List<ExperimentVariant> variants,
+            long version) {
         Experiment currentExperiment = experimentCommandSupport.getById(id);
         Experiment updatedExperiment = resolveUpdatedExperiment(currentExperiment, flagKey, domainKey, variants);
 
         return experimentCommandSupport.withExperimentLocks(
                 List.of(currentExperiment.flagKey(), updatedExperiment.flagKey()),
-                () -> updateUnderLock(currentExperiment, updatedExperiment, version));
+                () -> updateUnderLock(actor, currentExperiment, updatedExperiment, version));
     }
 
     private long updateWithVariants(Experiment experiment, long version) {
@@ -101,14 +117,17 @@ public class ExperimentDraftService {
         };
     }
 
-    private Experiment updateUnderLock(Experiment currentExperiment, Experiment updatedExperiment, long version) {
+    private Experiment updateUnderLock(
+            AuditActor actor, Experiment currentExperiment, Experiment updatedExperiment, long version) {
         validateUpdatedExperiment(currentExperiment.id(), updatedExperiment);
 
         Experiment experimentToUpdate = updatedExperiment.withVersion(version);
         long updatedVersion = updateWithVariants(experimentToUpdate, version);
 
+        Experiment persistedExperiment = updatedExperiment.withVersion(updatedVersion);
+        writeUpdateAudit(actor, currentExperiment, persistedExperiment);
         invalidateRelevantCaches(currentExperiment.flagKey(), updatedExperiment.flagKey());
-        return updatedExperiment.withVersion(updatedVersion);
+        return persistedExperiment;
     }
 
     private Experiment resolveUpdatedExperiment(
@@ -186,5 +205,61 @@ public class ExperimentDraftService {
 
     private List<ExperimentVariant> prepareVariants(UUID experimentId, List<ExperimentVariant> variants) {
         return experimentVariantPreparer.prepare(experimentId, variants);
+    }
+
+    private AuditDetails buildCreateDetails(Experiment experiment) {
+        return AuditDetails.entry("state", experiment.state().toString())
+                .with("flagKey", experiment.flagKey())
+                .with("domainKey", experiment.domainKey());
+    }
+
+    private AuditDetails buildUpdateDetails(Experiment currentExperiment, Experiment updatedExperiment) {
+        AuditDetails details = AuditDetails.empty();
+
+        if (!currentExperiment.flagKey().equals(updatedExperiment.flagKey())) {
+            details = details.with(
+                    "flagKey", "%s -> %s".formatted(currentExperiment.flagKey(), updatedExperiment.flagKey()));
+        }
+
+        if (!currentExperiment.domainKey().equals(updatedExperiment.domainKey())) {
+            details = details.with(
+                    "domainKey", "%s -> %s".formatted(currentExperiment.domainKey(), updatedExperiment.domainKey()));
+        }
+
+        List<String> currentVariantSummary =
+                currentExperiment.variants().stream().map(this::describeVariant).toList();
+        List<String> updatedVariantSummary =
+                updatedExperiment.variants().stream().map(this::describeVariant).toList();
+        if (!currentVariantSummary.equals(updatedVariantSummary)) {
+            details = details.with("variants", "%s -> %s".formatted(currentVariantSummary, updatedVariantSummary));
+        }
+
+        return details;
+    }
+
+    private String describeVariant(ExperimentVariant variant) {
+        return "%s{type=%s, value=%s, position=%d, weight=%s}"
+                .formatted(
+                        variant.key(),
+                        variant.type(),
+                        variant.value(),
+                        variant.position(),
+                        Objects.toString(variant.weight(), "null"));
+    }
+
+    private void writeCreateAudit(AuditActor actor, Experiment experiment) {
+        auditService.write(
+                actor,
+                AuditAction.EXPERIMENT_CREATED,
+                AuditTarget.experiment(experiment.id()),
+                buildCreateDetails(experiment));
+    }
+
+    private void writeUpdateAudit(AuditActor actor, Experiment currentExperiment, Experiment updatedExperiment) {
+        auditService.write(
+                actor,
+                AuditAction.EXPERIMENT_UPDATED,
+                AuditTarget.experiment(updatedExperiment.id()),
+                buildUpdateDetails(currentExperiment, updatedExperiment));
     }
 }

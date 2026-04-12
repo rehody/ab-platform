@@ -1,9 +1,14 @@
 package io.github.rehody.abplatform.service;
 
+import io.github.rehody.abplatform.enums.ExperimentState;
 import io.github.rehody.abplatform.exception.ExperimentNotFoundException;
 import io.github.rehody.abplatform.exception.ExperimentRolloutException;
 import io.github.rehody.abplatform.model.Experiment;
 import io.github.rehody.abplatform.model.ExperimentRolloutPlan;
+import io.github.rehody.abplatform.model.audit.AuditAction;
+import io.github.rehody.abplatform.model.audit.AuditActor;
+import io.github.rehody.abplatform.model.audit.AuditDetails;
+import io.github.rehody.abplatform.model.audit.AuditTarget;
 import io.github.rehody.abplatform.repository.ExperimentRepository;
 import io.github.rehody.abplatform.repository.ExperimentRepository.UpdateOutcome;
 import java.util.UUID;
@@ -21,62 +26,73 @@ public class ExperimentRuntimeService {
     private final ExperimentRepository experimentRepository;
     private final ExperimentCommandSupport experimentCommandSupport;
     private final ExperimentLifecycleService experimentLifecycleService;
+    private final AuditService auditService;
 
     @Transactional
-    public Experiment advanceRollout(UUID experimentId, long version) {
+    public Experiment advanceRollout(UUID experimentId, long version, AuditActor actor) {
         return applyRolloutAction(
                 experimentId,
                 version,
                 "advance",
+                actor,
+                AuditAction.EXPERIMENT_ROLLOUT_ADVANCED_MANUAL,
                 ExperimentRolloutPlan::canAdvance,
                 ExperimentRolloutPlan::advance,
                 true);
     }
 
     @Transactional
-    public Experiment rollbackRollout(UUID experimentId, long version) {
+    public Experiment rollbackRollout(UUID experimentId, long version, AuditActor actor) {
         return applyRolloutAction(
                 experimentId,
                 version,
                 "rollback",
+                actor,
+                AuditAction.EXPERIMENT_ROLLOUT_ROLLED_BACK_MANUAL,
                 ExperimentRolloutPlan::canRollback,
                 ExperimentRolloutPlan::rollback,
                 true);
     }
 
     @Transactional
-    public void autoAdvanceRollout(UUID experimentId) {
+    public void autoAdvanceRollout(UUID experimentId, AuditActor actor) {
         applyRolloutAction(
                 experimentId,
                 null,
                 "advance",
+                actor,
+                AuditAction.EXPERIMENT_ROLLOUT_ADVANCED_AUTO,
                 ExperimentRolloutPlan::canAdvance,
                 ExperimentRolloutPlan::advance,
                 false);
     }
 
     @Transactional
-    public void autoRollbackRollout(UUID experimentId) {
+    public void autoRollbackRollout(UUID experimentId, AuditActor actor) {
         applyRolloutAction(
                 experimentId,
                 null,
                 "rollback",
+                actor,
+                AuditAction.EXPERIMENT_ROLLOUT_ROLLED_BACK_AUTO,
                 ExperimentRolloutPlan::canRollback,
                 ExperimentRolloutPlan::rollback,
                 false);
     }
 
     @Transactional
-    public void pauseOnNegativeAfterRollback(UUID experimentId) {
+    public void pauseOnNegativeAfterRollback(UUID experimentId, AuditActor actor) {
         PauseResolution pauseResolution = resolvePauseCommand(experimentId);
         PauseCommand pauseCommand = pauseResolution.command();
 
         switch (pauseCommand) {
             case MARK_ONLY -> markNegativeAfterRollback(experimentId);
             case PAUSE_AND_MARK -> {
-                experimentLifecycleService.pause(experimentId, pauseResolution.version());
-                markNegativeAfterRollback(experimentId);
+                Experiment pausedExperiment = experimentLifecycleService.pause(experimentId, pauseResolution.version());
+                Experiment updatedExperiment = markNegativeAfterRollback(experimentId);
+                writeAutoPauseAudit(actor, experimentId, pausedExperiment, updatedExperiment);
             }
+            case NONE -> {}
         }
     }
 
@@ -84,6 +100,8 @@ public class ExperimentRuntimeService {
             UUID experimentId,
             Long expectedVersion,
             String action,
+            AuditActor actor,
+            AuditAction auditAction,
             Predicate<ExperimentRolloutPlan> canUpdate,
             UnaryOperator<ExperimentRolloutPlan> update,
             boolean strict) {
@@ -117,28 +135,30 @@ public class ExperimentRuntimeService {
             Experiment updatedExperiment = experiment.withRolloutPlan(updatedRolloutPlan);
 
             long updatedVersion = persist(flagKey, updatedExperiment);
-            return updatedExperiment.withVersion(updatedVersion);
+            Experiment persistedExperiment = updatedExperiment.withVersion(updatedVersion);
+            writeRolloutAudit(actor, auditAction, experiment, persistedExperiment);
+            return persistedExperiment;
         });
     }
 
-    private void markNegativeAfterRollback(UUID experimentId) {
+    private Experiment markNegativeAfterRollback(UUID experimentId) {
         String flagKey = experimentCommandSupport.getFlagKeyById(experimentId);
 
-        experimentCommandSupport.withExperimentLock(flagKey, () -> {
+        return experimentCommandSupport.withExperimentLock(flagKey, () -> {
             Experiment experiment = experimentCommandSupport.getById(experimentId);
             if (!experiment.isPaused()) {
-                return null;
+                return experiment;
             }
 
             Experiment updatedExperiment =
                     experiment.withRolloutPlan(experiment.rolloutPlan().markNegativeAfterRollback());
 
             if (updatedExperiment.equals(experiment)) {
-                return null;
+                return experiment;
             }
 
-            persist(flagKey, updatedExperiment);
-            return null;
+            long updatedVersion = persist(flagKey, updatedExperiment);
+            return updatedExperiment.withVersion(updatedVersion);
         });
     }
 
@@ -195,5 +215,35 @@ public class ExperimentRuntimeService {
         private PauseResolution(PauseCommand command) {
             this(command, null);
         }
+    }
+
+    private AuditDetails buildAutoPauseDetails(Experiment pausedExperiment, Experiment updatedExperiment) {
+        AuditDetails details = AuditDetails.stateTransition(ExperimentState.RUNNING, pausedExperiment.state());
+
+        if (updatedExperiment.rolloutPlan().stillNegativeAfterRollback()) {
+            details = details.with("reason", "auto pause after negative evaluation following rollback");
+        }
+
+        return details;
+    }
+
+    private void writeRolloutAudit(
+            AuditActor actor, AuditAction auditAction, Experiment currentExperiment, Experiment persistedExperiment) {
+        auditService.write(
+                actor,
+                auditAction,
+                AuditTarget.experiment(persistedExperiment.id()),
+                AuditDetails.rolloutTransition(
+                        currentExperiment.rolloutPlan().regularRolloutPercentage(),
+                        persistedExperiment.rolloutPlan().regularRolloutPercentage()));
+    }
+
+    private void writeAutoPauseAudit(
+            AuditActor actor, UUID experimentId, Experiment pausedExperiment, Experiment updatedExperiment) {
+        auditService.write(
+                actor,
+                AuditAction.EXPERIMENT_PAUSED_AUTO_AFTER_ROLLOUT_ROLLBACK,
+                AuditTarget.experiment(experimentId),
+                buildAutoPauseDetails(pausedExperiment, updatedExperiment));
     }
 }

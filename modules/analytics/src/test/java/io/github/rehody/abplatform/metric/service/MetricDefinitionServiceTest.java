@@ -18,7 +18,7 @@ import io.github.rehody.abplatform.metric.enums.MetricSeverity;
 import io.github.rehody.abplatform.metric.enums.MetricType;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.metric.repository.MetricDefinitionRepository;
-import io.github.rehody.abplatform.service.ServiceActionExecutor;
+import io.github.rehody.abplatform.service.ActionExecutorService;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
 import io.github.rehody.abplatform.util.lock.LockNamespace;
 import java.math.BigDecimal;
@@ -49,7 +49,7 @@ class MetricDefinitionServiceTest {
     @BeforeEach
     void setUp() {
         metricDefinitionService = new MetricDefinitionService(
-                metricDefinitionCache, metricDefinitionRepository, lockExecutor, new ServiceActionExecutor());
+                metricDefinitionCache, metricDefinitionRepository, lockExecutor, new ActionExecutorService());
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), anyString(), any(Supplier.class)))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(2)).get());

@@ -77,9 +77,9 @@ class ExperimentServiceTest {
 
     @BeforeEach
     void setUp() {
-        ServiceActionExecutor serviceActionExecutor = new ServiceActionExecutor();
+        ActionExecutorService actionExecutorService = new ActionExecutorService();
         ExperimentCommandSupport experimentCommandSupport = new ExperimentCommandSupport(
-                experimentRepository, lockExecutor, serviceActionExecutor, experimentCache);
+                experimentRepository, lockExecutor, actionExecutorService, experimentCache);
         experimentService = new ExperimentService(
                 experimentRepository,
                 experimentCommandSupport,

@@ -4,11 +4,13 @@ import io.github.rehody.abplatform.dto.request.ExperimentCreateRequest;
 import io.github.rehody.abplatform.dto.request.ExperimentUpdateRequest;
 import io.github.rehody.abplatform.dto.response.ExperimentResponse;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.audit.AuditActor;
 import io.github.rehody.abplatform.security.PlatformPermission;
 import io.github.rehody.abplatform.security.RequiresPlatformPermission;
 import io.github.rehody.abplatform.service.ExperimentDraftService;
 import io.github.rehody.abplatform.service.ExperimentQueryService;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -33,17 +35,27 @@ public class ExperimentController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @RequiresPlatformPermission(PlatformPermission.CREATE_EXPERIMENT)
-    public ExperimentResponse create(@Valid @RequestBody ExperimentCreateRequest request) {
+    public ExperimentResponse create(Principal principal, @Valid @RequestBody ExperimentCreateRequest request) {
         Experiment experiment = experimentDraftService.create(
-                request.flagKey(), request.domainKey(), request.variants(), request.state());
+                AuditActor.user(principal.getName()),
+                request.flagKey(),
+                request.domainKey(),
+                request.variants(),
+                request.state());
         return ExperimentResponse.from(experiment);
     }
 
     @PatchMapping("/{id}")
     @RequiresPlatformPermission(PlatformPermission.UPDATE_EXPERIMENT_DRAFT)
-    public ExperimentResponse update(@PathVariable UUID id, @Valid @RequestBody ExperimentUpdateRequest request) {
+    public ExperimentResponse update(
+            Principal principal, @PathVariable UUID id, @Valid @RequestBody ExperimentUpdateRequest request) {
         Experiment experiment = experimentDraftService.update(
-                id, request.flagKey(), request.domainKey(), request.variants(), request.version());
+                AuditActor.user(principal.getName()),
+                id,
+                request.flagKey(),
+                request.domainKey(),
+                request.variants(),
+                request.version());
         return ExperimentResponse.from(experiment);
     }
 

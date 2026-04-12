@@ -66,7 +66,7 @@ class ExperimentLifecycleServiceTest {
     @BeforeEach
     void setUp() {
         ExperimentCommandSupport experimentCommandSupport = new ExperimentCommandSupport(
-                experimentRepository, lockExecutor, new ServiceActionExecutor(), experimentCache);
+                experimentRepository, lockExecutor, new ActionExecutorService(), experimentCache);
         experimentLifecycleService = new ExperimentLifecycleService(
                 experimentRepository,
                 experimentCommandSupport,

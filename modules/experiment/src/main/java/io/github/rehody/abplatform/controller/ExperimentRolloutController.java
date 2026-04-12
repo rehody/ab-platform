@@ -3,11 +3,13 @@ package io.github.rehody.abplatform.controller;
 import io.github.rehody.abplatform.dto.request.ExperimentRolloutActionRequest;
 import io.github.rehody.abplatform.dto.response.ExperimentRolloutResponse;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.audit.AuditActor;
 import io.github.rehody.abplatform.security.PlatformPermission;
 import io.github.rehody.abplatform.security.RequiresPlatformPermission;
 import io.github.rehody.abplatform.service.ExperimentQueryService;
 import io.github.rehody.abplatform.service.ExperimentRuntimeService;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,16 +37,18 @@ public class ExperimentRolloutController {
     @PostMapping("/{id}/rollout/advance")
     @RequiresPlatformPermission(PlatformPermission.ADVANCE_EXPERIMENT_ROLLOUT)
     public ExperimentRolloutResponse advance(
-            @PathVariable UUID id, @Valid @RequestBody ExperimentRolloutActionRequest request) {
-        Experiment experiment = experimentRuntimeService.advanceRollout(id, request.version());
+            Principal principal, @PathVariable UUID id, @Valid @RequestBody ExperimentRolloutActionRequest request) {
+        Experiment experiment =
+                experimentRuntimeService.advanceRollout(id, request.version(), AuditActor.user(principal.getName()));
         return ExperimentRolloutResponse.from(experiment);
     }
 
     @PostMapping("/{id}/rollout/rollback")
     @RequiresPlatformPermission(PlatformPermission.ROLLBACK_EXPERIMENT_ROLLOUT)
     public ExperimentRolloutResponse rollback(
-            @PathVariable UUID id, @Valid @RequestBody ExperimentRolloutActionRequest request) {
-        Experiment experiment = experimentRuntimeService.rollbackRollout(id, request.version());
+            Principal principal, @PathVariable UUID id, @Valid @RequestBody ExperimentRolloutActionRequest request) {
+        Experiment experiment =
+                experimentRuntimeService.rollbackRollout(id, request.version(), AuditActor.user(principal.getName()));
         return ExperimentRolloutResponse.from(experiment);
     }
 }

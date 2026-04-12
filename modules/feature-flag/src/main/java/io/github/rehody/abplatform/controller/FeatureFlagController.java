@@ -4,10 +4,12 @@ import io.github.rehody.abplatform.dto.request.FeatureFlagCreateRequest;
 import io.github.rehody.abplatform.dto.request.FeatureFlagUpdateRequest;
 import io.github.rehody.abplatform.dto.response.FeatureFlagResponse;
 import io.github.rehody.abplatform.model.FeatureFlag;
+import io.github.rehody.abplatform.model.audit.AuditActor;
 import io.github.rehody.abplatform.security.PlatformPermission;
 import io.github.rehody.abplatform.security.RequiresPlatformPermission;
 import io.github.rehody.abplatform.service.FeatureFlagService;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,15 +31,18 @@ public class FeatureFlagController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @RequiresPlatformPermission(PlatformPermission.CREATE_FEATURE_FLAG)
-    public FeatureFlagResponse create(@Valid @RequestBody FeatureFlagCreateRequest request) {
-        FeatureFlag featureFlag = featureFlagService.create(request.key(), request.defaultValue());
+    public FeatureFlagResponse create(Principal principal, @Valid @RequestBody FeatureFlagCreateRequest request) {
+        FeatureFlag featureFlag =
+                featureFlagService.create(AuditActor.user(principal.getName()), request.key(), request.defaultValue());
         return FeatureFlagResponse.from(featureFlag);
     }
 
     @PutMapping("/{key}")
     @RequiresPlatformPermission(PlatformPermission.UPDATE_FEATURE_FLAG)
-    public FeatureFlagResponse update(@PathVariable String key, @Valid @RequestBody FeatureFlagUpdateRequest request) {
-        FeatureFlag featureFlag = featureFlagService.update(key, request.defaultValue(), request.version());
+    public FeatureFlagResponse update(
+            Principal principal, @PathVariable String key, @Valid @RequestBody FeatureFlagUpdateRequest request) {
+        FeatureFlag featureFlag = featureFlagService.update(
+                AuditActor.user(principal.getName()), key, request.defaultValue(), request.version());
         return FeatureFlagResponse.from(featureFlag);
     }
 

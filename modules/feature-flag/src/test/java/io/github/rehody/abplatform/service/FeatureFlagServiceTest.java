@@ -53,9 +53,9 @@ class FeatureFlagServiceTest {
 
     @BeforeEach
     void setUp() {
-        ServiceActionExecutor serviceActionExecutor = new ServiceActionExecutor();
+        ActionExecutorService actionExecutorService = new ActionExecutorService();
         featureFlagService = new FeatureFlagService(
-                featureFlagRepository, featureFlagUpdatePolicy, lockExecutor, serviceActionExecutor, featureFlagCache);
+                featureFlagRepository, featureFlagUpdatePolicy, lockExecutor, actionExecutorService, featureFlagCache);
         lenient()
                 .when(lockExecutor.withLock(any(LockNamespace.class), any(String.class), any(Supplier.class)))
                 .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(2)).get());

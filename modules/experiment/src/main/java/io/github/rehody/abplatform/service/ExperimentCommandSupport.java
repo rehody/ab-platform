@@ -20,7 +20,7 @@ public class ExperimentCommandSupport {
 
     private final ExperimentRepository experimentRepository;
     private final LockExecutor lockExecutor;
-    private final ServiceActionExecutor serviceActionExecutor;
+    private final ActionExecutorService actionExecutorService;
     private final ExperimentCache experimentCache;
 
     public String getFlagKeyById(UUID id) {
@@ -58,6 +58,6 @@ public class ExperimentCommandSupport {
     }
 
     public void invalidateCacheAfterCommit(String flagKey) {
-        serviceActionExecutor.executeAfterCommit(() -> experimentCache.invalidate(flagKey));
+        actionExecutorService.executeAfterCommit(() -> experimentCache.invalidate(flagKey));
     }
 }

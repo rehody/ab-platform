@@ -4,11 +4,16 @@ import io.github.rehody.abplatform.evaluation.model.ExperimentMetricEvaluationRe
 import io.github.rehody.abplatform.evaluation.model.ExperimentMetricEvaluationReport.VariantComparison;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.model.Experiment;
+import io.github.rehody.abplatform.model.audit.AuditAction;
+import io.github.rehody.abplatform.model.audit.AuditActor;
+import io.github.rehody.abplatform.model.audit.AuditDetails;
+import io.github.rehody.abplatform.model.audit.AuditTarget;
 import io.github.rehody.abplatform.risk.exception.ExperimentMetricRiskNotFoundException;
 import io.github.rehody.abplatform.risk.factory.ExperimentMetricRiskFactory;
 import io.github.rehody.abplatform.risk.model.ExperimentMetricRisk;
 import io.github.rehody.abplatform.risk.policy.ExperimentMetricRiskPolicy;
 import io.github.rehody.abplatform.risk.repository.ExperimentMetricRiskRepository;
+import io.github.rehody.abplatform.service.AuditService;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
 import io.github.rehody.abplatform.util.lock.LockNamespace;
 import java.math.BigDecimal;
@@ -32,6 +37,7 @@ public class ExperimentMetricRiskService {
     private final ExperimentMetricRiskFactory experimentMetricRiskFactory;
     private final ExperimentMetricAutoPauseService experimentMetricAutoPauseService;
     private final LockExecutor lockExecutor;
+    private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public List<ExperimentMetricRisk> getRisks(UUID experimentId, String metricKey) {
@@ -39,7 +45,7 @@ public class ExperimentMetricRiskService {
     }
 
     @Transactional
-    public ExperimentMetricRisk resolve(UUID riskId, String comment) {
+    public ExperimentMetricRisk resolve(AuditActor actor, UUID riskId, String comment) {
         ExperimentMetricRisk currentRisk = getRiskById(riskId);
 
         return executeUnderLock(currentRisk.experimentId(), currentRisk.metricKey(), () -> {
@@ -48,6 +54,7 @@ public class ExperimentMetricRiskService {
                     experimentMetricRiskFactory.createResolved(lockedRisk, comment, Instant.now());
 
             experimentMetricRiskRepository.update(resolvedRisk);
+            writeResolveAudit(actor, lockedRisk, resolvedRisk);
             return resolvedRisk;
         });
     }
@@ -142,5 +149,25 @@ public class ExperimentMetricRiskService {
     private <T> T executeUnderLock(UUID experimentId, String metricKey, Supplier<T> action) {
         return lockExecutor.withLock(
                 EXPERIMENT_METRIC_RISK_LOCK_NAMESPACE, buildRiskLockKey(experimentId, metricKey), action);
+    }
+
+    private AuditDetails buildResolveDetails(ExperimentMetricRisk currentRisk, ExperimentMetricRisk resolvedRisk) {
+        AuditDetails details = AuditDetails.transition("status", currentRisk.status(), resolvedRisk.status());
+
+        if (resolvedRisk.resolutionComment() != null
+                && !resolvedRisk.resolutionComment().isBlank()) {
+            details = details.with("comment", resolvedRisk.resolutionComment());
+        }
+
+        return details;
+    }
+
+    private void writeResolveAudit(
+            AuditActor actor, ExperimentMetricRisk currentRisk, ExperimentMetricRisk resolvedRisk) {
+        auditService.write(
+                actor,
+                AuditAction.EXPERIMENT_RISK_RESOLVED,
+                AuditTarget.experimentRisk(resolvedRisk.id()),
+                buildResolveDetails(currentRisk, resolvedRisk));
     }
 }

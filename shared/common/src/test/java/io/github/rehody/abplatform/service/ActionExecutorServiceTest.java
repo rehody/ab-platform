@@ -8,9 +8,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-class ServiceActionExecutorTest {
+class ActionExecutorServiceTest {
 
-    private final ServiceActionExecutor serviceActionExecutor = new ServiceActionExecutor();
+    private final ActionExecutorService actionExecutorService = new ActionExecutorService();
 
     @AfterEach
     void tearDown() {
@@ -23,7 +23,7 @@ class ServiceActionExecutorTest {
     void executeAfterCommit_shouldRunActionImmediatelyWhenSynchronizationInactive() {
         AtomicInteger calls = new AtomicInteger();
 
-        serviceActionExecutor.executeAfterCommit(calls::incrementAndGet);
+        actionExecutorService.executeAfterCommit(calls::incrementAndGet);
 
         assertThat(calls.get()).isEqualTo(1);
     }
@@ -33,7 +33,7 @@ class ServiceActionExecutorTest {
         AtomicInteger calls = new AtomicInteger();
         TransactionSynchronizationManager.initSynchronization();
 
-        serviceActionExecutor.executeAfterCommit(calls::incrementAndGet);
+        actionExecutorService.executeAfterCommit(calls::incrementAndGet);
 
         assertThat(calls.get()).isZero();
         for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {

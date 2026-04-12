@@ -4,7 +4,9 @@ plugins {
 
 dependencies {
     implementation libs.spring.context
+    implementation libs.spring.jdbc
     implementation libs.spring.tx
+    implementation libs.jackson.databind
 
     testImplementation libs.spring.boot.starter.test
 }

@@ -6,6 +6,10 @@ import io.github.rehody.abplatform.exception.FeatureFlagNotFoundException;
 import io.github.rehody.abplatform.exception.FeatureFlagUpdateBlockedException;
 import io.github.rehody.abplatform.model.FeatureFlag;
 import io.github.rehody.abplatform.model.FeatureValue;
+import io.github.rehody.abplatform.model.audit.AuditAction;
+import io.github.rehody.abplatform.model.audit.AuditActor;
+import io.github.rehody.abplatform.model.audit.AuditDetails;
+import io.github.rehody.abplatform.model.audit.AuditTarget;
 import io.github.rehody.abplatform.policy.FeatureFlagUpdatePolicy;
 import io.github.rehody.abplatform.repository.FeatureFlagRepository;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
@@ -26,11 +30,12 @@ public class FeatureFlagService {
     private final FeatureFlagRepository featureFlagRepository;
     private final FeatureFlagUpdatePolicy featureFlagUpdatePolicy;
     private final LockExecutor lockExecutor;
-    private final ServiceActionExecutor serviceActionExecutor;
+    private final ActionExecutorService actionExecutorService;
     private final FeatureFlagCache featureFlagCache;
+    private final AuditService auditService;
 
     @Transactional
-    public FeatureFlag create(String key, FeatureValue defaultValue) {
+    public FeatureFlag create(AuditActor actor, String key, FeatureValue defaultValue) {
         return executeUnderLock(key, () -> {
             if (featureFlagRepository.existsByKey(key)) {
                 throw new FeatureFlagAlreadyExistsException("Feature flag '%s' already exists".formatted(key));
@@ -38,6 +43,7 @@ public class FeatureFlagService {
 
             FeatureFlag featureFlag = buildFeatureFlag(key, defaultValue);
             featureFlagRepository.save(featureFlag);
+            writeCreateAudit(actor, featureFlag);
             invalidateCacheAfterCommit(key);
 
             return featureFlag;
@@ -49,13 +55,15 @@ public class FeatureFlagService {
     }
 
     @Transactional
-    public FeatureFlag update(String key, FeatureValue defaultValue, long version) {
+    public FeatureFlag update(AuditActor actor, String key, FeatureValue defaultValue, long version) {
         return executeUnderLock(key, () -> {
+            FeatureFlag currentFeatureFlag = getRequiredFeatureFlag(key);
             validateDefaultValueUpdateAllowed(key);
             updateFeatureFlag(key, defaultValue, version);
             invalidateCacheAfterCommit(key);
-
-            return getByKey(key);
+            FeatureFlag updatedFeatureFlag = getRequiredFeatureFlag(key);
+            writeUpdateAudit(actor, currentFeatureFlag, updatedFeatureFlag);
+            return updatedFeatureFlag;
         });
     }
 
@@ -84,11 +92,35 @@ public class FeatureFlagService {
         }
     }
 
+    private FeatureFlag getRequiredFeatureFlag(String key) {
+        return featureFlagRepository
+                .findByKey(key)
+                .orElseThrow(() -> new FeatureFlagNotFoundException("Feature flag '%s' not found".formatted(key)));
+    }
+
     private void invalidateCacheAfterCommit(String key) {
-        serviceActionExecutor.executeAfterCommit(() -> featureFlagCache.invalidate(key));
+        actionExecutorService.executeAfterCommit(() -> featureFlagCache.invalidate(key));
     }
 
     private <T> T executeUnderLock(String key, Supplier<T> action) {
         return lockExecutor.withLock(FEATURE_FLAG_LOCK_NAMESPACE, key, action);
+    }
+
+    private void writeCreateAudit(AuditActor actor, FeatureFlag featureFlag) {
+        auditService.write(
+                actor,
+                AuditAction.FEATURE_FLAG_CREATED,
+                AuditTarget.featureFlag(featureFlag.id()),
+                AuditDetails.entry("key", featureFlag.key())
+                        .with("defaultValue", featureFlag.defaultValue().toString()));
+    }
+
+    private void writeUpdateAudit(AuditActor actor, FeatureFlag currentFeatureFlag, FeatureFlag updatedFeatureFlag) {
+        auditService.write(
+                actor,
+                AuditAction.FEATURE_FLAG_UPDATED,
+                AuditTarget.featureFlag(updatedFeatureFlag.id()),
+                AuditDetails.transition(
+                        "defaultValue", currentFeatureFlag.defaultValue(), updatedFeatureFlag.defaultValue()));
     }
 }

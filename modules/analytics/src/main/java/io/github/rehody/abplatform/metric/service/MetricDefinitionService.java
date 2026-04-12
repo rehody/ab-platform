@@ -8,7 +8,12 @@ import io.github.rehody.abplatform.metric.enums.MetricSeverity;
 import io.github.rehody.abplatform.metric.enums.MetricType;
 import io.github.rehody.abplatform.metric.model.MetricDefinition;
 import io.github.rehody.abplatform.metric.repository.MetricDefinitionRepository;
-import io.github.rehody.abplatform.service.ServiceActionExecutor;
+import io.github.rehody.abplatform.model.audit.AuditAction;
+import io.github.rehody.abplatform.model.audit.AuditActor;
+import io.github.rehody.abplatform.model.audit.AuditDetails;
+import io.github.rehody.abplatform.model.audit.AuditTarget;
+import io.github.rehody.abplatform.service.ActionExecutorService;
+import io.github.rehody.abplatform.service.AuditService;
 import io.github.rehody.abplatform.util.lock.LockExecutor;
 import io.github.rehody.abplatform.util.lock.LockNamespace;
 import java.math.BigDecimal;
@@ -28,10 +33,12 @@ public class MetricDefinitionService {
     private final MetricDefinitionCache metricDefinitionCache;
     private final MetricDefinitionRepository metricDefinitionRepository;
     private final LockExecutor lockExecutor;
-    private final ServiceActionExecutor serviceActionExecutor;
+    private final ActionExecutorService actionExecutorService;
+    private final AuditService auditService;
 
     @Transactional
     public MetricDefinition create(
+            AuditActor actor,
             String key,
             String name,
             MetricType type,
@@ -45,6 +52,7 @@ public class MetricDefinitionService {
                     new MetricDefinition(UUID.randomUUID(), key, name, type, direction, severity, deviationThreshold);
 
             metricDefinitionRepository.save(metricDefinition);
+            writeCreateAudit(actor, metricDefinition);
             invalidateCacheAfterCommit(key);
             return metricDefinition;
         });
@@ -58,6 +66,7 @@ public class MetricDefinitionService {
 
     @Transactional
     public MetricDefinition update(
+            AuditActor actor,
             String key,
             String name,
             MetricType type,
@@ -70,6 +79,7 @@ public class MetricDefinitionService {
                     new MetricDefinition(current.id(), key, name, type, direction, severity, deviationThreshold);
 
             metricDefinitionRepository.update(metricDefinition);
+            writeUpdateAudit(actor, current, metricDefinition);
             invalidateCacheAfterCommit(key);
             return metricDefinition;
         });
@@ -89,10 +99,76 @@ public class MetricDefinitionService {
     }
 
     private void invalidateCacheAfterCommit(String key) {
-        serviceActionExecutor.executeAfterCommit(() -> metricDefinitionCache.invalidate(key));
+        actionExecutorService.executeAfterCommit(() -> metricDefinitionCache.invalidate(key));
     }
 
     private <T> T executeUnderLock(String key, Supplier<T> action) {
         return lockExecutor.withLock(METRIC_DEFINITION_LOCK_NAMESPACE, key, action);
+    }
+
+    private void writeCreateAudit(AuditActor actor, MetricDefinition metricDefinition) {
+        auditService.write(
+                actor,
+                AuditAction.METRIC_DEFINITION_CREATED,
+                AuditTarget.metricDefinition(metricDefinition.id()),
+                buildCreateDetails(metricDefinition));
+    }
+
+    private void writeUpdateAudit(
+            AuditActor actor, MetricDefinition currentMetricDefinition, MetricDefinition updatedMetricDefinition) {
+        auditService.write(
+                actor,
+                AuditAction.METRIC_DEFINITION_UPDATED,
+                AuditTarget.metricDefinition(updatedMetricDefinition.id()),
+                buildUpdateDetails(currentMetricDefinition, updatedMetricDefinition));
+    }
+
+    private AuditDetails buildCreateDetails(MetricDefinition metricDefinition) {
+        return AuditDetails.entry("key", metricDefinition.key())
+                .with("name", metricDefinition.name())
+                .with("type", metricDefinition.type().toString())
+                .with("direction", metricDefinition.direction().toString())
+                .with("severity", metricDefinition.severity().toString())
+                .with(
+                        "deviationThreshold",
+                        metricDefinition.deviationThreshold().toString());
+    }
+
+    private AuditDetails buildUpdateDetails(
+            MetricDefinition currentMetricDefinition, MetricDefinition updatedMetricDefinition) {
+        AuditDetails details = AuditDetails.empty();
+
+        if (!currentMetricDefinition.name().equals(updatedMetricDefinition.name())) {
+            details = details.with(
+                    "name", "%s -> %s".formatted(currentMetricDefinition.name(), updatedMetricDefinition.name()));
+        }
+
+        if (currentMetricDefinition.type() != updatedMetricDefinition.type()) {
+            details = details.with(
+                    "type", "%s -> %s".formatted(currentMetricDefinition.type(), updatedMetricDefinition.type()));
+        }
+
+        if (currentMetricDefinition.direction() != updatedMetricDefinition.direction()) {
+            details = details.with(
+                    "direction",
+                    "%s -> %s".formatted(currentMetricDefinition.direction(), updatedMetricDefinition.direction()));
+        }
+
+        if (currentMetricDefinition.severity() != updatedMetricDefinition.severity()) {
+            details = details.with(
+                    "severity",
+                    "%s -> %s".formatted(currentMetricDefinition.severity(), updatedMetricDefinition.severity()));
+        }
+
+        if (currentMetricDefinition.deviationThreshold().compareTo(updatedMetricDefinition.deviationThreshold()) != 0) {
+            details = details.with(
+                    "deviationThreshold",
+                    "%s -> %s"
+                            .formatted(
+                                    currentMetricDefinition.deviationThreshold(),
+                                    updatedMetricDefinition.deviationThreshold()));
+        }
+
+        return details;
     }
 }
