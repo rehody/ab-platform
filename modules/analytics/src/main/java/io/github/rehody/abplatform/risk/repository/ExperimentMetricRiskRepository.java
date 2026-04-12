@@ -105,7 +105,7 @@ public class ExperimentMetricRiskRepository {
                 .sql(SELECT_RISKS_BY_EXPERIMENT_AND_METRIC_SQL)
                 .param("experimentId", experimentId)
                 .param("metricKey", metricKey)
-                .query(this::mapRow)
+                .query((rs, _) -> mapRow(rs))
                 .list();
     }
 
@@ -113,7 +113,7 @@ public class ExperimentMetricRiskRepository {
         return jdbcClient
                 .sql(SELECT_RISK_BY_ID_SQL)
                 .param("id", id)
-                .query(this::mapRow)
+                .query((rs, _) -> mapRow(rs))
                 .optional();
     }
 
@@ -150,7 +150,7 @@ public class ExperimentMetricRiskRepository {
                 .update();
     }
 
-    private ExperimentMetricRisk mapRow(ResultSet rs, int rowNum) throws SQLException {
+    private ExperimentMetricRisk mapRow(ResultSet rs) throws SQLException {
         return new ExperimentMetricRisk(
                 rs.getObject("id", UUID.class),
                 rs.getObject("experiment_id", UUID.class),

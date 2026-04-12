@@ -218,7 +218,8 @@ public class ExperimentMetricEvaluationAssembler {
 
         MetricDirection requiredMetricDirection =
                 Objects.requireNonNull(metricDirection, "Metric direction is required");
-        boolean hasNegativeDeviation = false;
+
+        boolean hasNegativeDeviation;
         if (requiredMetricDirection == MetricDirection.MORE_IS_BETTER) {
             hasNegativeDeviation = relativeDeviation.compareTo(deviationThreshold.negate()) < 0;
         } else {
