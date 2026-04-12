@@ -92,11 +92,14 @@ class ExperimentTest {
     void statePredicatesAndWithers_shouldReflectExperimentState() {
         Experiment running = experiment(ExperimentState.RUNNING);
         Experiment completed = experiment(ExperimentState.COMPLETED);
+        Experiment paused = experiment(ExperimentState.PAUSED);
         Experiment archived = experiment(ExperimentState.ARCHIVED);
+        ExperimentRolloutPlan rolloutPlan = ExperimentRolloutPlan.of(15, true, false);
 
         assertThat(running.isRunning()).isTrue();
         assertThat(running.isApproved()).isFalse();
         assertThat(completed.isCompleted()).isTrue();
+        assertThat(paused.isPaused()).isTrue();
         assertThat(archived.state()).isEqualTo(ExperimentState.ARCHIVED);
         assertThat(running.withVersion(7L).version()).isEqualTo(7L);
         assertThat(running.withStartedAt(java.time.Instant.parse("2026-04-06T10:15:30Z"))
@@ -105,6 +108,7 @@ class ExperimentTest {
         assertThat(running.withCompletedAt(java.time.Instant.parse("2026-04-06T11:15:30Z"))
                         .completedAt())
                 .isEqualTo(java.time.Instant.parse("2026-04-06T11:15:30Z"));
+        assertThat(running.withRolloutPlan(rolloutPlan).rolloutPlan()).isEqualTo(rolloutPlan);
     }
 
     @Test

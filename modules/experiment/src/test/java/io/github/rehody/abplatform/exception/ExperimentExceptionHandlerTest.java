@@ -117,6 +117,20 @@ class ExperimentExceptionHandlerTest {
     }
 
     @Test
+    void handleRolloutFailure_shouldReturnConflictAndErrorResponse() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/experiments/123/rollout");
+
+        ResponseEntity<ErrorResponse> response = experimentExceptionHandler.handleRolloutFailure(
+                new ExperimentRolloutException("Cannot advance experiment rollout"), request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().errorCode()).isEqualTo(ErrorResponse.ErrorCode.CONFLICT);
+        assertThat(response.getBody().message()).isEqualTo("Cannot advance experiment rollout");
+        assertThat(response.getBody().path()).isEqualTo("/api/v1/experiments/123/rollout");
+    }
+
+    @Test
     void handleBlockingConflict_shouldReturnConflictAndConflictingExperimentIds() {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/experiments/123/start");
 

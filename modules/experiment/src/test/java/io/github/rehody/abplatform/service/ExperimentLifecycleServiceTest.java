@@ -40,6 +40,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class ExperimentLifecycleServiceTest {
@@ -128,6 +129,35 @@ class ExperimentLifecycleServiceTest {
     @Test
     void pause_shouldUpdateStateIncrementVersionAndInvalidateCache() {
         assertSuccessfulTransition(experimentLifecycleService::pause, ExperimentState.RUNNING, ExperimentState.PAUSED);
+    }
+
+    @Test
+    void pauseWithoutActor_shouldUpdateStateWithoutWritingAudit() {
+        UUID id = UUID.randomUUID();
+        String flagKey = "flag-pause";
+        Experiment experiment = experiment(id, flagKey, ExperimentState.RUNNING, 3L);
+
+        when(experimentRepository.findFlagKeyById(id)).thenReturn(Optional.of(flagKey));
+        when(experimentRepository.findById(id)).thenReturn(Optional.of(experiment));
+        when(experimentRepository.update(any(Experiment.class))).thenReturn(UpdateOutcome.updated(4L));
+
+        Experiment response = experimentLifecycleService.pause(id, 3L);
+
+        assertThat(response.state()).isEqualTo(ExperimentState.PAUSED);
+        assertThat(response.version()).isEqualTo(4L);
+        verify(auditService, never()).write(any(), any(), any(), any());
+    }
+
+    @Test
+    void writeTransitionAudit_shouldSkipAuditWhenActionIsMissing() {
+        Experiment current = experiment(UUID.randomUUID(), "flag-a", ExperimentState.RUNNING, 3L);
+        Experiment persisted = experiment(current.id(), current.flagKey(), ExperimentState.PAUSED, 4L);
+
+        Object response = ReflectionTestUtils.invokeMethod(
+                experimentLifecycleService, "writeTransitionAudit", ACTOR, null, current, persisted);
+
+        assertThat(response).isNull();
+        verify(auditService, never()).write(any(), any(), any(), any());
     }
 
     @Test

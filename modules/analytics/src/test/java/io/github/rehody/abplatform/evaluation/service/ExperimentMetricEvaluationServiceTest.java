@@ -248,6 +248,24 @@ class ExperimentMetricEvaluationServiceTest {
     }
 
     @Test
+    void shouldThrowWhenCachedReportLoaderReturnsEmpty() {
+        Experiment experiment = experiment();
+        MetricDefinition metricDefinition = metricDefinition();
+        String cacheKey =
+                experimentMetricReportCacheKeyFactory.forExperimentMetric(experiment.id(), metricDefinition.key());
+
+        when(experimentQueryService.getById(experiment.id())).thenReturn(experiment);
+        when(experimentMetricEvaluationPolicy.getMetricDefinitionForEvaluation(experiment.id(), metricDefinition.key()))
+                .thenReturn(metricDefinition);
+        when(experimentMetricReportCache.getOrLoad(eq(cacheKey), any())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() ->
+                        experimentMetricEvaluationService.getEvaluationReport(experiment.id(), metricDefinition.key()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Experiment metric report cache loader returned empty");
+    }
+
+    @Test
     void shouldBuildEvaluationAndApplyRisk() {
         Experiment experiment = experiment();
         MetricDefinition metricDefinition = metricDefinition();
@@ -277,6 +295,43 @@ class ExperimentMetricEvaluationServiceTest {
 
         experimentMetricEvaluationService.evaluateAndApplyRisk(experiment, metricDefinition.key());
 
+        verify(experimentMetricRiskService).applyEvaluation(experiment, metricDefinition, evaluationReport);
+    }
+
+    @Test
+    void shouldLoadExperimentByIdWhenApplyingRisk() {
+        Experiment experiment = experiment();
+        MetricDefinition metricDefinition = metricDefinition();
+        ExperimentReportWindow reportWindow = new ExperimentReportWindow(
+                Instant.parse("2026-04-04T10:00:00Z"), Instant.parse("2026-04-04T11:00:00Z"));
+        CountableMetricReport countableMetricReport = countableMetricReport(experiment, metricDefinition);
+        ExperimentMetricEvaluationReport evaluationReport = evaluationReport();
+
+        when(experimentQueryService.getById(experiment.id())).thenReturn(experiment);
+        when(experimentMetricEvaluationPolicy.getMetricDefinitionForEvaluation(experiment.id(), metricDefinition.key()))
+                .thenReturn(metricDefinition);
+        when(experimentReportWindowFactory.create(eq(experiment), any())).thenReturn(reportWindow);
+        when(assignmentEventReportRepository.findParticipantCountsByVariant(experiment.id(), reportWindow))
+                .thenReturn(List.of(new AssignmentVariantAggregate(
+                        experiment.variants().get(0).id(), 100)));
+        when(countableMetricEventReportRepository.findMetricStatsByVariant(
+                        experiment.id(), metricDefinition.key(), reportWindow))
+                .thenReturn(List.of(new CountableMetricVariantAggregate(
+                        experiment.variants().get(0).id(), 30, 40)));
+        when(countableMetricReportAssembler.assemble(
+                        eq(experiment), eq(metricDefinition), any(), any(), any(), eq(reportWindow)))
+                .thenReturn(countableMetricReport);
+        when(experimentMetricRiskService.getRisks(experiment.id(), metricDefinition.key()))
+                .thenReturn(List.of());
+        when(experimentMetricEvaluationAssembler.assemble(
+                        eq(experiment), eq(metricDefinition), any(), any(), any(), any(), any()))
+                .thenReturn(evaluationReport);
+
+        ExperimentMetricEvaluationReport response =
+                experimentMetricEvaluationService.evaluateAndApplyRisk(experiment.id(), metricDefinition.key());
+
+        assertThat(response).isEqualTo(evaluationReport);
+        verify(experimentQueryService).getById(experiment.id());
         verify(experimentMetricRiskService).applyEvaluation(experiment, metricDefinition, evaluationReport);
     }
 

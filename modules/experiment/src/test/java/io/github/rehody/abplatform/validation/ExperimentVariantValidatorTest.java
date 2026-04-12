@@ -121,6 +121,26 @@ class ExperimentVariantValidatorTest {
         assertThat(validator.isValid(variant, null)).isFalse();
     }
 
+    @Test
+    void isValid_shouldReturnFalseAndRejectControlVariantWithWeight() {
+        ExperimentVariant variant = new ExperimentVariant(
+                UUID.randomUUID(), "control", validValue(), 0, BigDecimal.ONE, ExperimentVariantType.CONTROL);
+
+        assertThat(validator.isValid(variant, null)).isFalse();
+    }
+
+    @Test
+    void isValid_shouldReturnFalseAndRejectUnexpectedVariantType() {
+        ExperimentVariant variant = org.mockito.Mockito.mock(ExperimentVariant.class);
+        org.mockito.Mockito.when(variant.key()).thenReturn("variant-a");
+        org.mockito.Mockito.when(variant.type()).thenReturn(ExperimentVariantType.CONTROL);
+        org.mockito.Mockito.when(variant.isControl()).thenReturn(false);
+        org.mockito.Mockito.when(variant.isRegular()).thenReturn(false);
+        org.mockito.Mockito.when(variant.value()).thenReturn(validValue());
+
+        assertThat(validator.isValid(variant, null)).isFalse();
+    }
+
     private FeatureValue validValue() {
         return new FeatureValue(true, FeatureValueType.BOOL);
     }

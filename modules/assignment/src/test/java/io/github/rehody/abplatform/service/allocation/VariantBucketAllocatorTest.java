@@ -77,4 +77,20 @@ class VariantBucketAllocatorTest {
                 .hasMessage("Experiment %s has %d variants, which exceeds bucket pool size %d"
                         .formatted(experimentId, BUCKET_POOL_SIZE + 1, BUCKET_POOL_SIZE));
     }
+
+    @Test
+    void allocate_shouldReturnEmptyWhenBucketPoolSizeIsZero() {
+        List<ExperimentVariant> variants = List.of(variant(0, "control", "blue", 1));
+
+        List<BucketAllocation> allocations = variantBucketAllocator.allocate(UUID.randomUUID(), variants, 0);
+
+        assertThat(allocations).isEmpty();
+    }
+
+    @Test
+    void allocate_shouldReturnEmptyWhenVariantsAreEmpty() {
+        List<BucketAllocation> allocations = variantBucketAllocator.allocate(UUID.randomUUID(), List.of(), 10);
+
+        assertThat(allocations).isEmpty();
+    }
 }

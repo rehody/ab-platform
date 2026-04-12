@@ -121,6 +121,25 @@ class MetricDefinitionServiceTest {
     }
 
     @Test
+    void update_shouldHandleNoFieldChanges() {
+        MetricDefinition current = metricDefinition();
+        when(metricDefinitionCache.getOrLoad(eq("orders"), any())).thenReturn(Optional.of(current));
+
+        MetricDefinition response = metricDefinitionService.update(
+                AuditActor.user(UUID.randomUUID()),
+                "orders",
+                current.name(),
+                current.type(),
+                current.direction(),
+                current.severity(),
+                current.deviationThreshold());
+
+        assertThat(response).isEqualTo(current);
+        verify(metricDefinitionRepository).update(response);
+        verify(metricDefinitionCache).invalidate("orders");
+    }
+
+    @Test
     void getByKey_shouldReturnMetricFromCache() {
         MetricDefinition metricDefinition = metricDefinition();
         when(metricDefinitionCache.getOrLoad(eq("orders"), any())).thenReturn(Optional.of(metricDefinition));
@@ -128,6 +147,21 @@ class MetricDefinitionServiceTest {
         MetricDefinition response = metricDefinitionService.getByKey("orders");
 
         assertThat(response).isEqualTo(metricDefinition);
+    }
+
+    @Test
+    void getByKey_shouldLoadMetricFromRepositoryWhenCacheMisses() {
+        MetricDefinition metricDefinition = metricDefinition();
+        when(metricDefinitionCache.getOrLoad(eq("orders"), any())).thenAnswer(invocation -> {
+            Supplier<Optional<MetricDefinition>> loader = invocation.getArgument(1);
+            return loader.get();
+        });
+        when(metricDefinitionRepository.findByKey("orders")).thenReturn(Optional.of(metricDefinition));
+
+        MetricDefinition response = metricDefinitionService.getByKey("orders");
+
+        assertThat(response).isEqualTo(metricDefinition);
+        verify(metricDefinitionRepository).findByKey("orders");
     }
 
     @Test

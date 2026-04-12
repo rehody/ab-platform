@@ -96,6 +96,34 @@ class ExperimentMetricRiskServiceTest {
     }
 
     @Test
+    void shouldResolveRiskWithoutAuditCommentWhenCommentIsBlank() {
+        UUID riskId = UUID.randomUUID();
+        UUID experimentId = UUID.randomUUID();
+        ExperimentMetricRisk risk = openRisk(riskId, experimentId, "orders", null, new BigDecimal("0.10"));
+        when(experimentMetricRiskRepository.findById(riskId)).thenReturn(java.util.Optional.of(risk));
+
+        ExperimentMetricRisk response =
+                experimentMetricRiskService.resolve(AuditActor.user(UUID.randomUUID()), riskId, "   ");
+
+        assertThat(response.resolutionComment()).isEqualTo("   ");
+        verify(experimentMetricRiskRepository).update(any(ExperimentMetricRisk.class));
+    }
+
+    @Test
+    void shouldResolveRiskWithoutAuditCommentWhenCommentIsNull() {
+        UUID riskId = UUID.randomUUID();
+        UUID experimentId = UUID.randomUUID();
+        ExperimentMetricRisk risk = openRisk(riskId, experimentId, "orders", null, new BigDecimal("0.10"));
+        when(experimentMetricRiskRepository.findById(riskId)).thenReturn(java.util.Optional.of(risk));
+
+        ExperimentMetricRisk response =
+                experimentMetricRiskService.resolve(AuditActor.user(UUID.randomUUID()), riskId, null);
+
+        assertThat(response.resolutionComment()).isNull();
+        verify(experimentMetricRiskRepository).update(any(ExperimentMetricRisk.class));
+    }
+
+    @Test
     void shouldAcquireRiskLockWhenTrafficIsNotNormal() {
         Experiment experiment = runningExperiment();
         MetricDefinition metricDefinition = metricDefinition();

@@ -247,6 +247,30 @@ class ExperimentServiceTest {
     }
 
     @Test
+    void update_shouldIncludeVariantChangesInAuditDetails() {
+        UUID id = UUID.randomUUID();
+        List<ExperimentVariant> currentVariants = variants();
+        List<ExperimentVariant> updatedVariants = List.of(
+                currentVariants.get(0),
+                new ExperimentVariant(
+                        UUID.randomUUID(),
+                        "variant-b",
+                        new FeatureValue("green", FeatureValueType.STRING),
+                        1,
+                        BigDecimal.ONE,
+                        ExperimentVariantType.REGULAR));
+        Experiment current = experiment(id, "flag-variants", "CHECKOUT", currentVariants, ExperimentState.RUNNING, 3L);
+        when(experimentRepository.findById(id)).thenReturn(Optional.of(current));
+        when(experimentRepository.findByFlagKey("flag-variants")).thenReturn(Optional.of(current));
+        when(experimentRepository.updateWithVariants(any(Experiment.class))).thenReturn(UpdateOutcome.updated(4L));
+
+        Experiment response = experimentDraftService.update(ACTOR, id, null, null, updatedVariants, 3L);
+
+        assertThat(response.variants()).isEqualTo(updatedVariants);
+        verify(auditService).write(eq(ACTOR), any(), any(), any());
+    }
+
+    @Test
     void update_shouldThrowExperimentNotFoundExceptionWhenExperimentMissingBeforeLock() {
         UUID id = UUID.randomUUID();
         List<ExperimentVariant> variants = variants();

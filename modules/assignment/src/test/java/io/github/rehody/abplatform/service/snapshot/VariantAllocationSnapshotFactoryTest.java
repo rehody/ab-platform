@@ -96,6 +96,42 @@ class VariantAllocationSnapshotFactoryTest {
     }
 
     @Test
+    void create_shouldRejectExperimentWithoutSingleControlVariant() {
+        Experiment experiment = runningExperiment(
+                "flag-control",
+                "CHECKOUT",
+                List.of(variant(0, "control-a", "blue", 1), variant(1, "control-b", "green", 1)),
+                3L);
+
+        assertThatThrownBy(() -> variantAllocationSnapshotFactory.create(experiment))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage(
+                        "Running experiment %s must contain exactly one CONTROL variant".formatted(experiment.id()));
+
+        verify(variantBucketAllocator, never()).allocate(any(), any(), anyInt());
+    }
+
+    @Test
+    void create_shouldRejectNonPositiveRegularBucketPool() {
+        ExperimentVariant control = variant(0, "control", "blue", 1);
+        ExperimentVariant treatment = variant(1, "treatment", "red", 1);
+        ExperimentRolloutPlan rolloutPlan = org.mockito.Mockito.mock(ExperimentRolloutPlan.class);
+        Experiment experiment = org.mockito.Mockito.mock(Experiment.class);
+
+        when(experiment.id()).thenReturn(UUID.randomUUID());
+        when(experiment.variants()).thenReturn(List.of(control, treatment));
+        when(experiment.rolloutPlan()).thenReturn(rolloutPlan);
+        when(rolloutPlan.regularBucketPoolSize(anyInt())).thenReturn(0);
+        when(rolloutPlan.controlBucketPoolSize(anyInt())).thenReturn(10_000);
+
+        assertThatThrownBy(() -> variantAllocationSnapshotFactory.create(experiment))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Regular bucket pool must be positive for experiment %s".formatted(experiment.id()));
+
+        verify(variantBucketAllocator, never()).allocate(any(), any(), anyInt());
+    }
+
+    @Test
     void create_shouldThrowWhenAllocationsDoNotCoverFullBucketPool() {
         ExperimentVariant control = variant(0, "control", "blue", 1);
         ExperimentVariant treatment = variant(1, "treatment", "red", 1);
